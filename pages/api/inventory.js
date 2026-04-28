@@ -1,13 +1,16 @@
-import { getInventory, getHistory } from '../../lib/sheets';
+import { getInventory, getHistory, getHistoryByStore } from '../../lib/sheets';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { serial } = req.query;
+  const { serial, store } = req.query;
 
   try {
     if (serial) {
       const history = await getHistory(serial);
+      return res.status(200).json({ history });
+    } else if (store) {
+      const history = await getHistoryByStore(store);
       return res.status(200).json({ history });
     } else {
       const inventory = await getInventory();

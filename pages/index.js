@@ -1,14 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import Head from 'next/head';
 
-const STORES = [
-  'Αποθήκη κεντρική',
-  'Κατάστημα Περιστερίου',
-  'Κατάστημα Γλυφάδας',
-  'Κατάστημα Κηφισιάς',
-  'Κατάστημα Πειραιά',
-  'Κατάστημα Θεσσαλονίκης',
-];
+
 
 const ACTIONS = [
   { value: 'Αποστολή σε κατάστημα', icon: '🏪', desc: 'Τοποθέτηση σε νέο σημείο' },
@@ -36,7 +29,7 @@ export default function Home() {
   const [serialNumber, setSerialNumber] = useState('');
   const [model, setModel] = useState('');
   const [action, setAction] = useState('Αποστολή σε κατάστημα');
-  const [store, setStore] = useState(STORES[1]);
+  const [store, setStore] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [problem, setProblem] = useState('');
   const [notes, setNotes] = useState('');
@@ -46,8 +39,10 @@ export default function Home() {
   const [loadingInv, setLoadingInv] = useState(false);
   const [history, setHistory] = useState(null);
   const [historySerial, setHistorySerial] = useState('');
+  const [historyStore, setHistoryStore] = useState('');
   const [filterAction, setFilterAction] = useState('Όλα');
   const fileRef = useRef();
+  const cameraRef = useRef();
 
   const handleImage = useCallback((file) => {
     if (!file) return;
@@ -130,7 +125,7 @@ export default function Home() {
   const handleReset = () => {
     setStep(1); setImagePreview(null); setImageBase64(null);
     setSerialNumber(''); setModel(''); setScanError(null);
-    setAction('Αποστολή σε κατάστημα'); setStore(STORES[1]);
+    setAction('Αποστολή σε κατάστημα'); setStore('');
     setDate(new Date().toISOString().split('T')[0]);
     setProblem(''); setNotes('');
   };
@@ -145,10 +140,14 @@ export default function Home() {
     finally { setLoadingInv(false); }
   };
 
-  const loadHistory = async (serial) => {
-    setHistorySerial(serial);
+  const loadHistory = async (serial, store) => {
+    setHistorySerial(serial || '');
+    setHistoryStore(store || '');
     try {
-      const res = await fetch(`/api/inventory?serial=${encodeURIComponent(serial)}`);
+      const params = new URLSearchParams();
+      if (serial) params.set('serial', serial);
+      if (store) params.set('store', store);
+      const res = await fetch(`/api/inventory?${params.toString()}`);
       const data = await res.json();
       setHistory(data.history || []);
     } catch (e) { alert('Σφάλμα φόρτωσης ιστορικού.'); }
@@ -166,7 +165,7 @@ export default function Home() {
 
       <div className="app">
         <header className="header">
-          <div className="logo">Track<span>Mate</span></div>
+          <div className="logo" onClick={()=>{setTab('scan');handleReset();}} style={{cursor:'pointer'}}>Track<span>Mate</span></div>
           <nav className="nav">
             {['scan','inventory','history'].map(t => (
               <button key={t} className={`nav-btn ${tab===t?'active':''}`}
@@ -192,20 +191,26 @@ export default function Home() {
                       ? <img src={imagePreview} alt="preview" className="preview-img" />
                       : <>
                           <div className="upload-icon">📷</div>
-                          <div className="upload-title">Πάτα ή σύρε φωτογραφία εδώ</div>
-                          <div className="upload-sub">JPG, PNG — από κάμερα ή γκαλερί</div>
+                          <div className="upload-title">Πάτα για φωτογραφία ή γκαλερί</div>
+                          <div className="upload-sub">Τραβάει από κάμερα ή ανεβάζει από γκαλερί</div>
                         </>
                     }
                   </div>
-                  <input ref={fileRef} type="file" accept="image/*" capture="environment"
+                  <input ref={fileRef} type="file" accept="image/*"
                     style={{display:'none'}} onChange={e=>handleImage(e.target.files[0])} />
+                  <input ref={cameraRef} type="file" accept="image/*" capture="environment"
+                    style={{display:'none'}} onChange={e=>handleImage(e.target.files[0])} />
+                  <div className="btn-row">
+                    <button className="btn-half" onClick={() => cameraRef.current.click()}>📷 Κάμερα</button>
+                    <button className="btn-half" onClick={() => fileRef.current.click()}>🖼️ Γκαλερί</button>
+                  </div>
                   {imagePreview && (
                     <button className="btn-primary" onClick={handleScan} disabled={scanning}>
                       {scanning ? '🔍 Αναγνώριση...' : '🔍 Αναγνώριση serial & model'}
                     </button>
                   )}
                   <button className="btn-ghost" onClick={handleSkipScan}>
-                    ✏️ Συμπλήρωσε χειροκίνητα χωρίς φωτογραφία
+                    ✏️ Συμπλήρωσε χειροκίνητα
                   </button>
                 </div>
               )}
@@ -247,9 +252,9 @@ export default function Home() {
 
                   <div className="field-group">
                     <label className="field-label">🏪 Κατάστημα</label>
-                    <select value={store} onChange={e=>setStore(e.target.value)}>
-                      {STORES.map(s => <option key={s}>{s}</option>)}
-                    </select>
+                    <input className="text-input" value={store}
+                      onChange={e=>setStore(e.target.value)}
+                      placeholder="π.χ. Κατάστημα Περιστερίου" />
                   </div>
 
                   <div className="field-group">
@@ -327,12 +332,22 @@ export default function Home() {
           {tab==='history' && (
             <div className="fade-in">
               <div className="field-group">
-                <label className="field-label">Serial Number</label>
+                <label className="field-label">Αναζήτηση με Serial Number</label>
                 <div style={{display:'flex',gap:'8px'}}>
                   <input className="text-input" value={historySerial}
                     onChange={e=>setHistorySerial(e.target.value)}
                     placeholder="π.χ. A4829301" />
-                  <button className="btn-search" onClick={()=>loadHistory(historySerial)}>Αναζήτηση</button>
+                  <button className="btn-search" onClick={()=>loadHistory(historySerial, '')}>Αναζήτηση</button>
+                </div>
+              </div>
+              <div className="divider-or">ή</div>
+              <div className="field-group">
+                <label className="field-label">Αναζήτηση με Κατάστημα</label>
+                <div style={{display:'flex',gap:'8px'}}>
+                  <input className="text-input" value={historyStore}
+                    onChange={e=>setHistoryStore(e.target.value)}
+                    placeholder="π.χ. Κατάστημα Περιστερίου" />
+                  <button className="btn-search" onClick={()=>loadHistory('', historyStore)}>Αναζήτηση</button>
                 </div>
               </div>
               {history === null && <div className="empty">Γράψε serial number για να δεις το ιστορικό.</div>}
@@ -424,7 +439,12 @@ export default function Home() {
         .h-notes { font-size: 11px; color: #666; margin-top: 4px; }
         .loading { text-align: center; padding: 40px; color: #999; font-size: 13px; }
         .empty { text-align: center; padding: 40px 20px; color: #999; font-size: 13px; line-height: 1.6; }
-        .fade-in { animation: fadeIn 0.2s ease; }
+        .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+        .btn-half { padding: 10px; background: #F5F5F3; color: #1a1a18; border: 1px solid #EBEBEA; border-radius: 10px; font-size: 13px; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.15s; }
+        .btn-half:hover { border-color: #1D9E75; background: #E1F5EE; }
+        .divider-or { text-align: center; color: #999; font-size: 12px; margin: 8px 0; position: relative; }
+        .divider-or::before, .divider-or::after { content: ''; position: absolute; top: 50%; width: 44%; height: 1px; background: #EBEBEA; }
+        .divider-or::before { left: 0; } .divider-or::after { right: 0; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
     </>
