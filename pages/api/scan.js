@@ -23,14 +23,28 @@ export default async function handler(req, res) {
           },
           {
             type: 'text',
-            text: `Κοίταξε αυτή τη φωτογραφία και βρες:
-1. Serial Number (SN, S/N, Serial No, ή παρόμοιο)
-2. Model name/number
+            text: `Κοίταξε αυτή τη φωτογραφία προσεκτικά.
+
+Πρώτα αξιολόγησε:
+- Είναι φωτογραφία μηχανήματος, συσκευής ή εξοπλισμού με ετικέτα/αυτοκόλλητο;
+- Φαίνεται καθαρά το serial number ή/και το model;
+- Είναι αρκετά ευκρινής για αναγνώριση;
 
 Απάντησε ΜΟΝΟ σε JSON χωρίς markdown:
-{"serialNumber": "...", "model": "...", "confidence": "high/medium/low"}
 
-Αν δεν βρεις κάτι βάλε "unknown".`,
+Αν η φωτογραφία ΔΕΝ δείχνει μηχάνημα με ετικέτα:
+{"valid": false, "reason": "no_machine", "message": "Η φωτογραφία δεν δείχνει μηχάνημα με ετικέτα serial number."}
+
+Αν η φωτογραφία είναι θολή ή δεν φαίνεται καθαρά:
+{"valid": false, "reason": "blurry", "message": "Η φωτογραφία δεν είναι αρκετά καθαρή. Τράβηξε ξανά πιο κοντά στην ετικέτα."}
+
+Αν δεν υπάρχει serial number ή model ορατό:
+{"valid": false, "reason": "no_data", "message": "Δεν εντοπίστηκε serial number ή model. Σιγουρέψου ότι η ετικέτα φαίνεται καθαρά."}
+
+Αν βρεις στοιχεία:
+{"valid": true, "serialNumber": "...", "model": "...", "confidence": "high/medium/low"}
+
+Αν βρεις μόνο ένα από τα δύο, βάλε "unknown" για το άλλο και confidence "medium".`,
           },
         ],
       }],
@@ -39,6 +53,11 @@ export default async function handler(req, res) {
     const text = response.content[0].text.trim();
     const clean = text.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(clean);
+
+    // Αν δεν είναι valid, επιστρέφουμε 422
+    if (!parsed.valid) {
+      return res.status(422).json(parsed);
+    }
 
     return res.status(200).json(parsed);
   } catch (err) {

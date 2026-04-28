@@ -87,13 +87,22 @@ export default function Home() {
         body: JSON.stringify({ imageBase64, mimeType: imageMime }),
       });
       const data = await res.json();
+
+      // Validation error — δείξε μήνυμα, μείνε στο step 1
+      if (res.status === 422) {
+        setScanError(data.message || 'Δεν ήταν δυνατή η αναγνώριση.');
+        setScanning(false);
+        return;
+      }
+
       if (!res.ok) throw new Error(data.error || 'Σφάλμα');
+
       setSerialNumber(data.serialNumber !== 'unknown' ? data.serialNumber : '');
       setModel(data.model !== 'unknown' ? data.model : '');
+      setScanError(null);
       setStep(2);
     } catch (e) {
-      setScanError('Δεν ήταν δυνατή η αναγνώριση. Συμπλήρωσε χειροκίνητα παρακάτω.');
-      setStep(2);
+      setScanError('Σφάλμα επικοινωνίας. Δοκίμασε ξανά.');
     } finally {
       setScanning(false);
     }
@@ -204,6 +213,7 @@ export default function Home() {
                     <button className="btn-half" onClick={() => cameraRef.current.click()}>📷 Κάμερα</button>
                     <button className="btn-half" onClick={() => fileRef.current.click()}>🖼️ Γκαλερί</button>
                   </div>
+                  {scanError && <div className="error-banner" style={{marginTop:'12px'}}>⚠️ {scanError}</div>}
                   {imagePreview && (
                     <button className="btn-primary" onClick={handleScan} disabled={scanning}>
                       {scanning ? '🔍 Αναγνώριση...' : '🔍 Αναγνώριση serial & model'}
