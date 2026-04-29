@@ -196,7 +196,15 @@ export default function Home() {
 
       <div className="app">
         <header className="header">
-          <div className="logo" onClick={()=>{setTab('scan');handleReset();}} style={{cursor:'pointer'}}>Track<span>Mate</span></div>
+          <div className="header-top">
+            <div className="logo" onClick={()=>{setTab('scan');handleReset();}} style={{cursor:'pointer'}}>Track<span>Mate</span></div>
+            {currentUser && (
+              <div className="user-area">
+                <span className="user-name">👤 {currentUser.fullName}</span>
+                <button className="btn-logout" onClick={handleLogout} title="Αποσύνδεση">Έξοδος</button>
+              </div>
+            )}
+          </div>
           <nav className="nav">
             {['scan','inventory','history'].map(t => (
               <button key={t} className={`nav-btn ${tab===t?'active':''}`}
@@ -205,12 +213,6 @@ export default function Home() {
               </button>
             ))}
           </nav>
-          {currentUser && (
-            <div className="user-area">
-              <span className="user-name">{currentUser.fullName}</span>
-              <button className="btn-logout" onClick={handleLogout} title="Αποσύνδεση">↩</button>
-            </div>
-          )}
         </header>
 
         <main className="main">
@@ -261,19 +263,17 @@ export default function Home() {
                   )}
 
                   <div className="section-label">Στοιχεία μηχανήματος</div>
-                  <div className="result-grid">
-                    <div className="field-group">
-                      <label className="field-label">Serial Number *</label>
-                      <input className="text-input" value={serialNumber}
-                        onChange={e=>setSerialNumber(e.target.value)}
-                        placeholder="π.χ. A4829301" />
-                    </div>
-                    <div className="field-group">
-                      <label className="field-label">Model</label>
-                      <input className="text-input" value={model}
-                        onChange={e=>setModel(e.target.value)}
-                        placeholder="π.χ. Keurig K-Elite" />
-                    </div>
+                  <div className="field-group">
+                    <label className="field-label">Serial Number *</label>
+                    <input className="text-input" value={serialNumber}
+                      onChange={e=>setSerialNumber(e.target.value)}
+                      placeholder="π.χ. A4829301" />
+                  </div>
+                  <div className="field-group">
+                    <label className="field-label">Model</label>
+                    <input className="text-input" value={model}
+                      onChange={e=>setModel(e.target.value)}
+                      placeholder="π.χ. Keurig K-Elite" />
                   </div>
 
                   <div className="section-label" style={{marginTop:'16px'}}>Τύπος κίνησης</div>
@@ -355,11 +355,11 @@ export default function Home() {
                   <div className="machine-info">
                     <div className="machine-name">{item.model || 'Άγνωστο model'}</div>
                     <div className="machine-serial">{item.serialNumber}</div>
+                    <div className="machine-bottom">
+                      <span className="machine-store">🏪 {item.store || '—'}</span>
+                      <span className="machine-date">📅 {item.date}</span>
+                    </div>
                     {item.problem && <div className="machine-problem">🔧 {item.problem}</div>}
-                  </div>
-                  <div className="machine-loc">
-                    <div className="machine-loc-name">{item.store}</div>
-                    <div className="machine-date">{item.date}</div>
                     {item.user && <div className="machine-user">👤 {item.user}</div>}
                   </div>
                 </div>
@@ -414,11 +414,15 @@ export default function Home() {
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'DM Sans', sans-serif; background: #F5F5F3; color: #1a1a18; min-height: 100vh; }
         .app { max-width: 480px; margin: 0 auto; min-height: 100vh; background: #fff; }
-        .header { background: #fff; border-bottom: 1px solid #EBEBEA; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; gap: 8px; }
-        .user-area { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-        .user-name { font-size: 11px; color: #999; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .btn-logout { background: none; border: 1px solid #EBEBEA; border-radius: 8px; padding: 4px 8px; font-size: 14px; cursor: pointer; color: #999; transition: all 0.15s; line-height: 1; }
+        .header { background: #fff; border-bottom: 1px solid #EBEBEA; position: sticky; top: 0; z-index: 10; }
+        .header-top { padding: 12px 16px 8px; display: flex; align-items: center; justify-content: space-between; }
+        .user-area { display: flex; align-items: center; gap: 8px; }
+        .user-name { font-size: 12px; color: #555; font-weight: 500; }
+        .btn-logout { background: none; border: 1px solid #EBEBEA; border-radius: 8px; padding: 4px 10px; font-size: 12px; cursor: pointer; color: #999; transition: all 0.15s; font-family: 'DM Sans', sans-serif; }
         .btn-logout:hover { border-color: #E24B4A; color: #E24B4A; }
+        .nav { display: flex; gap: 4px; padding: 0 12px 10px; }
+        .nav-btn { flex: 1; padding: 8px 4px; border-radius: 20px; border: none; background: transparent; font-size: 13px; font-family: 'DM Sans', sans-serif; cursor: pointer; color: #666; transition: all 0.15s; text-align: center; }
+        .nav-btn.active { background: #E1F5EE; color: #0F6E56; font-weight: 500; }
         .logo { font-size: 16px; font-weight: 600; }
         .logo span { color: #1D9E75; }
         .nav { display: flex; gap: 4px; }
@@ -462,16 +466,16 @@ export default function Home() {
         .filter-row { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
         .filter-pill { padding: 5px 12px; border-radius: 20px; border: 1px solid #EBEBEA; background: #fff; font-size: 12px; cursor: pointer; color: #666; font-family: 'DM Sans', sans-serif; transition: all 0.15s; }
         .filter-pill.active { background: #E1F5EE; color: #0F6E56; border-color: #9FE1CB; }
-        .machine-row { background: #fff; border: 1px solid #EBEBEA; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: all 0.15s; }
+        .machine-row { background: #fff; border: 1px solid #EBEBEA; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; display: flex; align-items: flex-start; gap: 10px; cursor: pointer; transition: all 0.15s; }
         .machine-row:hover { border-color: #1D9E75; }
-        .machine-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .machine-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
         .machine-info { flex: 1; min-width: 0; }
-        .machine-name { font-size: 13px; font-weight: 500; }
+        .machine-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .machine-serial { font-family: 'DM Mono', monospace; font-size: 11px; color: #999; margin-top: 2px; }
-        .machine-problem { font-size: 11px; color: #BA7517; margin-top: 2px; }
-        .machine-loc { text-align: right; flex-shrink: 0; }
-        .machine-loc-name { font-size: 12px; font-weight: 500; }
-        .machine-date { font-size: 11px; color: #999; }
+        .machine-bottom { display: flex; gap: 10px; margin-top: 6px; flex-wrap: wrap; }
+        .machine-store { font-size: 12px; color: #444; }
+        .machine-date { font-size: 12px; color: #999; }
+        .machine-problem { font-size: 11px; color: #BA7517; margin-top: 3px; }
         .machine-user { font-size: 11px; color: #1D9E75; margin-top: 2px; }
         .history-item { display: flex; gap: 12px; margin-bottom: 12px; }
         .h-dot-wrap { display: flex; flex-direction: column; align-items: center; }
