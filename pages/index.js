@@ -354,6 +354,7 @@ export default function Home() {
                   <div className="machine-loc">
                     <div className="machine-loc-name">{item.store}</div>
                     <div className="machine-date">{item.date}</div>
+                    {item.user && <div className="machine-user">👤 {item.user}</div>}
                   </div>
                 </div>
               ))}
@@ -392,7 +393,7 @@ export default function Home() {
                   </div>
                   <div className="h-card">
                     <div className="h-action">{item.action}</div>
-                    <div className="h-meta">🏪 {item.store} · 📅 {item.date}</div>
+                    <div className="h-meta">🏪 {item.store} · 📅 {item.date}{item.user ? ` · 👤 ${item.user}` : ''}</div>
                     {item.problem && <div className="h-notes">🔧 {item.problem}</div>}
                     {item.notes && <div className="h-notes">📝 {item.notes}</div>}
                   </div>
@@ -465,6 +466,7 @@ export default function Home() {
         .machine-loc { text-align: right; flex-shrink: 0; }
         .machine-loc-name { font-size: 12px; font-weight: 500; }
         .machine-date { font-size: 11px; color: #999; }
+        .machine-user { font-size: 11px; color: #1D9E75; margin-top: 2px; }
         .history-item { display: flex; gap: 12px; margin-bottom: 12px; }
         .h-dot-wrap { display: flex; flex-direction: column; align-items: center; }
         .h-dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid #1D9E75; background: #fff; flex-shrink: 0; margin-top: 4px; }
