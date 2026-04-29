@@ -1,5 +1,6 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import Head from 'next/head';
+import { useRouter } from 'next/router';
 
 
 
@@ -18,6 +19,8 @@ const STATUS_COLOR = {
 };
 
 export default function Home() {
+  const router = useRouter();
+  const [currentUser, setCurrentUser] = useState(null);
   const [tab, setTab] = useState('scan');
   const [step, setStep] = useState(1);
   const [imagePreview, setImagePreview] = useState(null);
@@ -43,6 +46,19 @@ export default function Home() {
   const [filterAction, setFilterAction] = useState('Όλα');
   const fileRef = useRef();
   const cameraRef = useRef();
+
+  // Φόρτωση συνδεδεμένου χρήστη
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => { if (data) setCurrentUser(data.user); })
+      .catch(() => {});
+  }, []);
+
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    router.replace('/login');
+  };
 
   const handleImage = useCallback((file) => {
     if (!file) return;
@@ -183,6 +199,12 @@ export default function Home() {
               </button>
             ))}
           </nav>
+          {currentUser && (
+            <div className="user-area">
+              <span className="user-name">{currentUser.fullName}</span>
+              <button className="btn-logout" onClick={handleLogout} title="Αποσύνδεση">↩</button>
+            </div>
+          )}
         </header>
 
         <main className="main">
@@ -385,7 +407,11 @@ export default function Home() {
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'DM Sans', sans-serif; background: #F5F5F3; color: #1a1a18; min-height: 100vh; }
         .app { max-width: 480px; margin: 0 auto; min-height: 100vh; background: #fff; }
-        .header { background: #fff; border-bottom: 1px solid #EBEBEA; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+        .header { background: #fff; border-bottom: 1px solid #EBEBEA; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; gap: 8px; }
+        .user-area { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+        .user-name { font-size: 11px; color: #999; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .btn-logout { background: none; border: 1px solid #EBEBEA; border-radius: 8px; padding: 4px 8px; font-size: 14px; cursor: pointer; color: #999; transition: all 0.15s; line-height: 1; }
+        .btn-logout:hover { border-color: #E24B4A; color: #E24B4A; }
         .logo { font-size: 16px; font-weight: 600; }
         .logo span { color: #1D9E75; }
         .nav { display: flex; gap: 4px; }
