@@ -53,6 +53,14 @@ export default function Home() {
       .then(res => res.ok ? res.json() : null)
       .then(data => { if (data) setCurrentUser(data.user); })
       .catch(() => {});
+
+    // Καταχώρηση Service Worker για αυτόματο update
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').then((reg) => {
+        // Έλεγχος για νέα έκδοση
+        reg.update();
+      }).catch(() => {});
+    }
   }, []);
 
   const handleLogout = async () => {
