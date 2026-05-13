@@ -64,15 +64,6 @@ const STORE_CHAINS = [
   { id: 'other', label: 'Άλλα' },
 ];
 
-const STORES_LIST = [
-  'ΚΩΤΣΟΒΟΛΟΣ 091 Κομοτηνή','ΚΩΤΣΟΒΟΛΟΣ 069 Κοζάνη','ΚΩΤΣΟΒΟΛΟΣ 241 Βέροια','ΚΩΤΣΟΒΟΛΟΣ 239 Λιβαδειά','ΚΩΤΣΟΒΟΛΟΣ 238 K-SPOT Ιωάννινα','ΚΩΤΣΟΒΟΛΟΣ 234 Θήβα','ΚΩΤΣΟΒΟΛΟΣ 216 Λαμία','ΚΩΤΣΟΒΟΛΟΣ 214 Χαλκίδα','ΚΩΤΣΟΒΟΛΟΣ 208 Άργος','ΚΩΤΣΟΒΟΛΟΣ 096 Αλεξανδρούπολη','ΚΩΤΣΟΒΟΛΟΣ 095 Καβάλα','ΚΩΤΣΟΒΟΛΟΣ 094 Σέρρες','ΚΩΤΣΟΒΟΛΟΣ 092 Ξάνθη','ΚΩΤΣΟΒΟΛΟΣ 245 K-SPOT Ρόδος','ΚΩΤΣΟΒΟΛΟΣ 088 Τούμπα','ΚΩΤΣΟΒΟΛΟΣ 087 Πυλαία','ΚΩΤΣΟΒΟΛΟΣ 079 Τσιμισκή 43','ΚΩΤΣΟΒΟΛΟΣ 078 Εύοσμος','ΚΩΤΣΟΒΟΛΟΣ 076 Δράμα','ΚΩΤΣΟΒΟΛΟΣ 075 Κατερίνη','ΚΩΤΣΟΒΟΛΟΣ 074 Τρίκαλα','ΚΩΤΣΟΒΟΛΟΣ 073 Μουδανιά','ΚΩΤΣΟΒΟΛΟΣ 072 Καρδίτσα','ΚΩΤΣΟΒΟΛΟΣ 068 Ιωάννινα','ΚΩΤΣΟΒΟΛΟΣ 067 Άρτα','ΚΩΤΣΟΒΟΛΟΣ 267 Top Parks','ΚΩΤΣΟΒΟΛΟΣ 261 Ζάκυνθος','ΚΩΤΣΟΒΟΛΟΣ 206 Νέα Μάκρη','ΚΩΤΣΟΒΟΛΟΣ 249 Καλλιθέα','ΚΩΤΣΟΒΟΛΟΣ 089 Ευκαρπία','ΚΩΤΣΟΒΟΛΟΣ 242 Λεμεσός','ΚΩΤΣΟΒΟΛΟΣ 243 Λευκωσία','ΚΩΤΣΟΒΟΛΟΣ 217 ΜΕΓΑ Χαϊδάρι','ΚΩΤΣΟΒΟΛΟΣ 226 Χολαργός','ΚΩΤΣΟΒΟΛΟΣ 222 ΜΕΓΑ Ρέντη','ΚΩΤΣΟΒΟΛΟΣ 220 ΜΕΓΑ Μενίδι','ΚΩΤΣΟΒΟΛΟΣ 215 ΜΕΓΑ The Mall','ΚΩΤΣΟΒΟΛΟΣ 211 ΜΕΓΑ Ερυθραία','ΚΩΤΣΟΒΟΛΟΣ 027 Κερατσίνι','ΚΩΤΣΟΒΟΛΟΣ 019 Άγιοι Ανάργυροι','ΚΩΤΣΟΒΟΛΟΣ 018 Γλυφάδα','ΚΩΤΣΟΒΟΛΟΣ 017 Νέα Ερυθραία','ΚΩΤΣΟΒΟΛΟΣ 066 Σπάρτη','ΚΩΤΣΟΒΟΛΟΣ 011 Κορυδαλλός','ΚΩΤΣΟΒΟΛΟΣ 228 Μεταμόρφωση','ΚΩΤΣΟΒΟΛΟΣ 016 Αγ. Παρασκευή','ΚΩΤΣΟΒΟΛΟΣ 685 ΜΕΓΑ Λεωφ. Συγγρού 257-259','ΚΩΤΣΟΒΟΛΟΣ 007 ΜΕΓΑ Περιστέρι','ΚΩΤΣΟΒΟΛΟΣ 682 ΜΕΓΑ Κηφισίας 124','ΚΩΤΣΟΒΟΛΟΣ 219 ΜΕΓΑ Ηλιούπολης','ΚΩΤΣΟΒΟΛΟΣ 213 ΜΕΓΑ Α.Ι.Α. Αεροδρόμιο Σπάτα','ΚΩΤΣΟΒΟΛΟΣ 225 Αθήνα Κέντρο','ΚΩΤΣΟΒΟΛΟΣ Κεντρικό','ΚΩΤΣΟΒΟΛΟΣ 058 Αίγιο','ΚΩΤΣΟΒΟΛΟΣ 063 Ρόδος','ΚΩΤΣΟΒΟΛΟΣ 062 Κόρινθος','ΚΩΤΣΟΒΟΛΟΣ 059 Πάτρα','ΚΩΤΣΟΒΟΛΟΣ 230 Λιμάνι Πειραιά','ΚΩΤΣΟΒΟΛΟΣ 057 Λάρισα','ΚΩΤΣΟΒΟΛΟΣ 055 Πύργος Ηλείας','ΚΩΤΣΟΒΟΛΟΣ 054 Τρίπολη','ΚΩΤΣΟΒΟΛΟΣ 052 Πάτρα','ΚΩΤΣΟΒΟΛΟΣ 046 Κερκύρα','ΚΩΤΣΟΒΟΛΟΣ 044 Ηράκλειο Κρήτης','ΚΩΤΣΟΒΟΛΟΣ 043 ΜΕΓΑ Ηράκλειο Κρήτης','ΚΩΤΣΟΒΟΛΟΣ 040 Χανιά','ΚΩΤΣΟΒΟΛΟΣ 035 Αγρίνιο','ΚΩΤΣΟΒΟΛΟΣ 031 Καλαμάτα','ΚΩΤΣΟΒΟΛΟΣ 233 River West','ΚΩΤΣΟΒΟΛΟΣ 235 Σαλαμίνα','ΚΩΤΣΟΒΟΛΟΣ 236 Ανάβυσσος','ΚΩΤΣΟΒΟΛΟΣ 237 Νέο Ηράκλειο','ΚΩΤΣΟΒΟΛΟΣ 240 Πατησίων','ΚΩΤΣΟΒΟΛΟΣ 033 Βόλος','ΚΩΤΣΟΒΟΛΟΣ 614 Ζωγράφου','ΚΩΤΣΟΒΟΛΟΣ 624 Ελευσίνα','ΚΩΤΣΟΒΟΛΟΣ 683 ΜΕΓΑ Βριλήσσια','ΚΩΤΣΟΒΟΛΟΣ 686 ΜΕΓΑ City Plaza',
-  'MINI KIOSK Αγ. Δημήτριος','MINI KIOSK Αλεξάνδρας','MINI KIOSK Αμπελόκηποι','MINI KIOSK Αθηνάς','MINI KIOSK Εθνομαρτύρων','MINI KIOSK Φωκίωνος','MINI KIOSK Χαριλάου Τρικούπη','MINI KIOSK Κεδρηνού','MINI KIOSK Κηφισιά 25ης Μαρτίου','MINI KIOSK Κηφισιά Κασσαβέτη','MINI KIOSK Μοναστηράκι','MINI KIOSK Μουστοξύδη','MINI KIOSK Ομόνοια','MINI KIOSK Πανόρμου','MINI KIOSK Πετράλωνα','MINI KIOSK Πλατεία Γκύζη','MINI KIOSK Πλατεία Κυψέλης','MINI KIOSK Ριανκούρ','MINI KIOSK Σεβαστουπόλεως',
-  'ΚΤΕΛ 1','ΚΤΕΛ 2','ΚΤΕΛ 3',
-  'THE BEAUTY BAR Θεσσαλονίκη','THE BEAUTY BAR Γλυφάδα',
-  'ΡΟΥΠΑΣ HAIR SHOPS','ΡΟΥΠΑΣ FACESHOPS IKE',
-  'JUNIOR TOYS','ΜΠΑΙΜΠΑΚΗΣ Φαρμακείο','CK STORES','ΟΚ ΣΤΟΡΣ Μαρούσι','PARADISE Μύκονος','WAKA Εστιατ.','ΑΓΟΡΑ Εστιατ. & COAST Café (εντός Infinity Blue hotel)','ΓΚΙΚΟΝΤΗΣ Π. ΑΟΥΡΕΛ Β. Μίνι Μάρκετ','ΓΚΙΚΑΣ Σούπερ Μάρκετ','ΤΣΕΚΟΥΡΑΣ Κρεοπωλείο','ΓΥΡΑΔΙΚΟ ΧΡΗΣΤΟΣ Εστιατ.','ΤΙΝΑΝΕΙΟΣ ΚΗΠΟΣ',
-];
-
 export default function Home() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState(null);
@@ -103,20 +94,59 @@ export default function Home() {
   const [historySerial, setHistorySerial] = useState('');
   const [historyStore, setHistoryStore] = useState('');
   const [filterAction, setFilterAction] = useState('Όλα');
+  const [storesList, setStoresList] = useState([]);
+  const [newStoreName, setNewStoreName] = useState('');
+  const [addingStore, setAddingStore] = useState(false);
+  const [addStoreMsg, setAddStoreMsg] = useState(null);
   const fileRef = useRef();
   const cameraRef = useRef();
 
-  // Φόρτωση συνδεδεμένου χρήστη
+  // Φόρτωση καταστημάτων από Sheet
+  const loadStores = async () => {
+    try {
+      const res = await fetch('/api/stores');
+      const data = await res.json();
+      setStoresList(data.stores || []);
+    } catch (e) {}
+  };
+
+  const handleAddStore = async () => {
+    if (!newStoreName.trim()) return;
+    setAddingStore(true);
+    setAddStoreMsg(null);
+    try {
+      const res = await fetch('/api/stores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newStoreName.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAddStoreMsg({ type: 'error', text: data.error });
+      } else {
+        setAddStoreMsg({ type: 'success', text: 'Το κατάστημα προστέθηκε!' });
+        setNewStoreName('');
+        loadStores();
+      }
+    } catch (e) {
+      setAddStoreMsg({ type: 'error', text: 'Σφάλμα δικτύου.' });
+    } finally {
+      setAddingStore(false);
+    }
+  };
+
+  // Φόρτωση συνδεδεμένου χρήστη και καταστημάτων
   useEffect(() => {
     fetch('/api/auth/me')
       .then(res => res.ok ? res.json() : null)
       .then(data => { if (data) setCurrentUser(data.user); })
       .catch(() => {});
 
+    loadStores();
+
     // Καταχώρηση Service Worker για αυτόματο update
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').then((reg) => {
-        // Έλεγχος για νέα έκδοση
         reg.update();
       }).catch(() => {});
     }
@@ -275,10 +305,10 @@ export default function Home() {
             )}
           </div>
           <nav className="nav">
-            {['scan','inventory','history'].map(t => (
+            {['scan','inventory','history','settings'].map(t => (
               <button key={t} className={`nav-btn ${tab===t?'active':''}`}
-                onClick={() => { setTab(t); if(t==='inventory') loadInventory(); }}>
-                {t==='scan'?'📷 Scan':t==='inventory'?'📦 Απόθεμα':'🕐 Ιστορικό'}
+                onClick={() => { setTab(t); if(t==='inventory') loadInventory(); if(t==='settings') loadStores(); }}>
+                {t==='scan'?'📷 Scan':t==='inventory'?'📦 Απόθεμα':t==='history'?'🕐 Ιστορικό':'⚙️'}
               </button>
             ))}
           </nav>
@@ -411,7 +441,7 @@ export default function Home() {
                           ))}
                         </div>
                         <div className="store-list">
-                          {STORES_LIST.filter(s => {
+                          {storesList.filter(s => {
                             const matchChain = storeChain === 'all' ? true
                               : storeChain === 'other' ? !['ΚΩΤΣΟΒΟΛΟΣ','MINI KIOSK','ΚΤΕΛ','THE BEAUTY BAR','ΡΟΥΠΑΣ'].some(c=>s.startsWith(c))
                               : s.startsWith(storeChain);
@@ -517,11 +547,37 @@ export default function Home() {
               <div className="field-group">
                 <label className="field-label">Αναζήτηση με Κατάστημα</label>
                 <div style={{display:'flex',gap:'8px'}}>
-                  <input className="text-input" value={historyStore}
-                    onChange={e=>setHistoryStore(e.target.value)}
-                    placeholder="π.χ. Περιστέρι" />
+                  <div className="text-input store-display" style={{cursor:'pointer', color: historyStore?'#1a1a18':'#999', flex:1}}
+                    onClick={()=>setShowStorePicker('history')}>
+                    {historyStore || 'Επίλεξε κατάστημα...'}
+                  </div>
+                  {historyStore && <button className="btn-clear" onClick={()=>setHistoryStore('')}>✕</button>}
                   <button className="btn-search" onClick={()=>loadHistory('', historyStore)}>Αναζήτηση</button>
                 </div>
+                {showStorePicker === 'history' && (
+                  <div className="store-picker" style={{marginTop:'8px'}}>
+                    <input className="text-input" placeholder="🔍 Αναζήτηση..." value={storeSearch}
+                      onChange={e=>{ setStoreSearch(e.target.value); setStoreChain('all'); }} autoFocus />
+                    <div className="chain-tabs">
+                      {STORE_CHAINS.map(c => (
+                        <button key={c.id} className={`chain-tab ${storeChain===c.id?'active':''}`}
+                          onClick={()=>{ setStoreChain(c.id); setStoreSearch(''); }}>{c.label}</button>
+                      ))}
+                    </div>
+                    <div className="store-list">
+                      {storesList.filter(s => {
+                        const matchChain = storeChain==='all'?true:storeChain==='other'?!['ΚΩΤΣΟΒΟΛΟΣ','MINI KIOSK','ΚΤΕΛ','THE BEAUTY BAR','ΡΟΥΠΑΣ'].some(c=>s.startsWith(c)):s.startsWith(storeChain);
+                        return matchChain && (storeSearch===''||s.toLowerCase().includes(storeSearch.toLowerCase()));
+                      }).map(s => (
+                        <div key={s} className={`store-item ${historyStore===s?'active':''}`}
+                          onClick={()=>{ setHistoryStore(s); setShowStorePicker(false); setStoreSearch(''); setStoreChain('all'); }}>
+                          {s}
+                        </div>
+                      ))}
+                    </div>
+                    <button className="btn-ghost" style={{marginTop:'8px'}} onClick={()=>setShowStorePicker(false)}>Άκυρο</button>
+                  </div>
+                )}
               </div>
               {history === null && <div className="empty">Γράψε serial number για να δεις το ιστορικό.</div>}
               {history && history.length === 0 && <div className="empty">Δεν βρέθηκε ιστορικό.</div>}
@@ -539,6 +595,42 @@ export default function Home() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {tab==='settings' && (
+            <div className="fade-in">
+              <div className="card">
+                <div className="card-title">⚙️ Ρυθμίσεις</div>
+                <div className="card-sub">Διαχείριση καταστημάτων</div>
+
+                <div className="section-label">Προσθήκη νέου καταστήματος</div>
+                <div className="field-group">
+                  <input className="text-input" value={newStoreName}
+                    onChange={e=>{ setNewStoreName(e.target.value); setAddStoreMsg(null); }}
+                    placeholder="π.χ. ΚΩΤΣΟΒΟΛΟΣ 999 Νέα Πόλη"
+                    onKeyDown={e=>{ if(e.key==='Enter') handleAddStore(); }}
+                  />
+                </div>
+                {addStoreMsg && (
+                  <div className={addStoreMsg.type==='success' ? 'banner-success' : 'error-banner'} style={{marginBottom:'12px'}}>
+                    {addStoreMsg.type==='success' ? '✅ ' : '⚠️ '}{addStoreMsg.text}
+                  </div>
+                )}
+                <button className="btn-primary" onClick={handleAddStore} disabled={addingStore || !newStoreName.trim()}>
+                  {addingStore ? '⏳ Προσθήκη...' : '➕ Προσθήκη καταστήματος'}
+                </button>
+              </div>
+
+              <div className="card">
+                <div className="section-label">Λίστα καταστημάτων ({storesList.length})</div>
+                <div style={{maxHeight:'300px', overflowY:'auto', marginTop:'8px'}}>
+                  {storesList.map((s, i) => (
+                    <div key={i} className="settings-store-item">{s}</div>
+                  ))}
+                </div>
+                <button className="btn-ghost" style={{marginTop:'12px'}} onClick={loadStores}>🔄 Ανανέωση</button>
+              </div>
             </div>
           )}
         </main>
@@ -643,7 +735,8 @@ export default function Home() {
         .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
         .btn-half { padding: 10px; background: #F5F5F3; color: #1a1a18; border: 1px solid #EBEBEA; border-radius: 10px; font-size: 13px; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.15s; }
         .btn-half:hover { border-color: #1D9E75; background: #E1F5EE; }
-        .divider-or { text-align: center; color: #999; font-size: 12px; margin: 8px 0; position: relative; }
+        .banner-success { background: #E1F5EE; color: #0F6E56; padding: 10px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 14px; }
+        .settings-store-item { padding: 8px 4px; font-size: 12px; color: #444; border-bottom: 1px solid #F5F5F3; }
         .divider-or::before, .divider-or::after { content: ''; position: absolute; top: 50%; width: 44%; height: 1px; background: #EBEBEA; }
         .divider-or::before { left: 0; } .divider-or::after { right: 0; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
