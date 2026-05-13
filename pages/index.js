@@ -277,6 +277,8 @@ export default function Home() {
     } catch (e) { alert('Σφάλμα φόρτωσης ιστορικού.'); }
   };
 
+  const filtered = filterAction === 'Όλα' ? inventory : inventory.filter(i => i.action === filterAction);
+
   const STATUS_PILL = {
     'Νέα εισαγωγή':           { label: 'Νέα εισαγωγή',    cls: 'pill-blue'   },
     'Εισαγωγή στην αποθήκη':  { label: 'Αποθήκη',          cls: 'pill-gray'   },
