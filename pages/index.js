@@ -423,10 +423,10 @@ export default function Home() {
           {/* Desktop: table view */}
           <div className="desktop-only">
             <div className="inv-stats">
-              <div className="stat-card"><div className="stat-label">Σύνολο</div><div className="stat-val">{inventory.length}</div></div>
-              <div className="stat-card"><div className="stat-label">Σε επισκευή</div><div className="stat-val">{inventory.filter(i=>i.action==='Σε επισκευή').length}</div></div>
-              <div className="stat-card"><div className="stat-label">Αποθήκη</div><div className="stat-val">{inventory.filter(i=>i.action==='Εισαγωγή στην αποθήκη').length}</div></div>
-              <div className="stat-card"><div className="stat-label">Σε κατάστημα</div><div className="stat-val">{inventory.filter(i=>i.action==='Αποστολή σε κατάστημα').length}</div></div>
+              <div className="stat-card"><div className="stat-label">Σύνολο</div><div className="stat-val">{inventory.length}</div><div className="stat-sub">μηχανήματα</div></div>
+              <div className="stat-card"><div className="stat-label">Σε επισκευή</div><div className="stat-val">{inventory.filter(i=>i.action==='Σε επισκευή').length}</div><div className="stat-sub">ενεργές</div></div>
+              <div className="stat-card"><div className="stat-label">Αποθήκη</div><div className="stat-val">{inventory.filter(i=>i.action==='Εισαγωγή στην αποθήκη').length}</div><div className="stat-sub">διαθέσιμα</div></div>
+              <div className="stat-card"><div className="stat-label">Σε κατάστημα</div><div className="stat-val">{inventory.filter(i=>i.action==='Αποστολή σε κατάστημα').length}</div><div className="stat-sub">τοποθετημένα</div></div>
             </div>
             <div className="filter-row">
               {FILTERS.map(f => <button key={f} className={`filter-pill ${filterAction===f?'active':''}`} onClick={()=>setFilterAction(f)}>{f}</button>)}
@@ -612,7 +612,15 @@ export default function Home() {
               {tab==='scan'?'Scan':tab==='inventory'?'Απόθεμα':tab==='history'?'Ιστορικό':'Ρυθμίσεις'}
             </div>
             {tab==='inventory' && (
-              <button className="btn-new" onClick={()=>handleTabClick('scan')}>+ Νέα καταχώρηση</button>
+              <div className="desktop-header-actions">
+                {['Όλα','Επισκευή'].map(f => (
+                  <button key={f} className={`filter-pill ${filterAction===(f==='Επισκευή'?'Σε επισκευή':f)?'active':''}`}
+                    onClick={()=>setFilterAction(f==='Επισκευή'?'Σε επισκευή':'Όλα')}>
+                    {f}
+                  </button>
+                ))}
+                <button className="btn-new" onClick={()=>handleTabClick('scan')}>+ Νέα καταχώρηση</button>
+              </div>
             )}
           </div>
           <div className="desktop-content">
@@ -664,35 +672,36 @@ export default function Home() {
         }
 
         /* ─── DESKTOP SIDEBAR ─── */
-        .sidebar { width: 200px; flex-shrink: 0; background: #fff; border-right: 1px solid #ebebea; display: flex; flex-direction: column; }
-        .sb-logo { padding: 20px 18px 16px; font-size: 14px; font-weight: 600; color: #1a1a18; letter-spacing: -0.2px; }
-        .sb-logo span { color: #9ca3af; font-weight: 400; }
+        .sidebar { width: 200px; flex-shrink: 0; background: #1a1a18; border-right: none; display: flex; flex-direction: column; }
+        .sb-logo { padding: 20px 18px 16px; font-size: 14px; font-weight: 600; color: #fff; letter-spacing: -0.2px; border-bottom: 1px solid #2d2d2b; }
+        .sb-logo span { color: #6b6b68; font-weight: 400; }
         .sb-nav { flex: 1; padding: 8px; }
-        .sb-section { font-size: 10px; font-weight: 500; color: #c4c4c2; padding: 10px 10px 4px; letter-spacing: 0.08em; text-transform: uppercase; }
-        .sb-item { display: flex; align-items: center; gap: 9px; width: 100%; padding: 7px 10px; border-radius: 7px; border: none; background: transparent; font-size: 13px; font-family: 'DM Sans', sans-serif; color: #6b7280; cursor: pointer; transition: all 0.1s; margin-bottom: 1px; text-align: left; }
-        .sb-item:hover { background: #f7f7f5; color: #1a1a18; }
-        .sb-item.active { background: #f7f7f5; color: #1a1a18; font-weight: 500; }
-        .sb-icon { font-size: 13px; width: 16px; text-align: center; opacity: 0.6; }
-        .sb-item.active .sb-icon { opacity: 1; }
-        .sb-footer { padding: 12px 10px; border-top: 1px solid #ebebea; display: flex; align-items: center; gap: 8px; }
-        .sb-avatar { width: 26px; height: 26px; border-radius: 50%; background: #f0f0ee; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: #6b7280; flex-shrink: 0; }
-        .sb-username { flex: 1; font-size: 12px; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .sb-logout { background: none; border: none; cursor: pointer; font-size: 13px; color: #c4c4c2; padding: 2px 4px; transition: color 0.1s; }
+        .sb-section { font-size: 10px; font-weight: 500; color: #4b4b48; padding: 10px 10px 4px; letter-spacing: 0.08em; text-transform: uppercase; }
+        .sb-item { display: flex; align-items: center; gap: 9px; width: 100%; padding: 7px 10px; border-radius: 7px; border: none; background: transparent; font-size: 13px; font-family: 'DM Sans', sans-serif; color: #8a8a86; cursor: pointer; transition: all 0.1s; margin-bottom: 1px; text-align: left; }
+        .sb-item:hover { background: #2d2d2b; color: #fff; }
+        .sb-item.active { background: #2d2d2b; color: #fff; font-weight: 500; }
+        .sb-icon { font-size: 13px; width: 16px; text-align: center; }
+        .sb-footer { padding: 12px 10px; border-top: 1px solid #2d2d2b; display: flex; align-items: center; gap: 8px; }
+        .sb-avatar { width: 26px; height: 26px; border-radius: 50%; background: #2d2d2b; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: #8a8a86; flex-shrink: 0; }
+        .sb-username { flex: 1; font-size: 12px; color: #8a8a86; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .sb-logout { background: none; border: none; cursor: pointer; font-size: 13px; color: #4b4b48; padding: 2px 4px; transition: color 0.1s; }
         .sb-logout:hover { color: #ef4444; }
 
         /* ─── DESKTOP MAIN ─── */
         .desktop-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #f7f7f5; }
-        .desktop-header { padding: 14px 24px 12px; background: #fff; border-bottom: 1px solid #ebebea; display: flex; align-items: center; justify-content: space-between; }
-        .desktop-title { font-size: 14px; font-weight: 600; color: #1a1a18; }
-        .btn-new { padding: 6px 14px; background: #1a1a18; color: #fff; border: none; border-radius: 7px; font-size: 12px; font-family: 'DM Sans', sans-serif; cursor: pointer; font-weight: 500; transition: opacity 0.1s; letter-spacing: -0.1px; }
-        .btn-new:hover { opacity: 0.75; }
+        .desktop-header { padding: 14px 24px 12px; background: #fff; border-bottom: 1px solid #ebebea; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .desktop-title { font-size: 15px; font-weight: 600; color: #1a1a18; flex-shrink: 0; }
+        .desktop-header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .btn-new { padding: 6px 14px; background: #fff; color: #1a1a18; border: 1px solid #d1d5db; border-radius: 7px; font-size: 12px; font-family: 'DM Sans', sans-serif; cursor: pointer; font-weight: 500; transition: all 0.1s; }
+        .btn-new:hover { background: #f7f7f5; }
         .desktop-content { flex: 1; overflow-y: auto; padding: 20px 24px; }
 
         /* ─── DESKTOP TABLE ─── */
         .inv-stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; margin-bottom: 14px; }
-        .stat-card { background: #fff; border: 1px solid #ebebea; border-radius: 8px; padding: 10px 12px; }
-        .stat-label { font-size: 11px; color: #9ca3af; margin-bottom: 3px; }
-        .stat-val { font-size: 18px; font-weight: 600; color: #1a1a18; }
+        .stat-card { background: #fff; border: 1px solid #ebebea; border-radius: 8px; padding: 14px 16px; }
+        .stat-label { font-size: 11px; color: #9ca3af; margin-bottom: 6px; }
+        .stat-val { font-size: 28px; font-weight: 600; color: #1a1a18; line-height: 1; }
+        .stat-sub { font-size: 11px; color: #9ca3af; margin-top: 4px; }
         .dt-table { background: #fff; border: 1px solid #ebebea; border-radius: 10px; overflow: hidden; }
         .dt-head { display: grid; grid-template-columns: 2fr 2fr 1.2fr 1fr 1fr; background: #fafaf9; border-bottom: 1px solid #ebebea; }
         .dt-th { font-size: 10px; font-weight: 500; color: #9ca3af; padding: 8px 14px; text-transform: uppercase; letter-spacing: 0.06em; }
@@ -706,12 +715,12 @@ export default function Home() {
         .dt-serial { font-family: 'DM Mono', monospace; font-size: 10px; color: #9ca3af; margin-top: 1px; }
 
         /* ─── STATUS PILLS ─── */
-        .status-pill { font-size: 10px; padding: 2px 7px; border-radius: 4px; font-weight: 500; white-space: nowrap; }
-        .pill-green  { background: #f0fdf4; color: #166534; }
-        .pill-amber  { background: #fffbeb; color: #92400e; }
-        .pill-gray   { background: #f4f4f2; color: #6b7280; }
-        .pill-blue   { background: #eff6ff; color: #1e40af; }
-        .pill-purple { background: #f5f3ff; color: #5b21b6; }
+        .status-pill { font-size: 11px; padding: 3px 10px; border-radius: 6px; font-weight: 500; white-space: nowrap; }
+        .pill-green  { background: #22c55e; color: #fff; }
+        .pill-amber  { background: #f59e0b; color: #fff; }
+        .pill-gray   { background: #e5e7eb; color: #6b7280; }
+        .pill-blue   { background: #3b82f6; color: #fff; }
+        .pill-purple { background: #fff; color: #1a1a18; border: 1px solid #d1d5db; }
 
         /* ─── MOBILE HEADER ─── */
         .mob-header { background: #fff; border-bottom: 1px solid #ebebea; position: sticky; top: 0; z-index: 10; }
