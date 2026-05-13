@@ -657,7 +657,7 @@ export default function Home() {
 
       <style jsx global>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'DM Sans', sans-serif; background: #f7f7f5; color: #1a1a18; min-height: 100vh; }
+        body { font-family: 'DM Sans', sans-serif; background: #ffffff; color: #1a1a18; min-height: 100vh; }
 
         /* ─── RESPONSIVE VISIBILITY ─── */
         .desktop-layout { display: none; }
