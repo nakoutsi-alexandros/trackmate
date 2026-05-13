@@ -4,19 +4,74 @@ import { useRouter } from 'next/router';
 
 
 
-const ACTIONS = [
-  { value: 'Αποστολή σε κατάστημα', icon: '🏪', desc: 'Τοποθέτηση σε νέο σημείο' },
-  { value: 'Αντικατάσταση', icon: '🔄', desc: 'Εναλλαγή σε κατάστημα' },
-  { value: 'Επισκευή', icon: '🔧', desc: 'Επιστροφή για σέρβις' },
-  { value: 'Stock / Αποθήκη', icon: '📦', desc: 'Επιστροφή στο stock' },
+const ACTION_CATEGORIES = [
+  {
+    id: 'new',
+    icon: '🆕',
+    label: 'Νέα εισαγωγή',
+    desc: 'Καινούριο μηχάνημα',
+    direct: true,
+    value: 'Νέα εισαγωγή',
+  },
+  {
+    id: 'warehouse',
+    icon: '📦',
+    label: 'Αποθήκη',
+    desc: 'Εισαγωγή ή αποστολή',
+    subs: [
+      { value: 'Εισαγωγή στην αποθήκη', icon: '📥', desc: 'Παραλαβή από κατάστημα' },
+      { value: 'Αποστολή σε κατάστημα', icon: '📤', desc: 'Αποστολή από αποθήκη' },
+    ],
+  },
+  {
+    id: 'repair',
+    icon: '🔧',
+    label: 'Επισκευή',
+    desc: 'Διάγνωση & επισκευή',
+    subs: [
+      { value: 'Σε επισκευή', icon: '🔍', desc: 'Δουλεύουμε πάνω' },
+      { value: 'Επισκευάστηκε', icon: '✅', desc: 'Έτοιμο για αποστολή' },
+    ],
+  },
+  {
+    id: 'send',
+    icon: '🚚',
+    label: 'Αποστολή',
+    desc: 'Σε κατάστημα ή κεντρικά',
+    subs: [
+      { value: 'Αποστολή σε κατάστημα', icon: '🏪', desc: 'Πίσω στο κατάστημα' },
+      { value: 'Αποστολή στα κεντρικά', icon: '✈️', desc: 'Δεν επισκευάστηκε, πάει Ισπανία' },
+    ],
+  },
 ];
 
 const STATUS_COLOR = {
+  'Νέα εισαγωγή': '#5B8DEF',
+  'Εισαγωγή στην αποθήκη': '#888',
   'Αποστολή σε κατάστημα': '#1D9E75',
-  'Αντικατάσταση': '#1D9E75',
-  'Επισκευή': '#BA7517',
-  'Stock / Αποθήκη': '#888',
+  'Σε επισκευή': '#BA7517',
+  'Επισκευάστηκε': '#1D9E75',
+  'Αποστολή στα κεντρικά': '#9B59B6',
 };
+
+const STORE_CHAINS = [
+  { id: 'all', label: 'Όλα' },
+  { id: 'ΚΩΤΣΟΒΟΛΟΣ', label: 'ΚΩΤΣΟΒΟΛΟΣ' },
+  { id: 'MINI KIOSK', label: 'MINI KIOSK' },
+  { id: 'ΚΤΕΛ', label: 'ΚΤΕΛ' },
+  { id: 'THE BEAUTY BAR', label: 'BEAUTY BAR' },
+  { id: 'ΡΟΥΠΑΣ', label: 'ΡΟΥΠΑΣ' },
+  { id: 'other', label: 'Άλλα' },
+];
+
+const STORES_LIST = [
+  'ΚΩΤΣΟΒΟΛΟΣ 091 Κομοτηνή','ΚΩΤΣΟΒΟΛΟΣ 069 Κοζάνη','ΚΩΤΣΟΒΟΛΟΣ 241 Βέροια','ΚΩΤΣΟΒΟΛΟΣ 239 Λιβαδειά','ΚΩΤΣΟΒΟΛΟΣ 238 K-SPOT Ιωάννινα','ΚΩΤΣΟΒΟΛΟΣ 234 Θήβα','ΚΩΤΣΟΒΟΛΟΣ 216 Λαμία','ΚΩΤΣΟΒΟΛΟΣ 214 Χαλκίδα','ΚΩΤΣΟΒΟΛΟΣ 208 Άργος','ΚΩΤΣΟΒΟΛΟΣ 096 Αλεξανδρούπολη','ΚΩΤΣΟΒΟΛΟΣ 095 Καβάλα','ΚΩΤΣΟΒΟΛΟΣ 094 Σέρρες','ΚΩΤΣΟΒΟΛΟΣ 092 Ξάνθη','ΚΩΤΣΟΒΟΛΟΣ 245 K-SPOT Ρόδος','ΚΩΤΣΟΒΟΛΟΣ 088 Τούμπα','ΚΩΤΣΟΒΟΛΟΣ 087 Πυλαία','ΚΩΤΣΟΒΟΛΟΣ 079 Τσιμισκή 43','ΚΩΤΣΟΒΟΛΟΣ 078 Εύοσμος','ΚΩΤΣΟΒΟΛΟΣ 076 Δράμα','ΚΩΤΣΟΒΟΛΟΣ 075 Κατερίνη','ΚΩΤΣΟΒΟΛΟΣ 074 Τρίκαλα','ΚΩΤΣΟΒΟΛΟΣ 073 Μουδανιά','ΚΩΤΣΟΒΟΛΟΣ 072 Καρδίτσα','ΚΩΤΣΟΒΟΛΟΣ 068 Ιωάννινα','ΚΩΤΣΟΒΟΛΟΣ 067 Άρτα','ΚΩΤΣΟΒΟΛΟΣ 267 Top Parks','ΚΩΤΣΟΒΟΛΟΣ 261 Ζάκυνθος','ΚΩΤΣΟΒΟΛΟΣ 206 Νέα Μάκρη','ΚΩΤΣΟΒΟΛΟΣ 249 Καλλιθέα','ΚΩΤΣΟΒΟΛΟΣ 089 Ευκαρπία','ΚΩΤΣΟΒΟΛΟΣ 242 Λεμεσός','ΚΩΤΣΟΒΟΛΟΣ 243 Λευκωσία','ΚΩΤΣΟΒΟΛΟΣ 217 ΜΕΓΑ Χαϊδάρι','ΚΩΤΣΟΒΟΛΟΣ 226 Χολαργός','ΚΩΤΣΟΒΟΛΟΣ 222 ΜΕΓΑ Ρέντη','ΚΩΤΣΟΒΟΛΟΣ 220 ΜΕΓΑ Μενίδι','ΚΩΤΣΟΒΟΛΟΣ 215 ΜΕΓΑ The Mall','ΚΩΤΣΟΒΟΛΟΣ 211 ΜΕΓΑ Ερυθραία','ΚΩΤΣΟΒΟΛΟΣ 027 Κερατσίνι','ΚΩΤΣΟΒΟΛΟΣ 019 Άγιοι Ανάργυροι','ΚΩΤΣΟΒΟΛΟΣ 018 Γλυφάδα','ΚΩΤΣΟΒΟΛΟΣ 017 Νέα Ερυθραία','ΚΩΤΣΟΒΟΛΟΣ 066 Σπάρτη','ΚΩΤΣΟΒΟΛΟΣ 011 Κορυδαλλός','ΚΩΤΣΟΒΟΛΟΣ 228 Μεταμόρφωση','ΚΩΤΣΟΒΟΛΟΣ 016 Αγ. Παρασκευή','ΚΩΤΣΟΒΟΛΟΣ 685 ΜΕΓΑ Λεωφ. Συγγρού 257-259','ΚΩΤΣΟΒΟΛΟΣ 007 ΜΕΓΑ Περιστέρι','ΚΩΤΣΟΒΟΛΟΣ 682 ΜΕΓΑ Κηφισίας 124','ΚΩΤΣΟΒΟΛΟΣ 219 ΜΕΓΑ Ηλιούπολης','ΚΩΤΣΟΒΟΛΟΣ 213 ΜΕΓΑ Α.Ι.Α. Αεροδρόμιο Σπάτα','ΚΩΤΣΟΒΟΛΟΣ 225 Αθήνα Κέντρο','ΚΩΤΣΟΒΟΛΟΣ Κεντρικό','ΚΩΤΣΟΒΟΛΟΣ 058 Αίγιο','ΚΩΤΣΟΒΟΛΟΣ 063 Ρόδος','ΚΩΤΣΟΒΟΛΟΣ 062 Κόρινθος','ΚΩΤΣΟΒΟΛΟΣ 059 Πάτρα','ΚΩΤΣΟΒΟΛΟΣ 230 Λιμάνι Πειραιά','ΚΩΤΣΟΒΟΛΟΣ 057 Λάρισα','ΚΩΤΣΟΒΟΛΟΣ 055 Πύργος Ηλείας','ΚΩΤΣΟΒΟΛΟΣ 054 Τρίπολη','ΚΩΤΣΟΒΟΛΟΣ 052 Πάτρα','ΚΩΤΣΟΒΟΛΟΣ 046 Κερκύρα','ΚΩΤΣΟΒΟΛΟΣ 044 Ηράκλειο Κρήτης','ΚΩΤΣΟΒΟΛΟΣ 043 ΜΕΓΑ Ηράκλειο Κρήτης','ΚΩΤΣΟΒΟΛΟΣ 040 Χανιά','ΚΩΤΣΟΒΟΛΟΣ 035 Αγρίνιο','ΚΩΤΣΟΒΟΛΟΣ 031 Καλαμάτα','ΚΩΤΣΟΒΟΛΟΣ 233 River West','ΚΩΤΣΟΒΟΛΟΣ 235 Σαλαμίνα','ΚΩΤΣΟΒΟΛΟΣ 236 Ανάβυσσος','ΚΩΤΣΟΒΟΛΟΣ 237 Νέο Ηράκλειο','ΚΩΤΣΟΒΟΛΟΣ 240 Πατησίων','ΚΩΤΣΟΒΟΛΟΣ 033 Βόλος','ΚΩΤΣΟΒΟΛΟΣ 614 Ζωγράφου','ΚΩΤΣΟΒΟΛΟΣ 624 Ελευσίνα','ΚΩΤΣΟΒΟΛΟΣ 683 ΜΕΓΑ Βριλήσσια','ΚΩΤΣΟΒΟΛΟΣ 686 ΜΕΓΑ City Plaza',
+  'MINI KIOSK Αγ. Δημήτριος','MINI KIOSK Αλεξάνδρας','MINI KIOSK Αμπελόκηποι','MINI KIOSK Αθηνάς','MINI KIOSK Εθνομαρτύρων','MINI KIOSK Φωκίωνος','MINI KIOSK Χαριλάου Τρικούπη','MINI KIOSK Κεδρηνού','MINI KIOSK Κηφισιά 25ης Μαρτίου','MINI KIOSK Κηφισιά Κασσαβέτη','MINI KIOSK Μοναστηράκι','MINI KIOSK Μουστοξύδη','MINI KIOSK Ομόνοια','MINI KIOSK Πανόρμου','MINI KIOSK Πετράλωνα','MINI KIOSK Πλατεία Γκύζη','MINI KIOSK Πλατεία Κυψέλης','MINI KIOSK Ριανκούρ','MINI KIOSK Σεβαστουπόλεως',
+  'ΚΤΕΛ 1','ΚΤΕΛ 2','ΚΤΕΛ 3',
+  'THE BEAUTY BAR Θεσσαλονίκη','THE BEAUTY BAR Γλυφάδα',
+  'ΡΟΥΠΑΣ HAIR SHOPS','ΡΟΥΠΑΣ FACESHOPS IKE',
+  'JUNIOR TOYS','ΜΠΑΙΜΠΑΚΗΣ Φαρμακείο','CK STORES','ΟΚ ΣΤΟΡΣ Μαρούσι','PARADISE Μύκονος','WAKA Εστιατ.','ΑΓΟΡΑ Εστιατ. & COAST Café (εντός Infinity Blue hotel)','ΓΚΙΚΟΝΤΗΣ Π. ΑΟΥΡΕΛ Β. Μίνι Μάρκετ','ΓΚΙΚΑΣ Σούπερ Μάρκετ','ΤΣΕΚΟΥΡΑΣ Κρεοπωλείο','ΓΥΡΑΔΙΚΟ ΧΡΗΣΤΟΣ Εστιατ.','ΤΙΝΑΝΕΙΟΣ ΚΗΠΟΣ',
+];
 
 export default function Home() {
   const router = useRouter();
@@ -31,8 +86,12 @@ export default function Home() {
 
   const [serialNumber, setSerialNumber] = useState('');
   const [model, setModel] = useState('');
-  const [action, setAction] = useState('Αποστολή σε κατάστημα');
+  const [action, setAction] = useState('');
+  const [actionCat, setActionCat] = useState(null);
   const [store, setStore] = useState('');
+  const [storeSearch, setStoreSearch] = useState('');
+  const [storeChain, setStoreChain] = useState('all');
+  const [showStorePicker, setShowStorePicker] = useState(false);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [problem, setProblem] = useState('');
   const [notes, setNotes] = useState('');
@@ -139,6 +198,7 @@ export default function Home() {
 
   const handleSubmit = async () => {
     if (!serialNumber) { alert('Βάλε Serial Number!'); return; }
+    if (!action) { alert('Επίλεξε τύπο κίνησης!'); return; }
     setSubmitting(true);
     try {
       const res = await fetch('/api/log', {
@@ -158,7 +218,8 @@ export default function Home() {
   const handleReset = () => {
     setStep(1); setImagePreview(null); setImageBase64(null);
     setSerialNumber(''); setModel(''); setScanError(null);
-    setAction('Αποστολή σε κατάστημα'); setStore('');
+    setAction(''); setActionCat(null);
+    setStore(''); setStoreSearch(''); setStoreChain('all'); setShowStorePicker(false);
     setDate(new Date().toISOString().split('T')[0]);
     setProblem(''); setNotes('');
   };
@@ -286,21 +347,86 @@ export default function Home() {
 
                   <div className="section-label" style={{marginTop:'16px'}}>Τύπος κίνησης</div>
                   <div className="action-grid">
-                    {ACTIONS.map(a => (
-                      <div key={a.value} className={`action-tile ${action===a.value?'selected':''}`}
-                        onClick={() => setAction(a.value)}>
-                        <div className="action-icon">{a.icon}</div>
-                        <div className="action-title">{a.value}</div>
-                        <div className="action-sub">{a.desc}</div>
+                    {ACTION_CATEGORIES.map(cat => (
+                      <div key={cat.id}
+                        className={`action-tile ${actionCat===cat.id?'selected':''}`}
+                        onClick={() => {
+                          setActionCat(cat.id);
+                          if (cat.direct) setAction(cat.value);
+                          else setAction('');
+                        }}>
+                        <div className="action-icon">{cat.icon}</div>
+                        <div className="action-title">{cat.label}</div>
+                        <div className="action-sub">{cat.desc}</div>
                       </div>
                     ))}
                   </div>
 
-                  <div className="field-group">
+                  {actionCat && !ACTION_CATEGORIES.find(c=>c.id===actionCat)?.direct && (
+                    <div className="sub-action-list">
+                      {ACTION_CATEGORIES.find(c=>c.id===actionCat)?.subs.map(s => (
+                        <div key={s.value}
+                          className={`sub-action-item ${action===s.value?'selected':''}`}
+                          onClick={() => setAction(s.value)}>
+                          <span className="sub-action-icon">{s.icon}</span>
+                          <div>
+                            <div className="sub-action-label">{s.value}</div>
+                            <div className="sub-action-desc">{s.desc}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {action && (
+                    <div className="selected-action-badge">✓ {action}</div>
+                  )}
+
+                  <div className="field-group" style={{marginTop:'16px'}}>
                     <label className="field-label">🏪 Κατάστημα</label>
-                    <input className="text-input" value={store}
-                      onChange={e=>setStore(e.target.value)}
-                      placeholder="π.χ. Κατάστημα Περιστερίου" />
+                    {!showStorePicker ? (
+                      <div style={{display:'flex', gap:'8px'}}>
+                        <div className="text-input store-display" onClick={()=>setShowStorePicker(true)}
+                          style={{cursor:'pointer', color: store ? '#1a1a18' : '#999'}}>
+                          {store || 'Επίλεξε κατάστημα...'}
+                        </div>
+                        {store && <button className="btn-clear" onClick={()=>setStore('')}>✕</button>}
+                      </div>
+                    ) : (
+                      <div className="store-picker">
+                        <input
+                          className="text-input"
+                          placeholder="🔍 Αναζήτηση..."
+                          value={storeSearch}
+                          onChange={e=>{ setStoreSearch(e.target.value); setStoreChain('all'); }}
+                          autoFocus
+                        />
+                        <div className="chain-tabs">
+                          {STORE_CHAINS.map(c => (
+                            <button key={c.id}
+                              className={`chain-tab ${storeChain===c.id?'active':''}`}
+                              onClick={()=>{ setStoreChain(c.id); setStoreSearch(''); }}>
+                              {c.label}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="store-list">
+                          {STORES_LIST.filter(s => {
+                            const matchChain = storeChain === 'all' ? true
+                              : storeChain === 'other' ? !['ΚΩΤΣΟΒΟΛΟΣ','MINI KIOSK','ΚΤΕΛ','THE BEAUTY BAR','ΡΟΥΠΑΣ'].some(c=>s.startsWith(c))
+                              : s.startsWith(storeChain);
+                            const matchSearch = storeSearch === '' || s.toLowerCase().includes(storeSearch.toLowerCase());
+                            return matchChain && matchSearch;
+                          }).map(s => (
+                            <div key={s} className={`store-item ${store===s?'active':''}`}
+                              onClick={()=>{ setStore(s); setShowStorePicker(false); setStoreSearch(''); setStoreChain('all'); }}>
+                              {s}
+                            </div>
+                          ))}
+                        </div>
+                        <button className="btn-ghost" style={{marginTop:'8px'}} onClick={()=>setShowStorePicker(false)}>Άκυρο</button>
+                      </div>
+                    )}
                   </div>
 
                   <div className="field-group">
@@ -347,7 +473,7 @@ export default function Home() {
           {tab==='inventory' && (
             <div className="fade-in">
               <div className="filter-row">
-                {['Όλα','Αποστολή σε κατάστημα','Επισκευή','Stock / Αποθήκη'].map(f => (
+                {['Όλα','Νέα εισαγωγή','Αποστολή σε κατάστημα','Σε επισκευή','Επισκευάστηκε','Εισαγωγή στην αποθήκη','Αποστολή στα κεντρικά'].map(f => (
                   <button key={f} className={`filter-pill ${filterAction===f?'active':''}`}
                     onClick={()=>setFilterAction(f)}>{f}</button>
                 ))}
@@ -393,7 +519,7 @@ export default function Home() {
                 <div style={{display:'flex',gap:'8px'}}>
                   <input className="text-input" value={historyStore}
                     onChange={e=>setHistoryStore(e.target.value)}
-                    placeholder="π.χ. Κατάστημα Περιστερίου" />
+                    placeholder="π.χ. Περιστέρι" />
                   <button className="btn-search" onClick={()=>loadHistory('', historyStore)}>Αναζήτηση</button>
                 </div>
               </div>
@@ -455,13 +581,32 @@ export default function Home() {
         .error-banner { background: #FFF3E0; border: 1px solid #FFB74D; border-radius: 10px; padding: 10px 14px; font-size: 13px; color: #E65100; margin-bottom: 14px; }
         .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .section-label { font-size: 11px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
-        .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+        .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
         .action-tile { background: #FAFAF9; border: 1.5px solid #EBEBEA; border-radius: 12px; padding: 12px; cursor: pointer; transition: all 0.15s; }
         .action-tile:hover { border-color: #1D9E75; }
         .action-tile.selected { border-color: #1D9E75; background: #E1F5EE; }
         .action-icon { font-size: 20px; margin-bottom: 6px; }
         .action-title { font-size: 12px; font-weight: 500; }
         .action-sub { font-size: 11px; color: #999; margin-top: 2px; }
+        .sub-action-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; animation: fadeIn 0.15s ease; }
+        .sub-action-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #EBEBEA; border-radius: 10px; cursor: pointer; transition: all 0.15s; background: #FAFAF9; }
+        .sub-action-item:hover { border-color: #1D9E75; background: #F0FBF7; }
+        .sub-action-item.selected { border-color: #1D9E75; background: #E1F5EE; }
+        .sub-action-icon { font-size: 16px; width: 24px; text-align: center; flex-shrink: 0; }
+        .sub-action-label { font-size: 13px; font-weight: 500; color: #1a1a18; }
+        .sub-action-desc { font-size: 11px; color: #999; margin-top: 1px; }
+        .selected-action-badge { display: inline-flex; align-items: center; gap: 6px; background: #E1F5EE; color: #0F6E56; font-size: 12px; font-weight: 500; padding: 5px 12px; border-radius: 20px; margin-bottom: 4px; }
+        .store-display { display: flex; align-items: center; min-height: 40px; flex: 1; }
+        .btn-clear { padding: 8px 12px; border: 1px solid #EBEBEA; border-radius: 10px; background: #fff; color: #999; cursor: pointer; font-size: 13px; flex-shrink: 0; }
+        .store-picker { border: 1px solid #EBEBEA; border-radius: 12px; padding: 10px; background: #FAFAF9; }
+        .chain-tabs { display: flex; gap: 5px; overflow-x: auto; padding: 8px 0; scrollbar-width: none; }
+        .chain-tabs::-webkit-scrollbar { display: none; }
+        .chain-tab { flex-shrink: 0; padding: 4px 10px; border-radius: 20px; border: 1px solid #EBEBEA; font-size: 11px; font-weight: 500; cursor: pointer; background: #fff; color: #666; transition: all 0.15s; font-family: 'DM Sans', sans-serif; white-space: nowrap; }
+        .chain-tab.active { background: #1D9E75; color: #fff; border-color: #1D9E75; }
+        .store-list { max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+        .store-item { padding: 8px 10px; border-radius: 8px; font-size: 12px; cursor: pointer; color: #1a1a18; transition: all 0.15s; }
+        .store-item:hover { background: #E1F5EE; color: #0F6E56; }
+        .store-item.active { background: #E1F5EE; color: #0F6E56; font-weight: 500; }
         .field-group { margin-bottom: 12px; }
         .field-label { font-size: 12px; color: #555; display: block; margin-bottom: 6px; font-weight: 500; }
         select, textarea, .text-input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #EBEBEA; background: #FAFAF9; font-size: 13px; color: #1a1a18; font-family: 'DM Sans', sans-serif; outline: none; transition: border-color 0.15s; }
