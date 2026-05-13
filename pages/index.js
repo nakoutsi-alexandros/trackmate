@@ -688,8 +688,8 @@ export default function Home() {
         .sb-logout:hover { color: #ef4444; }
 
         /* ─── DESKTOP MAIN ─── */
-        .desktop-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #f7f7f5; }
-        .desktop-header { padding: 14px 24px 12px; background: #fff; border-bottom: 1px solid #ebebea; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .desktop-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #ecece8; }
+        .desktop-header { padding: 14px 24px 12px; background: #f5f5f2; border-bottom: 1px solid #deded8; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .desktop-title { font-size: 15px; font-weight: 600; color: #1a1a18; flex-shrink: 0; }
         .desktop-header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .btn-new { padding: 6px 14px; background: #fff; color: #1a1a18; border: 1px solid #d1d5db; border-radius: 7px; font-size: 12px; font-family: 'DM Sans', sans-serif; cursor: pointer; font-weight: 500; transition: all 0.1s; }
@@ -723,7 +723,7 @@ export default function Home() {
         .pill-purple { background: #fff; color: #1a1a18; border: 1px solid #d1d5db; }
 
         /* ─── MOBILE HEADER ─── */
-        .mob-header { background: #fff; border-bottom: 1px solid #ebebea; position: sticky; top: 0; z-index: 10; }
+        .mob-header { background: #f5f5f2; border-bottom: 1px solid #deded8; position: sticky; top: 0; z-index: 10; }
         .mob-header-top { padding: 12px 16px 10px; display: flex; align-items: center; justify-content: space-between; }
         .logo { font-size: 15px; font-weight: 600; color: #1a1a18; letter-spacing: -0.2px; }
         .logo span { color: #9ca3af; font-weight: 400; }
@@ -736,14 +736,14 @@ export default function Home() {
         .mob-nav-btn span:first-child { font-size: 15px; opacity: 0.5; }
         .mob-nav-btn.active { color: #1a1a18; background: #f7f7f5; }
         .mob-nav-btn.active span:first-child { opacity: 1; }
-        .mob-main { flex: 1; padding: 14px 16px; background: #f7f7f5; }
+        .mob-main { flex: 1; padding: 14px 16px; background: #ecece8; }
 
         /* ─── SHARED COMPONENTS ─── */
-        .card { background: #fff; border: 1px solid #ebebea; border-radius: 12px; padding: 16px; margin-bottom: 10px; }
+        .card { background: #fbfbfa; border: 1px solid #deded8; border-radius: 12px; padding: 16px; margin-bottom: 10px; }
         .card-title { font-size: 14px; font-weight: 600; margin-bottom: 3px; }
         .card-sub { font-size: 12px; color: #6b7280; margin-bottom: 14px; }
-        .upload-area { border: 1.5px dashed #d1d5db; border-radius: 10px; padding: 32px 20px; text-align: center; cursor: pointer; transition: all 0.12s; background: #fafaf9; }
-        .upload-area:hover { border-color: #9ca3af; background: #f7f7f5; }
+        .upload-area { border: 1.5px dashed #c8c8c1; border-radius: 10px; padding: 32px 20px; text-align: center; cursor: pointer; transition: all 0.12s; background: #f4f4f0; }
+        .upload-area:hover { border-color: #9ca3af; background: #eeeeea; }
         .upload-icon { font-size: 26px; margin-bottom: 8px; }
         .upload-title { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
         .upload-sub { font-size: 12px; color: #9ca3af; }
