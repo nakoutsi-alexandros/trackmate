@@ -326,6 +326,9 @@ export default function Home() {
       alert('Σφάλμα καταχώρησης.');
     }
   };
+
+  // Quick action: πάει στη φόρμα με serial+model προσυμπληρωμένα
+  const startNewAction = (serial, mdl) => {
     handleReset();
     setSerialNumber(serial || '');
     setModel(mdl || '');
