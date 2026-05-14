@@ -286,13 +286,22 @@ export default function Home() {
   const getDaysInRepair = (item) => {
     if (normalizeAction(item.action) !== 'Εισαγωγή για επισκευή') return null;
     try {
-      const [day, month, year] = item.date.split('/').map(Number);
-      if (!day || !month || !year) return null;
-      const entryDate = new Date(year, month - 1, day);
+      const raw = item.date;
+      if (!raw) return null;
+      let entryDate;
+      if (raw.includes('-')) {
+        // ISO format: 2026-05-13
+        entryDate = new Date(raw);
+      } else {
+        // Greek format: 13/5/2026
+        const [day, month, year] = raw.split('/').map(Number);
+        entryDate = new Date(year, month - 1, day);
+      }
+      if (isNaN(entryDate.getTime())) return null;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const diffMs = today - entryDate;
-      return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      entryDate.setHours(0, 0, 0, 0);
+      return Math.floor((today - entryDate) / (1000 * 60 * 60 * 24));
     } catch { return null; }
   };
 
