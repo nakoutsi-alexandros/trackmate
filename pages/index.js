@@ -280,7 +280,7 @@ export default function Home() {
   };
 
   const filtered = filterAction === 'Όλα' ? inventory : inventory.filter(i => normalizeAction(i.action) === filterAction);
-  const warehouseItems = inventory.filter(i => normalizeAction(i.action) === 'Καινούριο Μηχάνημα');
+  const warehouseItems = inventory.filter(i => ['Καινούριο Μηχάνημα', 'Εισαγωγή για επισκευή'].includes(normalizeAction(i.action)));
 
   const STATUS_PILL = {
     'Καινούριο Μηχάνημα':      { label: 'Διαθέσιμο',        cls: 'pill-blue'   },
@@ -293,7 +293,7 @@ export default function Home() {
 
   const NAV_ITEMS = [
     { id: 'scan',      label: 'Scan',       icon: '⊕' },
-    { id: 'inventory', label: 'Απόθεμα',    icon: '▦' },
+    { id: 'inventory', label: 'Κινήσεις',   icon: '▦' },
     { id: 'warehouse', label: 'Αποθήκη',    icon: '□' },
     { id: 'history',   label: 'Ιστορικό',   icon: '◷' },
     { id: 'settings',  label: 'Ρυθμίσεις',  icon: '◎' },
@@ -665,7 +665,7 @@ export default function Home() {
         <div className="desktop-main">
           <div className="desktop-header">
             <div className="desktop-title">
-              {tab==='scan'?'Scan':tab==='inventory'?'Απόθεμα':tab==='warehouse'?'Αποθήκη':tab==='history'?'Ιστορικό':'Ρυθμίσεις'}
+              {tab==='scan'?'Scan':tab==='inventory'?'Κινήσεις':tab==='warehouse'?'Αποθήκη':tab==='history'?'Ιστορικό':'Ρυθμίσεις'}
             </div>
             {(tab==='inventory' || tab==='warehouse') && (
               <div className="desktop-header-actions">
