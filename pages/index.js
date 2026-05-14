@@ -303,8 +303,29 @@ export default function Home() {
     setProblem(''); setNotes('');
   };
 
-  // Quick action: πάει στη φόρμα με serial+model προσυμπληρωμένα
-  const startNewAction = (serial, mdl) => {
+  // Quick mark as repaired - άμεση καταχώρηση χωρίς φόρμα
+  const handleMarkRepaired = async (item) => {
+    if (!confirm(`Το "${item.model || item.serialNumber}" επισκευάστηκε;`)) return;
+    try {
+      const res = await fetch('/api/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          serialNumber: item.serialNumber,
+          model: item.model,
+          action: 'Καινούριο Μηχάνημα',
+          store: item.store || '',
+          date: new Date().toISOString().split('T')[0],
+          problem: '',
+          notes: 'Επισκευάστηκε',
+        }),
+      });
+      if (!res.ok) throw new Error();
+      loadInventory();
+    } catch (e) {
+      alert('Σφάλμα καταχώρησης.');
+    }
+  };
     handleReset();
     setSerialNumber(serial || '');
     setModel(mdl || '');
@@ -666,7 +687,12 @@ export default function Home() {
                       <div className="dt-td dt-muted">{item.date}</div>
                       <div className="dt-td dt-muted" style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
                         <span>{item.user || '—'}</span>
-                        <button className="btn-quick-action" onClick={e=>{e.stopPropagation();startNewAction(item.serialNumber,item.model);}}>+ Νέα</button>
+                        <div style={{display:'flex',gap:'4px'}}>
+                          {normalizeAction(item.action) === 'Εισαγωγή για επισκευή' && (
+                            <button className="btn-repaired" onClick={e=>{e.stopPropagation();handleMarkRepaired(item);}}>✓ Επισκευάστηκε</button>
+                          )}
+                          <button className="btn-quick-action" onClick={e=>{e.stopPropagation();startNewAction(item.serialNumber,item.model);}}>+ Νέα</button>
+                        </div>
                       </div>
                     </div>
                     {/* Note row */}
@@ -721,7 +747,12 @@ export default function Home() {
                           : <span className="note-empty">+ Προσθήκη σημείωσης</span>}
                       </div>
                     )}
-                    <button className="btn-quick-action" style={{marginTop:'8px'}} onClick={e=>{e.stopPropagation();startNewAction(item.serialNumber,item.model);}}>+ Νέα κίνηση</button>
+                    <div style={{display:'flex',gap:'6px',marginTop:'8px'}}>
+                      {normalizeAction(item.action) === 'Εισαγωγή για επισκευή' && (
+                        <button className="btn-repaired" onClick={e=>{e.stopPropagation();handleMarkRepaired(item);}}>✓ Επισκευάστηκε</button>
+                      )}
+                      <button className="btn-quick-action" onClick={e=>{e.stopPropagation();startNewAction(item.serialNumber,item.model);}}>+ Νέα κίνηση</button>
+                    </div>
                   </div>
                 </div>
               );
@@ -1249,8 +1280,14 @@ export default function Home() {
         .quick-action-info { display: flex; flex-direction: column; gap: 2px; }
         .quick-serial { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; color: #1a1a18; }
         .quick-model { font-size: 11px; color: #9ca3af; }
+        .btn-repaired { padding: 5px 10px; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; border-radius: 7px; font-size: 11px; font-family: 'DM Sans', sans-serif; cursor: pointer; font-weight: 500; transition: all 0.1s; white-space: nowrap; flex-shrink: 0; }
+        .btn-repaired:hover { background: #dcfce7; border-color: #86efac; }
         .btn-quick-action { padding: 5px 12px; background: #1a1a18; color: #fff; border: none; border-radius: 7px; font-size: 11px; font-family: 'DM Sans', sans-serif; cursor: pointer; font-weight: 500; transition: opacity 0.1s; white-space: nowrap; flex-shrink: 0; }
         .btn-quick-action:hover { opacity: 0.8; }
+        .btn-repaired { padding: 5px 10px; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; border-radius: 7px; font-size: 11px; font-family: 'DM Sans', sans-serif; cursor: pointer; font-weight: 500; transition: all 0.1s; white-space: nowrap; flex-shrink: 0; }
+        .btn-repaired:hover { background: #dcfce7; border-color: #86efac; }
+        .dark .btn-repaired { background: #1a2e20; color: #4ade80; border-color: #2d5a3a; }
+        .dark .btn-repaired:hover { background: #1f3a28; }
         .period-row { display: flex; gap: 5px; margin-bottom: 10px; flex-wrap: wrap; }
         .period-pill { padding: 4px 10px; border-radius: 6px; border: 1px solid #ebebea; background: #fff; font-size: 11px; cursor: pointer; color: #6b7280; font-family: 'DM Sans', sans-serif; transition: all 0.1s; }
         .period-pill:hover { border-color: #9ca3af; color: #1a1a18; }
