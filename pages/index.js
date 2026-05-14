@@ -102,8 +102,8 @@ export default function Home() {
   const [newStoreName, setNewStoreName] = useState('');
   const [addingStore, setAddingStore] = useState(false);
   const [addStoreMsg, setAddStoreMsg] = useState(null);
-  const [notes, setNotes] = useState({});
-  const [editingNote, setEditingNote] = useState(null); // serial που επεξεργάζεται
+  const [warehouseNotes, setWarehouseNotes] = useState({});
+  const [editingNote, setEditingNote] = useState(null);
   const [noteInput, setNoteInput] = useState('');
   const [savingNote, setSavingNote] = useState(false);
   const fileRef = useRef();
@@ -122,7 +122,7 @@ export default function Home() {
     try {
       const res = await fetch('/api/notes');
       const data = await res.json();
-      setNotes(data.notes || {});
+      setWarehouseNotes(data.notes || {});
     } catch (e) {}
   };
 
@@ -134,7 +134,7 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ serialNumber, note: noteInput }),
       });
-      setNotes(prev => ({ ...prev, [serialNumber]: { note: noteInput, updatedAt: 'μόλις τώρα', updatedBy: currentUser?.fullName || '' } }));
+      setWarehouseNotes(prev => ({ ...prev, [serialNumber]: { note: noteInput, updatedAt: 'μόλις τώρα', updatedBy: currentUser?.fullName || '' } }));
       setEditingNote(null);
       setNoteInput('');
     } catch (e) {
@@ -636,7 +636,7 @@ export default function Home() {
               </div>
               {warehouseItems.map((item, i) => {
                 const badge = getRepairBadge(item);
-                const itemNote = notes[item.serialNumber];
+                const itemNote = warehouseNotes[item.serialNumber];
                 return (
                   <div key={i}>
                     <div className="dt-row" onClick={()=>{setTab('history');loadHistory(item.serialNumber);}}>
@@ -702,9 +702,9 @@ export default function Home() {
                         </div>
                       </div>
                     ) : (
-                      <div className="note-display" onClick={e=>{e.stopPropagation();setEditingNote(item.serialNumber);setNoteInput(notes[item.serialNumber]?.note||'');}}>
-                        {notes[item.serialNumber]?.note
-                          ? <span className="note-text">📌 {notes[item.serialNumber].note}</span>
+                      <div className="note-display" onClick={e=>{e.stopPropagation();setEditingNote(item.serialNumber);setNoteInput(warehouseNotes[item.serialNumber]?.note||'');}}>
+                        {warehouseNotes[item.serialNumber]?.note
+                          ? <span className="note-text">📌 {warehouseNotes[item.serialNumber].note}</span>
                           : <span className="note-empty">+ Προσθήκη σημείωσης</span>}
                       </div>
                     )}
