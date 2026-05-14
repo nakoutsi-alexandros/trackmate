@@ -95,6 +95,9 @@ export default function Home() {
   const [historySerial, setHistorySerial] = useState('');
   const [historyStore, setHistoryStore] = useState('');
   const [filterAction, setFilterAction] = useState('Όλα');
+  const [filterPeriod, setFilterPeriod] = useState('all'); // all | today | 7 | 30 | custom
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
   const [storesList, setStoresList] = useState([]);
   const [newStoreName, setNewStoreName] = useState('');
   const [addingStore, setAddingStore] = useState(false);
@@ -288,7 +291,39 @@ export default function Home() {
     } catch (e) { alert('Σφάλμα φόρτωσης ιστορικού.'); }
   };
 
-  const filtered = filterAction === 'Όλα' ? inventory : inventory.filter(i => normalizeAction(i.action) === filterAction);
+  // Helper: parse ημερομηνία από ISO ή Greek format
+  const parseItemDate = (dateStr) => {
+    if (!dateStr) return null;
+    if (dateStr.includes('-')) return new Date(dateStr);
+    const [day, month, year] = dateStr.split('/').map(Number);
+    return new Date(year, month - 1, day);
+  };
+
+  // Φιλτράρισμα με βάση περίοδο
+  const applyDateFilter = (items) => {
+    if (filterPeriod === 'all') return items;
+    const today = new Date(); today.setHours(0,0,0,0);
+    return items.filter(item => {
+      const d = parseItemDate(item.date);
+      if (!d) return true;
+      d.setHours(0,0,0,0);
+      if (filterPeriod === 'today') return d.getTime() === today.getTime();
+      if (filterPeriod === '7')  return (today - d) <= 7  * 86400000;
+      if (filterPeriod === '30') return (today - d) <= 30 * 86400000;
+      if (filterPeriod === 'custom') {
+        const from = filterDateFrom ? new Date(filterDateFrom) : null;
+        const to   = filterDateTo   ? new Date(filterDateTo)   : null;
+        if (from) from.setHours(0,0,0,0);
+        if (to)   to.setHours(23,59,59,999);
+        if (from && d < from) return false;
+        if (to   && d > to)   return false;
+        return true;
+      }
+      return true;
+    });
+  };
+
+  const filtered = applyDateFilter(filterAction === 'Όλα' ? inventory : inventory.filter(i => normalizeAction(i.action) === filterAction));
   const warehouseItems = inventory.filter(i => ['Καινούριο Μηχάνημα', 'Εισαγωγή για επισκευή'].includes(normalizeAction(i.action)));
 
   // Υπολογισμός ημερών από την τελευταία καταχώρηση
@@ -464,15 +499,22 @@ export default function Home() {
         <div className="fade-in">
           {/* Desktop: table view */}
           <div className="desktop-only">
-            <div className="inv-stats">
-              <div className="stat-card"><div className="stat-label">Σύνολο</div><div className="stat-val">{inventory.length}</div><div className="stat-sub">μηχανήματα</div></div>
-              <div className="stat-card"><div className="stat-label">Σε επισκευή</div><div className="stat-val">{inventory.filter(i=>normalizeAction(i.action)==='Εισαγωγή για επισκευή').length}</div><div className="stat-sub">ενεργές</div></div>
-              <div className="stat-card"><div className="stat-label">Αποθήκη</div><div className="stat-val">{warehouseItems.length}</div><div className="stat-sub">διαθέσιμα</div></div>
-              <div className="stat-card"><div className="stat-label">Σε κατάστημα</div><div className="stat-val">{inventory.filter(i=>normalizeAction(i.action)==='Αποστολή σε κατάστημα').length}</div><div className="stat-sub">τοποθετημένα</div></div>
-            </div>
             <div className="filter-row">
               {FILTERS.map(f => <button key={f} className={`filter-pill ${filterAction===f?'active':''}`} onClick={()=>setFilterAction(f)}>{f}</button>)}
             </div>
+            <div className="period-row">
+              {[{id:'all',label:'Όλα'},{id:'today',label:'Σήμερα'},{id:'7',label:'7 μέρες'},{id:'30',label:'30 μέρες'},{id:'custom',label:'Εύρος'}].map(p => (
+                <button key={p.id} className={`period-pill ${filterPeriod===p.id?'active':''}`} onClick={()=>setFilterPeriod(p.id)}>{p.label}</button>
+              ))}
+            </div>
+            {filterPeriod === 'custom' && (
+              <div className="custom-date-row">
+                <label className="field-label">Από</label>
+                <input type="date" className="text-input" style={{width:'auto'}} value={filterDateFrom} onChange={e=>setFilterDateFrom(e.target.value)} />
+                <label className="field-label">Έως</label>
+                <input type="date" className="text-input" style={{width:'auto'}} value={filterDateTo} onChange={e=>setFilterDateTo(e.target.value)} />
+              </div>
+            )}
             {loadingInv && <div className="loading">⏳ Φόρτωση...</div>}
             {!loadingInv && filtered.length > 0 && (
               <div className="dt-table">
@@ -504,6 +546,19 @@ export default function Home() {
             <div className="filter-row">
               {FILTERS.map(f => <button key={f} className={`filter-pill ${filterAction===f?'active':''}`} onClick={()=>setFilterAction(f)}>{f}</button>)}
             </div>
+            <div className="period-row">
+              {[{id:'all',label:'Όλα'},{id:'today',label:'Σήμερα'},{id:'7',label:'7 μέρες'},{id:'30',label:'30 μέρες'},{id:'custom',label:'Εύρος'}].map(p => (
+                <button key={p.id} className={`period-pill ${filterPeriod===p.id?'active':''}`} onClick={()=>setFilterPeriod(p.id)}>{p.label}</button>
+              ))}
+            </div>
+            {filterPeriod === 'custom' && (
+              <div className="custom-date-row">
+                <label className="field-label">Από</label>
+                <input type="date" className="text-input" style={{width:'auto',flex:1}} value={filterDateFrom} onChange={e=>setFilterDateFrom(e.target.value)} />
+                <label className="field-label">Έως</label>
+                <input type="date" className="text-input" style={{width:'auto',flex:1}} value={filterDateTo} onChange={e=>setFilterDateTo(e.target.value)} />
+              </div>
+            )}
             {loadingInv && <div className="loading">⏳ Φόρτωση...</div>}
             {!loadingInv && filtered.length === 0 && <div className="empty">Δεν βρέθηκαν εγγραφές.<br/>Κάνε ένα scan πρώτα!</div>}
             {filtered.map((item, i) => (
@@ -982,6 +1037,12 @@ export default function Home() {
         .quick-model { font-size: 11px; color: #9ca3af; }
         .btn-quick-action { padding: 5px 12px; background: #1a1a18; color: #fff; border: none; border-radius: 7px; font-size: 11px; font-family: 'DM Sans', sans-serif; cursor: pointer; font-weight: 500; transition: opacity 0.1s; white-space: nowrap; flex-shrink: 0; }
         .btn-quick-action:hover { opacity: 0.8; }
+        .period-row { display: flex; gap: 5px; margin-bottom: 10px; flex-wrap: wrap; }
+        .period-pill { padding: 4px 10px; border-radius: 6px; border: 1px solid #ebebea; background: #fff; font-size: 11px; cursor: pointer; color: #6b7280; font-family: 'DM Sans', sans-serif; transition: all 0.1s; }
+        .period-pill:hover { border-color: #9ca3af; color: #1a1a18; }
+        .period-pill.active { background: #1a1a18; color: #fff; border-color: #1a1a18; }
+        .custom-date-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+        .custom-date-row .field-label { margin: 0; white-space: nowrap; }
         .repair-badge { font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 5px; white-space: nowrap; margin-left: 6px; }
         .repair-badge-warning { background: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
         .repair-badge-danger  { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
