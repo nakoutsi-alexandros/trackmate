@@ -95,29 +95,6 @@ export default function Home() {
   const [historySerial, setHistorySerial] = useState('');
   const [historyStore, setHistoryStore] = useState('');
   const [filterAction, setFilterAction] = useState('Όλα');
-  const [sortOrder, setSortOrder] = useState('desc');
-
-  const parseGreekTimestamp = (ts) => {
-    if (!ts) return 0;
-    try {
-      const [datePart, timePart] = ts.split(', ');
-      const [day, month, year] = datePart.split('/').map(Number);
-      const parts = timePart.split(' ');
-      const meridiem = parts[1] || '';
-      let [hours, minutes, seconds] = parts[0].split(':').map(Number);
-      if (meridiem.includes('μ.μ') && hours !== 12) hours += 12;
-      if (meridiem.includes('π.μ') && hours === 12) hours = 0;
-      return new Date(year, month - 1, day, hours, minutes, seconds || 0).getTime();
-    } catch { return 0; }
-  };
-
-  const sortItems = (items) => [...items].sort((a, b) => {
-    const ta = parseGreekTimestamp(a.timestamp) || 0;
-    const tb = parseGreekTimestamp(b.timestamp) || 0;
-    // Αν δεν έχει timestamp, χρησιμοποιούμε index (reverse)
-    if (ta === 0 && tb === 0) return 0;
-    return sortOrder === 'desc' ? tb - ta : ta - tb;
-  });
   const [storesList, setStoresList] = useState([]);
   const [newStoreName, setNewStoreName] = useState('');
   const [addingStore, setAddingStore] = useState(false);
@@ -302,8 +279,31 @@ export default function Home() {
     } catch (e) { alert('Σφάλμα φόρτωσης ιστορικού.'); }
   };
 
-  const filtered = sortItems(filterAction === 'Όλα' ? inventory : inventory.filter(i => normalizeAction(i.action) === filterAction));
-  const warehouseItems = sortItems(inventory.filter(i => ['Καινούριο Μηχάνημα', 'Εισαγωγή για επισκευή'].includes(normalizeAction(i.action))));
+  const filtered = filterAction === 'Όλα' ? inventory : inventory.filter(i => normalizeAction(i.action) === filterAction);
+  const warehouseItems = inventory.filter(i => ['Καινούριο Μηχάνημα', 'Εισαγωγή για επισκευή'].includes(normalizeAction(i.action)));
+
+  // Υπολογισμός ημερών από την τελευταία καταχώρηση
+  const getDaysInRepair = (item) => {
+    if (normalizeAction(item.action) !== 'Εισαγωγή για επισκευή') return null;
+    try {
+      const [day, month, year] = item.date.split('/').map(Number);
+      if (!day || !month || !year) return null;
+      const entryDate = new Date(year, month - 1, day);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const diffMs = today - entryDate;
+      return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    } catch { return null; }
+  };
+
+  // Badge για επισκευή: null = κανένα, 'warning' = >5 μέρες, 'danger' = >10 μέρες
+  const getRepairBadge = (item) => {
+    const days = getDaysInRepair(item);
+    if (days === null) return null;
+    if (days > 10) return { type: 'danger', days, label: `${days} μέρες` };
+    if (days > 5)  return { type: 'warning', days, label: `${days} μέρες` };
+    return null;
+  };
 
   const STATUS_PILL = {
     'Καινούριο Μηχάνημα':      { label: 'Διαθέσιμο',        cls: 'pill-blue'   },
@@ -454,7 +454,6 @@ export default function Home() {
             </div>
             <div className="filter-row">
               {FILTERS.map(f => <button key={f} className={`filter-pill ${filterAction===f?'active':''}`} onClick={()=>setFilterAction(f)}>{f}</button>)}
-              <button className="sort-btn" onClick={()=>setSortOrder(s=>s==='desc'?'asc':'desc')}>{sortOrder==='desc'?'↓ Νεότερα':'↑ Παλαιότερα'}</button>
             </div>
             {loadingInv && <div className="loading">⏳ Φόρτωση...</div>}
             {!loadingInv && filtered.length > 0 && (
@@ -486,7 +485,6 @@ export default function Home() {
           <div className="mobile-only">
             <div className="filter-row">
               {FILTERS.map(f => <button key={f} className={`filter-pill ${filterAction===f?'active':''}`} onClick={()=>setFilterAction(f)}>{f}</button>)}
-              <button className="sort-btn" onClick={()=>setSortOrder(s=>s==='desc'?'asc':'desc')}>{sortOrder==='desc'?'↓ Νεότερα':'↑ Παλαιότερα'}</button>
             </div>
             {loadingInv && <div className="loading">⏳ Φόρτωση...</div>}
             {!loadingInv && filtered.length === 0 && <div className="empty">Δεν βρέθηκαν εγγραφές.<br/>Κάνε ένα scan πρώτα!</div>}
@@ -521,51 +519,59 @@ export default function Home() {
             <div className="stat-card"><div className="stat-label">Σε επισκευή</div><div className="stat-val">{inventory.filter(i=>normalizeAction(i.action)==='Εισαγωγή για επισκευή').length}</div><div className="stat-sub">στην αποθήκη</div></div>
             <div className="stat-card"><div className="stat-label">Αποσταλμένα</div><div className="stat-val">{inventory.filter(i=>['Αποστολή σε κατάστημα','Αποστολή στα κεντρικά'].includes(normalizeAction(i.action))).length}</div><div className="stat-sub">έχουν φύγει</div></div>
           </div>
-          <div style={{display:'flex',justifyContent:'flex-end',marginBottom:'10px'}}>
-            <button className="sort-btn" onClick={()=>setSortOrder(s=>s==='desc'?'asc':'desc')}>{sortOrder==='desc'?'↓ Νεότερα':'↑ Παλαιότερα'}</button>
-          </div>
           {loadingInv && <div className="loading">⏳ Φόρτωση...</div>}
-          {!loadingInv && warehouseItems.length === 0 && <div className="empty">Δεν υπάρχουν διαθέσιμα μηχανήματα στην αποθήκη.</div>}
+          {!loadingInv && warehouseItems.length === 0 && <div className="empty">Δεν υπάρχουν μηχανήματα στην αποθήκη.</div>}
           {!loadingInv && warehouseItems.length > 0 && (
             <div className="dt-table desktop-only">
               <div className="dt-head">
                 <div className="dt-th">Model / Serial</div>
-                <div className="dt-th">Τελευταίο κατάστημα</div>
+                <div className="dt-th">Από κατάστημα</div>
                 <div className="dt-th">Κατάσταση</div>
                 <div className="dt-th">Ημερομηνία</div>
                 <div className="dt-th">Χρήστης</div>
               </div>
-              {warehouseItems.map((item, i) => (
-                <div key={i} className="dt-row" onClick={()=>{setTab('history');loadHistory(item.serialNumber);}}>
-                  <div className="dt-td">
-                    <span className="dt-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
-                    <div><div className="dt-model">{item.model || '—'}</div><div className="dt-serial">{item.serialNumber}</div></div>
+              {warehouseItems.map((item, i) => {
+                const badge = getRepairBadge(item);
+                return (
+                  <div key={i} className="dt-row" onClick={()=>{setTab('history');loadHistory(item.serialNumber);}}>
+                    <div className="dt-td">
+                      <span className="dt-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
+                      <div>
+                        <div className="dt-model">{item.model || '—'}</div>
+                        <div className="dt-serial">{item.serialNumber}</div>
+                      </div>
+                      {badge && <span className={`repair-badge repair-badge-${badge.type}`}>{badge.type==='danger'?'🔴':'🟡'} {badge.label}</span>}
+                    </div>
+                    <div className="dt-td dt-muted">{item.store || '—'}</div>
+                    <div className="dt-td"><span className={`status-pill ${STATUS_PILL[normalizeAction(item.action)]?.cls||'pill-gray'}`}>{STATUS_PILL[normalizeAction(item.action)]?.label||normalizeAction(item.action)}</span></div>
+                    <div className="dt-td dt-muted">{item.date}</div>
+                    <div className="dt-td dt-muted">{item.user || '—'}</div>
                   </div>
-                  <div className="dt-td dt-muted">{item.store || '—'}</div>
-                  <div className="dt-td"><span className={`status-pill ${STATUS_PILL[normalizeAction(item.action)]?.cls||'pill-gray'}`}>{STATUS_PILL[normalizeAction(item.action)]?.label||normalizeAction(item.action)}</span></div>
-                  <div className="dt-td dt-muted">{item.date}</div>
-                  <div className="dt-td dt-muted">{item.user || '—'}</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
           <div className="mobile-only">
-            {warehouseItems.map((item, i) => (
-              <div key={i} className="machine-row" onClick={()=>{setTab('history');loadHistory(item.serialNumber);}}>
-                <div className="machine-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
-                <div className="machine-info">
-                  <div className="machine-name-row">
-                    <div className="machine-name">{item.model || 'Άγνωστο model'}</div>
-                    <span className={`status-pill ${STATUS_PILL[normalizeAction(item.action)]?.cls||'pill-gray'}`}>{STATUS_PILL[normalizeAction(item.action)]?.label||normalizeAction(item.action)}</span>
-                  </div>
-                  <div className="machine-serial">{item.serialNumber}</div>
-                  <div className="machine-bottom">
-                    <span className="machine-store">🏪 {item.store || '—'}</span>
-                    <span className="machine-date">📅 {item.date}</span>
+            {warehouseItems.map((item, i) => {
+              const badge = getRepairBadge(item);
+              return (
+                <div key={i} className="machine-row" onClick={()=>{setTab('history');loadHistory(item.serialNumber);}}>
+                  <div className="machine-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
+                  <div className="machine-info">
+                    <div className="machine-name-row">
+                      <div className="machine-name">{item.model || 'Άγνωστο model'}</div>
+                      <span className={`status-pill ${STATUS_PILL[normalizeAction(item.action)]?.cls||'pill-gray'}`}>{STATUS_PILL[normalizeAction(item.action)]?.label||normalizeAction(item.action)}</span>
+                    </div>
+                    <div className="machine-serial">{item.serialNumber}</div>
+                    <div className="machine-bottom">
+                      <span className="machine-store">🏪 {item.store || '—'}</span>
+                      <span className="machine-date">📅 {item.date}</span>
+                    </div>
+                    {badge && <div className={`repair-badge repair-badge-${badge.type}`}>{badge.type==='danger'?'🔴':'🟡'} Σε επισκευή {badge.label}</div>}
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           <button className="btn-ghost" style={{marginTop:'12px'}} onClick={loadInventory}>🔄 Ανανέωση</button>
         </div>
@@ -914,8 +920,9 @@ export default function Home() {
         .divider-or { text-align: center; color: #c4c4c2; font-size: 11px; margin: 8px 0; position: relative; }
         .divider-or::before, .divider-or::after { content: ''; position: absolute; top: 50%; width: 44%; height: 1px; background: #ebebea; }
         .divider-or::before { left: 0; } .divider-or::after { right: 0; }
-        .sort-btn { padding: 4px 10px; border-radius: 6px; border: 1px solid #ebebea; background: #fff; font-size: 11px; cursor: pointer; color: #6b7280; font-family: 'DM Sans', sans-serif; transition: all 0.1s; white-space: nowrap; }
-        .sort-btn:hover { border-color: #1a1a18; color: #1a1a18; }
+        .repair-badge { font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 5px; white-space: nowrap; margin-left: 6px; }
+        .repair-badge-warning { background: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
+        .repair-badge-danger  { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
         .fade-in { animation: fadeIn 0.18s ease; }
         @media (max-width: 767px) {
