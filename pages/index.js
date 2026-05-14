@@ -68,6 +68,15 @@ const STORE_CHAINS = [
 export default function Home() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState(null);
+  const [darkMode, setDarkMode] = useState(false);
+
+  const toggleDarkMode = () => {
+    setDarkMode(prev => {
+      const next = !prev;
+      localStorage.setItem('trackmate_dark', next ? '1' : '0');
+      return next;
+    });
+  };
   const [tab, setTab] = useState('scan');
   const [step, setStep] = useState(1);
   const [imagePreview, setImagePreview] = useState(null);
@@ -171,6 +180,10 @@ export default function Home() {
 
   // Φόρτωση συνδεδεμένου χρήστη και καταστημάτων
   useEffect(() => {
+    // Φόρτωση dark mode preference
+    const saved = localStorage.getItem('trackmate_dark');
+    if (saved === '1') setDarkMode(true);
+
     fetch('/api/auth/me')
       .then(res => res.ok ? res.json() : null)
       .then(data => { if (data) setCurrentUser(data.user); })
@@ -836,7 +849,7 @@ export default function Home() {
       </Head>
 
       {/* ─── DESKTOP LAYOUT ─── */}
-      <div className="desktop-layout">
+      <div className={`desktop-layout${darkMode?' dark':''}`}>
         <aside className="sidebar">
           <div className="sb-logo" onClick={()=>{setTab('scan');handleReset();}} style={{cursor:'pointer'}}>
             Track<span>Mate</span>
@@ -857,6 +870,7 @@ export default function Home() {
             <div className="sb-footer">
               <div className="sb-avatar">{currentUser.fullName.slice(0,2).toUpperCase()}</div>
               <div className="sb-username">{currentUser.fullName}</div>
+              <button className="sb-dark-btn" onClick={toggleDarkMode} title={darkMode?'Light mode':'Dark mode'}>{darkMode?'☀️':'🌙'}</button>
               <button className="sb-logout" onClick={handleLogout} title="Αποσύνδεση">↩</button>
             </div>
           )}
@@ -885,12 +899,13 @@ export default function Home() {
       </div>
 
       {/* ─── MOBILE LAYOUT ─── */}
-      <div className="mobile-layout">
+      <div className={`mobile-layout${darkMode?' dark':''}`}>
         <header className="mob-header">
           <div className="mob-header-top">
             <div className="logo" onClick={()=>{setTab('scan');handleReset();}} style={{cursor:'pointer'}}>Track<span>Mate</span></div>
             {currentUser && (
               <div className="user-area">
+                <button className="mob-dark-btn" onClick={toggleDarkMode}>{darkMode?'☀️':'🌙'}</button>
                 <span className="user-name">{currentUser.fullName}</span>
                 <button className="btn-logout" onClick={handleLogout}>↩</button>
               </div>
@@ -913,6 +928,101 @@ export default function Home() {
       <style jsx global>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'DM Sans', sans-serif; background: #000000; color: #1a1a18; min-height: 100vh; }
+
+        /* ─── DARK MODE ─── */
+        .dark { color-scheme: dark; }
+        .dark.desktop-layout { background: #0f0f0e; }
+        .dark .sidebar { background: #141413; border-right: 1px solid #2a2a28; }
+        .dark .sb-logo { color: #f0f0ee; border-bottom-color: #2a2a28; }
+        .dark .sb-section { color: #3a3a38; }
+        .dark .sb-item { color: #6b6b68; }
+        .dark .sb-item:hover, .dark .sb-item.active { background: #1e1e1c; color: #f0f0ee; }
+        .dark .sb-footer { border-top-color: #2a2a28; }
+        .dark .sb-avatar { background: #1e1e1c; color: #6b6b68; }
+        .dark .sb-username { color: #6b6b68; }
+        .dark .desktop-main { background: #0f0f0e; }
+        .dark .desktop-header { background: #141413; border-bottom-color: #2a2a28; }
+        .dark .desktop-title { color: #f0f0ee; }
+        .dark .desktop-content { background: #0f0f0e; }
+        .dark .dt-table { background: #141413; border-color: #2a2a28; }
+        .dark .dt-head { background: #1a1a18; border-bottom-color: #2a2a28; }
+        .dark .dt-th { color: #4b4b48; }
+        .dark .dt-row { border-bottom-color: #1e1e1c; }
+        .dark .dt-row:hover { background: #1a1a18; }
+        .dark .dt-td { color: #d4d4d0; }
+        .dark .dt-td.dt-muted { color: #6b6b68; }
+        .dark .dt-model { color: #f0f0ee; }
+        .dark .dt-serial { color: #4b4b48; }
+        .dark .dt-note-row { background: #141413; border-bottom-color: #1e1e1c; }
+        .dark .stat-card { background: #141413; border-color: #2a2a28; }
+        .dark .stat-label { color: #4b4b48; }
+        .dark .stat-val { color: #f0f0ee; }
+        .dark .stat-sub { color: #4b4b48; }
+        .dark .card { background: #141413; border-color: #2a2a28; }
+        .dark .card-title { color: #f0f0ee; }
+        .dark .card-sub { color: #6b6b68; }
+        .dark .machine-row { background: #141413; border-color: #2a2a28; }
+        .dark .machine-row:hover { border-color: #4b4b48; }
+        .dark .machine-name { color: #f0f0ee; }
+        .dark .machine-serial { color: #4b4b48; }
+        .dark .machine-store { color: #6b6b68; }
+        .dark .machine-date { color: #4b4b48; }
+        .dark .filter-pill { background: #141413; border-color: #2a2a28; color: #6b6b68; }
+        .dark .filter-pill:hover { border-color: #6b6b68; color: #d4d4d0; }
+        .dark .filter-pill.active { background: #f0f0ee; color: #0f0f0e; border-color: #f0f0ee; }
+        .dark .period-pill { background: #141413; border-color: #2a2a28; color: #6b6b68; }
+        .dark .period-pill:hover { border-color: #6b6b68; color: #d4d4d0; }
+        .dark .period-pill.active { background: #f0f0ee; color: #0f0f0e; border-color: #f0f0ee; }
+        .dark .text-input, .dark select, .dark textarea { background: #1a1a18; border-color: #2a2a28; color: #d4d4d0; }
+        .dark .text-input:focus, .dark select:focus, .dark textarea:focus { border-color: #4b4b48; background: #141413; }
+        .dark .section-label { color: #4b4b48; }
+        .dark .field-label { color: #6b6b68; }
+        .dark .action-tile { background: #1a1a18; border-color: #2a2a28; }
+        .dark .action-tile:hover { border-color: #4b4b48; }
+        .dark .action-tile.selected { border-color: #f0f0ee; background: #1e1e1c; }
+        .dark .action-title { color: #d4d4d0; }
+        .dark .sub-action-item { background: #141413; border-color: #2a2a28; }
+        .dark .sub-action-item:hover { border-color: #4b4b48; }
+        .dark .sub-action-item.selected { border-color: #f0f0ee; background: #1e1e1c; }
+        .dark .sub-action-label { color: #d4d4d0; }
+        .dark .store-picker { background: #1a1a18; border-color: #2a2a28; }
+        .dark .store-item { color: #d4d4d0; }
+        .dark .store-item:hover { background: #1e1e1c; }
+        .dark .chain-tab { background: #141413; border-color: #2a2a28; color: #6b6b68; }
+        .dark .chain-tab.active { background: #f0f0ee; color: #0f0f0e; border-color: #f0f0ee; }
+        .dark .btn-ghost { border-color: #2a2a28; color: #6b6b68; }
+        .dark .btn-ghost:hover { border-color: #4b4b48; color: #d4d4d0; }
+        .dark .btn-new { background: #1a1a18; border-color: #2a2a28; color: #d4d4d0; }
+        .dark .h-card { background: #141413; border-color: #2a2a28; }
+        .dark .h-action { color: #d4d4d0; }
+        .dark .h-meta { color: #4b4b48; }
+        .dark .h-line { background: #2a2a28; }
+        .dark .history-machine-header { background: #141413; border-color: #2a2a28; }
+        .dark .history-machine-model { color: #f0f0ee; }
+        .dark .history-machine-serial { color: #6b6b68; }
+        .dark .upload-area { background: #1a1a18; border-color: #2a2a28; }
+        .dark .upload-area:hover { background: #141413; border-color: #4b4b48; }
+        .dark .upload-title { color: #d4d4d0; }
+        .dark .selected-action-badge { background: #1a1a18; color: #d4d4d0; border-color: #2a2a28; }
+        .dark .note-text { color: #6b6b68; }
+        .dark .note-empty { color: #3a3a38; }
+        .dark .note-input { background: #1a1a18; border-color: #2a2a28; color: #d4d4d0; }
+        .dark .note-display-desktop:hover .note-empty { color: #6b6b68; }
+        /* Mobile dark */
+        .dark.mobile-layout { background: #0f0f0e; }
+        .dark .mob-header { background: #141413; }
+        .dark .logo { color: #f0f0ee; }
+        .dark .user-name { color: #6b6b68; }
+        .dark .mob-nav-btn { color: #4b4b48; }
+        .dark .mob-nav-btn.active { color: #f0f0ee; background: #1e1e1c; }
+        .dark .mob-main { background: #0f0f0e; }
+        .dark .divider-or { color: #3a3a38; }
+        .dark .divider-or::before, .dark .divider-or::after { background: #2a2a28; }
+        .dark .empty { color: #4b4b48; }
+        .dark .loading { color: #4b4b48; }
+        .sb-dark-btn { background: none; border: none; cursor: pointer; font-size: 13px; padding: 2px 4px; transition: opacity 0.1s; }
+        .sb-dark-btn:hover { opacity: 0.7; }
+        .mob-dark-btn { background: none; border: none; cursor: pointer; font-size: 14px; padding: 2px 4px; }
 
         /* ─── RESPONSIVE VISIBILITY ─── */
         .desktop-layout { display: none; }
