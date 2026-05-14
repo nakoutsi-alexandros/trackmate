@@ -95,7 +95,29 @@ export default function Home() {
   const [historySerial, setHistorySerial] = useState('');
   const [historyStore, setHistoryStore] = useState('');
   const [filterAction, setFilterAction] = useState('Όλα');
-  const [sortOrder, setSortOrder] = useState('desc'); // desc = νεότερα πρώτα
+  const [sortOrder, setSortOrder] = useState('desc');
+
+  const parseGreekTimestamp = (ts) => {
+    if (!ts) return 0;
+    try {
+      const [datePart, timePart] = ts.split(', ');
+      const [day, month, year] = datePart.split('/').map(Number);
+      const parts = timePart.split(' ');
+      const meridiem = parts[1] || '';
+      let [hours, minutes, seconds] = parts[0].split(':').map(Number);
+      if (meridiem.includes('μ.μ') && hours !== 12) hours += 12;
+      if (meridiem.includes('π.μ') && hours === 12) hours = 0;
+      return new Date(year, month - 1, day, hours, minutes, seconds || 0).getTime();
+    } catch { return 0; }
+  };
+
+  const sortItems = (items) => [...items].sort((a, b) => {
+    const ta = parseGreekTimestamp(a.timestamp) || 0;
+    const tb = parseGreekTimestamp(b.timestamp) || 0;
+    // Αν δεν έχει timestamp, χρησιμοποιούμε index (reverse)
+    if (ta === 0 && tb === 0) return 0;
+    return sortOrder === 'desc' ? tb - ta : ta - tb;
+  });
   const [storesList, setStoresList] = useState([]);
   const [newStoreName, setNewStoreName] = useState('');
   const [addingStore, setAddingStore] = useState(false);
@@ -280,12 +302,6 @@ export default function Home() {
     } catch (e) { alert('Σφάλμα φόρτωσης ιστορικού.'); }
   };
 
-  const sortItems = (items) => [...items].sort((a, b) => {
-    const da = new Date(a.timestamp || a.date || 0);
-    const db = new Date(b.timestamp || b.date || 0);
-    return sortOrder === 'desc' ? db - da : da - db;
-  });
-
   const filtered = sortItems(filterAction === 'Όλα' ? inventory : inventory.filter(i => normalizeAction(i.action) === filterAction));
   const warehouseItems = sortItems(inventory.filter(i => ['Καινούριο Μηχάνημα', 'Εισαγωγή για επισκευή'].includes(normalizeAction(i.action))));
 
@@ -430,6 +446,12 @@ export default function Home() {
         <div className="fade-in">
           {/* Desktop: table view */}
           <div className="desktop-only">
+            <div className="inv-stats">
+              <div className="stat-card"><div className="stat-label">Σύνολο</div><div className="stat-val">{inventory.length}</div><div className="stat-sub">μηχανήματα</div></div>
+              <div className="stat-card"><div className="stat-label">Σε επισκευή</div><div className="stat-val">{inventory.filter(i=>normalizeAction(i.action)==='Εισαγωγή για επισκευή').length}</div><div className="stat-sub">ενεργές</div></div>
+              <div className="stat-card"><div className="stat-label">Αποθήκη</div><div className="stat-val">{warehouseItems.length}</div><div className="stat-sub">διαθέσιμα</div></div>
+              <div className="stat-card"><div className="stat-label">Σε κατάστημα</div><div className="stat-val">{inventory.filter(i=>normalizeAction(i.action)==='Αποστολή σε κατάστημα').length}</div><div className="stat-sub">τοποθετημένα</div></div>
+            </div>
             <div className="filter-row">
               {FILTERS.map(f => <button key={f} className={`filter-pill ${filterAction===f?'active':''}`} onClick={()=>setFilterAction(f)}>{f}</button>)}
               <button className="sort-btn" onClick={()=>setSortOrder(s=>s==='desc'?'asc':'desc')}>{sortOrder==='desc'?'↓ Νεότερα':'↑ Παλαιότερα'}</button>
@@ -503,7 +525,7 @@ export default function Home() {
             <button className="sort-btn" onClick={()=>setSortOrder(s=>s==='desc'?'asc':'desc')}>{sortOrder==='desc'?'↓ Νεότερα':'↑ Παλαιότερα'}</button>
           </div>
           {loadingInv && <div className="loading">⏳ Φόρτωση...</div>}
-          {!loadingInv && warehouseItems.length === 0 && <div className="empty">Δεν υπάρχουν μηχανήματα στην αποθήκη.</div>}
+          {!loadingInv && warehouseItems.length === 0 && <div className="empty">Δεν υπάρχουν διαθέσιμα μηχανήματα στην αποθήκη.</div>}
           {!loadingInv && warehouseItems.length > 0 && (
             <div className="dt-table desktop-only">
               <div className="dt-head">
