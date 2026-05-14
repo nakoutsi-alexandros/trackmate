@@ -634,15 +634,21 @@ export default function Home() {
           </div>
           {history === null && <div className="empty">Γράψε serial number για να δεις το ιστορικό.</div>}
           {history && history.length === 0 && <div className="empty">Δεν βρέθηκε ιστορικό.</div>}
-          {history && history.length > 0 && (
-            <div className="quick-action-bar">
-              <div className="quick-action-info">
-                <span className="quick-serial">{history[0]?.serialNumber}</span>
-                <span className="quick-model">{history[0]?.model}</span>
+          {history && history.length > 0 && historySerial && (
+            <div className="history-machine-header">
+              <div className="history-machine-info">
+                <div className="history-machine-model">{history[0]?.model || 'Άγνωστο model'}</div>
+                <div className="history-machine-serial">{history[0]?.serialNumber}</div>
+                <div className="history-machine-count">{history.length} κινήσεις</div>
               </div>
               <button className="btn-quick-action" onClick={()=>startNewAction(history[0]?.serialNumber, history[0]?.model)}>
                 + Νέα κίνηση
               </button>
+            </div>
+          )}
+          {history && history.length > 0 && !historySerial && (
+            <div className="history-store-header">
+              <span className="history-store-count">{history.length} κινήσεις για <strong>{historyStore}</strong></span>
             </div>
           )}
           {history && history.map((item, i) => (
@@ -656,6 +662,12 @@ export default function Home() {
                   <div className="h-action">{normalizeAction(item.action)}</div>
                   <span className={`status-pill ${STATUS_PILL[normalizeAction(item.action)]?.cls||'pill-gray'}`}>{STATUS_PILL[normalizeAction(item.action)]?.label||normalizeAction(item.action)}</span>
                 </div>
+                {!historySerial && (
+                  <div className="h-machine">
+                    <span className="h-machine-model">{item.model || '—'}</span>
+                    <span className="h-machine-serial">{item.serialNumber}</span>
+                  </div>
+                )}
                 <div className="h-meta">🏪 {item.store} · 📅 {item.date}{item.user ? ` · 👤 ${item.user}` : ''}</div>
                 {item.problem && <div className="h-notes">🔧 {item.problem}</div>}
                 {item.notes && <div className="h-notes">📝 {item.notes}</div>}
@@ -953,6 +965,16 @@ export default function Home() {
         .divider-or { text-align: center; color: #c4c4c2; font-size: 11px; margin: 8px 0; position: relative; }
         .divider-or::before, .divider-or::after { content: ''; position: absolute; top: 50%; width: 44%; height: 1px; background: #ebebea; }
         .divider-or::before { left: 0; } .divider-or::after { right: 0; }
+        .history-machine-header { background: #fff; border: 1px solid #ebebea; border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .history-machine-info { flex: 1; min-width: 0; }
+        .history-machine-model { font-size: 15px; font-weight: 600; color: #1a1a18; margin-bottom: 2px; }
+        .history-machine-serial { font-family: 'DM Mono', monospace; font-size: 12px; color: #6b7280; margin-bottom: 4px; }
+        .history-machine-count { font-size: 11px; color: #9ca3af; }
+        .history-store-header { padding: 8px 0 12px; }
+        .history-store-count { font-size: 13px; color: #6b7280; }
+        .h-machine { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+        .h-machine-model { font-size: 12px; font-weight: 600; color: #1a1a18; }
+        .h-machine-serial { font-family: 'DM Mono', monospace; font-size: 10px; color: #9ca3af; }
         .quick-action-bar { display: flex; align-items: center; justify-content: space-between; background: #fff; border: 1px solid #ebebea; border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; }
         .quick-action-info { display: flex; flex-direction: column; gap: 2px; }
         .quick-serial { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; color: #1a1a18; }
