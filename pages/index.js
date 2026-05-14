@@ -102,6 +102,10 @@ export default function Home() {
   const [newStoreName, setNewStoreName] = useState('');
   const [addingStore, setAddingStore] = useState(false);
   const [addStoreMsg, setAddStoreMsg] = useState(null);
+  const [notes, setNotes] = useState({});
+  const [editingNote, setEditingNote] = useState(null); // serial που επεξεργάζεται
+  const [noteInput, setNoteInput] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
   const fileRef = useRef();
   const cameraRef = useRef();
 
@@ -112,6 +116,32 @@ export default function Home() {
       const data = await res.json();
       setStoresList(data.stores || []);
     } catch (e) {}
+  };
+
+  const loadNotes = async () => {
+    try {
+      const res = await fetch('/api/notes');
+      const data = await res.json();
+      setNotes(data.notes || {});
+    } catch (e) {}
+  };
+
+  const handleSaveNote = async (serialNumber) => {
+    setSavingNote(true);
+    try {
+      await fetch('/api/notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serialNumber, note: noteInput }),
+      });
+      setNotes(prev => ({ ...prev, [serialNumber]: { note: noteInput, updatedAt: 'μόλις τώρα', updatedBy: currentUser?.fullName || '' } }));
+      setEditingNote(null);
+      setNoteInput('');
+    } catch (e) {
+      alert('Σφάλμα αποθήκευσης σημείωσης.');
+    } finally {
+      setSavingNote(false);
+    }
   };
 
   const handleAddStore = async () => {
@@ -148,6 +178,7 @@ export default function Home() {
 
     loadStores();
     loadInventory();
+    loadNotes();
 
     // Καταχώρηση Service Worker για αυτόματο update
     if ('serviceWorker' in navigator) {
@@ -605,22 +636,39 @@ export default function Home() {
               </div>
               {warehouseItems.map((item, i) => {
                 const badge = getRepairBadge(item);
+                const itemNote = notes[item.serialNumber];
                 return (
-                  <div key={i} className="dt-row" onClick={()=>{setTab('history');loadHistory(item.serialNumber);}}>
-                    <div className="dt-td">
-                      <span className="dt-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
-                      <div>
-                        <div className="dt-model">{item.model || '—'}</div>
-                        <div className="dt-serial">{item.serialNumber}</div>
+                  <div key={i}>
+                    <div className="dt-row" onClick={()=>{setTab('history');loadHistory(item.serialNumber);}}>
+                      <div className="dt-td">
+                        <span className="dt-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
+                        <div>
+                          <div className="dt-model">{item.model || '—'}</div>
+                          <div className="dt-serial">{item.serialNumber}</div>
+                        </div>
+                        {badge && <span className={`repair-badge repair-badge-${badge.type}`}>{badge.type==='danger'?'🔴':'🟡'} {badge.label}</span>}
                       </div>
-                      {badge && <span className={`repair-badge repair-badge-${badge.type}`}>{badge.type==='danger'?'🔴':'🟡'} {badge.label}</span>}
+                      <div className="dt-td dt-muted">{item.store || '—'}</div>
+                      <div className="dt-td"><span className={`status-pill ${STATUS_PILL[normalizeAction(item.action)]?.cls||'pill-gray'}`}>{STATUS_PILL[normalizeAction(item.action)]?.label||normalizeAction(item.action)}</span></div>
+                      <div className="dt-td dt-muted">{item.date}</div>
+                      <div className="dt-td dt-muted" style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                        <span>{item.user || '—'}</span>
+                        <button className="btn-quick-action" onClick={e=>{e.stopPropagation();startNewAction(item.serialNumber,item.model);}}>+ Νέα</button>
+                      </div>
                     </div>
-                    <div className="dt-td dt-muted">{item.store || '—'}</div>
-                    <div className="dt-td"><span className={`status-pill ${STATUS_PILL[normalizeAction(item.action)]?.cls||'pill-gray'}`}>{STATUS_PILL[normalizeAction(item.action)]?.label||normalizeAction(item.action)}</span></div>
-                    <div className="dt-td dt-muted">{item.date}</div>
-                    <div className="dt-td dt-muted" style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-                      <span>{item.user || '—'}</span>
-                      <button className="btn-quick-action" onClick={e=>{e.stopPropagation();startNewAction(item.serialNumber,item.model);}}>+ Νέα</button>
+                    {/* Note row */}
+                    <div className="dt-note-row" onClick={e=>e.stopPropagation()}>
+                      {editingNote === item.serialNumber ? (
+                        <div style={{display:'flex',alignItems:'center',gap:'8px',width:'100%'}}>
+                          <input className="text-input note-input-inline" value={noteInput} onChange={e=>setNoteInput(e.target.value)} placeholder="Γράψε σημείωση..." autoFocus onKeyDown={e=>{if(e.key==='Enter')handleSaveNote(item.serialNumber);if(e.key==='Escape'){setEditingNote(null);setNoteInput('');}}} />
+                          <button className="btn-quick-action" onClick={()=>handleSaveNote(item.serialNumber)} disabled={savingNote}>{savingNote?'...':'Αποθήκευση'}</button>
+                          <button className="btn-note-cancel" onClick={()=>{setEditingNote(null);setNoteInput('');}}>✕</button>
+                        </div>
+                      ) : (
+                        <div className="note-display-desktop" onClick={()=>{setEditingNote(item.serialNumber);setNoteInput(itemNote?.note||'');}}>
+                          {itemNote?.note ? <span className="note-text">📌 {itemNote.note}</span> : <span className="note-empty">+ Σημείωση</span>}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -644,6 +692,22 @@ export default function Home() {
                       <span className="machine-date">📅 {item.date}</span>
                     </div>
                     {badge && <div className={`repair-badge repair-badge-${badge.type}`}>{badge.type==='danger'?'🔴':'🟡'} Σε επισκευή {badge.label}</div>}
+                    {/* Note section */}
+                    {editingNote === item.serialNumber ? (
+                      <div className="note-edit" onClick={e=>e.stopPropagation()}>
+                        <textarea className="note-input" value={noteInput} onChange={e=>setNoteInput(e.target.value)} placeholder="Γράψε σημείωση..." autoFocus />
+                        <div style={{display:'flex',gap:'6px',marginTop:'6px'}}>
+                          <button className="btn-quick-action" onClick={()=>handleSaveNote(item.serialNumber)} disabled={savingNote}>{savingNote?'...':'💾 Αποθήκευση'}</button>
+                          <button className="btn-note-cancel" onClick={()=>{setEditingNote(null);setNoteInput('');}}>Άκυρο</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="note-display" onClick={e=>{e.stopPropagation();setEditingNote(item.serialNumber);setNoteInput(notes[item.serialNumber]?.note||'');}}>
+                        {notes[item.serialNumber]?.note
+                          ? <span className="note-text">📌 {notes[item.serialNumber].note}</span>
+                          : <span className="note-empty">+ Προσθήκη σημείωσης</span>}
+                      </div>
+                    )}
                     <button className="btn-quick-action" style={{marginTop:'8px'}} onClick={e=>{e.stopPropagation();startNewAction(item.serialNumber,item.model);}}>+ Νέα κίνηση</button>
                   </div>
                 </div>
@@ -1043,6 +1107,15 @@ export default function Home() {
         .period-pill.active { background: #1a1a18; color: #fff; border-color: #1a1a18; }
         .custom-date-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
         .custom-date-row .field-label { margin: 0; white-space: nowrap; }
+        .dt-note-row { padding: 5px 14px 8px; background: #fafaf9; border-bottom: 1px solid #f0f0ee; }
+        .note-display-desktop { cursor: pointer; display: inline-flex; align-items: center; }
+        .note-input-inline { flex: 1; padding: 6px 10px; font-size: 12px; }
+        .note-edit { margin-top: 6px; }
+        .note-input { width: 100%; padding: 7px 10px; border: 1px solid #ebebea; border-radius: 8px; font-size: 12px; font-family: 'DM Sans', sans-serif; resize: none; height: 56px; background: #fff; }
+        .note-display { margin-top: 6px; cursor: pointer; padding: 4px 0; }
+        .note-text { font-size: 11px; color: #6b7280; }
+        .note-empty { font-size: 11px; color: #c4c4c2; }
+        .btn-note-cancel { padding: 5px 10px; border: 1px solid #ebebea; border-radius: 7px; background: #fff; font-size: 11px; cursor: pointer; color: #9ca3af; font-family: 'DM Sans', sans-serif; }
         .repair-badge { font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 5px; white-space: nowrap; margin-left: 6px; }
         .repair-badge-warning { background: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
         .repair-badge-danger  { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
