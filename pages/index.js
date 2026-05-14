@@ -8,52 +8,51 @@ const ACTION_CATEGORIES = [
   {
     id: 'new',
     icon: '🆕',
-    label: 'Καινούριο Μηχάνημα',
-    desc: 'Διαθέσιμο για αποστολή',
+    label: 'Νέα εισαγωγή',
+    desc: 'Καινούριο μηχάνημα',
     direct: true,
-    value: 'Καινούριο Μηχάνημα',
+    value: 'Νέα εισαγωγή',
   },
   {
-    id: 'repair-in',
+    id: 'warehouse',
+    icon: '📦',
+    label: 'Αποθήκη',
+    desc: 'Εισαγωγή ή αποστολή',
+    subs: [
+      { value: 'Εισαγωγή στην αποθήκη', icon: '📥', desc: 'Παραλαβή από κατάστημα' },
+      { value: 'Αποστολή σε κατάστημα', icon: '📤', desc: 'Αποστολή από αποθήκη' },
+    ],
+  },
+  {
+    id: 'repair',
     icon: '🔧',
-    label: 'Εισαγωγή για επισκευή',
-    desc: 'Προς έλεγχο/επισκευή',
-    direct: true,
-    value: 'Εισαγωγή για επισκευή',
+    label: 'Επισκευή',
+    desc: 'Διάγνωση & επισκευή',
+    subs: [
+      { value: 'Σε επισκευή', icon: '🔍', desc: 'Δουλεύουμε πάνω' },
+      { value: 'Επισκευάστηκε', icon: '✅', desc: 'Έτοιμο για αποστολή' },
+    ],
   },
   {
-    id: 'send-hq',
-    icon: '✈️',
-    label: 'Αποστολή στα κεντρικά',
-    desc: 'Προς κεντρική αποθήκη',
-    direct: true,
-    value: 'Αποστολή στα κεντρικά',
-  },
-  {
-    id: 'send-store',
-    icon: '🏪',
-    label: 'Αποστολή σε κατάστημα',
-    desc: 'Έξοδος προς κατάστημα',
-    direct: true,
-    value: 'Αποστολή σε κατάστημα',
+    id: 'send',
+    icon: '🚚',
+    label: 'Αποστολή',
+    desc: 'Σε κατάστημα ή κεντρικά',
+    subs: [
+      { value: 'Αποστολή σε κατάστημα', icon: '🏪', desc: 'Πίσω στο κατάστημα' },
+      { value: 'Αποστολή στα κεντρικά', icon: '✈️', desc: 'Δεν επισκευάστηκε, πάει Ισπανία' },
+    ],
   },
 ];
 
 const STATUS_COLOR = {
-  'Καινούριο Μηχάνημα': '#5B8DEF',
-  'Εισαγωγή για επισκευή': '#BA7517',
+  'Νέα εισαγωγή': '#5B8DEF',
+  'Εισαγωγή στην αποθήκη': '#888',
   'Αποστολή σε κατάστημα': '#1D9E75',
+  'Σε επισκευή': '#BA7517',
+  'Επισκευάστηκε': '#1D9E75',
   'Αποστολή στα κεντρικά': '#9B59B6',
 };
-
-const LEGACY_ACTION_LABELS = {
-  'Νέα εισαγωγή': 'Καινούριο Μηχάνημα',
-  'Εισαγωγή στην αποθήκη': 'Καινούριο Μηχάνημα',
-  'Σε επισκευή': 'Εισαγωγή για επισκευή',
-  'Επισκευάστηκε': 'Καινούριο Μηχάνημα',
-};
-
-const normalizeAction = (action) => LEGACY_ACTION_LABELS[action] || action;
 
 const STORE_CHAINS = [
   { id: 'all', label: 'Όλα' },
@@ -279,29 +278,29 @@ export default function Home() {
     } catch (e) { alert('Σφάλμα φόρτωσης ιστορικού.'); }
   };
 
-  const filtered = filterAction === 'Όλα' ? inventory : inventory.filter(i => normalizeAction(i.action) === filterAction);
-  const warehouseItems = inventory.filter(i => normalizeAction(i.action) === 'Καινούριο Μηχάνημα');
+  const filtered = filterAction === 'Όλα' ? inventory : inventory.filter(i => i.action === filterAction);
 
   const STATUS_PILL = {
-    'Καινούριο Μηχάνημα':      { label: 'Διαθέσιμο',        cls: 'pill-blue'   },
-    'Εισαγωγή για επισκευή':   { label: 'Επισκευή',         cls: 'pill-amber'  },
-    'Αποστολή σε κατάστημα':   { label: 'Κατάστημα',        cls: 'pill-green'  },
-    'Αποστολή στα κεντρικά':   { label: 'Κεντρικά',         cls: 'pill-purple' },
+    'Νέα εισαγωγή':           { label: 'Νέα εισαγωγή',    cls: 'pill-blue'   },
+    'Εισαγωγή στην αποθήκη':  { label: 'Αποθήκη',          cls: 'pill-gray'   },
+    'Αποστολή σε κατάστημα':  { label: 'Αποστολή',         cls: 'pill-green'  },
+    'Σε επισκευή':             { label: 'Σε επισκευή',      cls: 'pill-amber'  },
+    'Επισκευάστηκε':           { label: 'Επισκευάστηκε',    cls: 'pill-green'  },
+    'Αποστολή στα κεντρικά':  { label: 'Κεντρικά',         cls: 'pill-purple' },
   };
 
-  const FILTERS = ['Όλα','Καινούριο Μηχάνημα','Εισαγωγή για επισκευή','Αποστολή σε κατάστημα','Αποστολή στα κεντρικά'];
+  const FILTERS = ['Όλα','Νέα εισαγωγή','Αποστολή σε κατάστημα','Σε επισκευή','Επισκευάστηκε','Εισαγωγή στην αποθήκη','Αποστολή στα κεντρικά'];
 
   const NAV_ITEMS = [
     { id: 'scan',      label: 'Scan',       icon: '⊕' },
     { id: 'inventory', label: 'Απόθεμα',    icon: '▦' },
-    { id: 'warehouse', label: 'Αποθήκη',    icon: '□' },
     { id: 'history',   label: 'Ιστορικό',   icon: '◷' },
     { id: 'settings',  label: 'Ρυθμίσεις',  icon: '◎' },
   ];
 
   const handleTabClick = (t) => {
     setTab(t);
-    if (t === 'inventory' || t === 'warehouse') loadInventory();
+    if (t === 'inventory') loadInventory();
     if (t === 'settings') loadStores();
   };
 
@@ -425,9 +424,9 @@ export default function Home() {
           <div className="desktop-only">
             <div className="inv-stats">
               <div className="stat-card"><div className="stat-label">Σύνολο</div><div className="stat-val">{inventory.length}</div><div className="stat-sub">μηχανήματα</div></div>
-              <div className="stat-card"><div className="stat-label">Σε επισκευή</div><div className="stat-val">{inventory.filter(i=>normalizeAction(i.action)==='Εισαγωγή για επισκευή').length}</div><div className="stat-sub">ενεργές</div></div>
-              <div className="stat-card"><div className="stat-label">Αποθήκη</div><div className="stat-val">{warehouseItems.length}</div><div className="stat-sub">διαθέσιμα</div></div>
-              <div className="stat-card"><div className="stat-label">Σε κατάστημα</div><div className="stat-val">{inventory.filter(i=>normalizeAction(i.action)==='Αποστολή σε κατάστημα').length}</div><div className="stat-sub">τοποθετημένα</div></div>
+              <div className="stat-card"><div className="stat-label">Σε επισκευή</div><div className="stat-val">{inventory.filter(i=>i.action==='Σε επισκευή').length}</div><div className="stat-sub">ενεργές</div></div>
+              <div className="stat-card"><div className="stat-label">Αποθήκη</div><div className="stat-val">{inventory.filter(i=>i.action==='Εισαγωγή στην αποθήκη').length}</div><div className="stat-sub">διαθέσιμα</div></div>
+              <div className="stat-card"><div className="stat-label">Σε κατάστημα</div><div className="stat-val">{inventory.filter(i=>i.action==='Αποστολή σε κατάστημα').length}</div><div className="stat-sub">τοποθετημένα</div></div>
             </div>
             <div className="filter-row">
               {FILTERS.map(f => <button key={f} className={`filter-pill ${filterAction===f?'active':''}`} onClick={()=>setFilterAction(f)}>{f}</button>)}
@@ -445,11 +444,11 @@ export default function Home() {
                 {filtered.map((item, i) => (
                   <div key={i} className="dt-row" onClick={()=>{setTab('history');loadHistory(item.serialNumber);}}>
                     <div className="dt-td">
-                      <span className="dt-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
+                      <span className="dt-dot" style={{background:STATUS_COLOR[item.action]||'#888'}} />
                       <div><div className="dt-model">{item.model || '—'}</div><div className="dt-serial">{item.serialNumber}</div></div>
                     </div>
                     <div className="dt-td dt-muted">{item.store || '—'}</div>
-                    <div className="dt-td"><span className={`status-pill ${STATUS_PILL[normalizeAction(item.action)]?.cls||'pill-gray'}`}>{STATUS_PILL[normalizeAction(item.action)]?.label||normalizeAction(item.action)}</span></div>
+                    <div className="dt-td"><span className={`status-pill ${STATUS_PILL[item.action]?.cls||'pill-gray'}`}>{STATUS_PILL[item.action]?.label||item.action}</span></div>
                     <div className="dt-td dt-muted">{item.date}</div>
                     <div className="dt-td dt-muted">{item.user || '—'}</div>
                   </div>
@@ -467,11 +466,11 @@ export default function Home() {
             {!loadingInv && filtered.length === 0 && <div className="empty">Δεν βρέθηκαν εγγραφές.<br/>Κάνε ένα scan πρώτα!</div>}
             {filtered.map((item, i) => (
               <div key={i} className="machine-row" onClick={()=>{setTab('history');loadHistory(item.serialNumber);}}>
-                <div className="machine-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
+                <div className="machine-dot" style={{background:STATUS_COLOR[item.action]||'#888'}} />
                 <div className="machine-info">
                   <div className="machine-name-row">
                     <div className="machine-name">{item.model || 'Άγνωστο model'}</div>
-                    <span className={`status-pill ${STATUS_PILL[normalizeAction(item.action)]?.cls||'pill-gray'}`}>{STATUS_PILL[normalizeAction(item.action)]?.label||normalizeAction(item.action)}</span>
+                    <span className={`status-pill ${STATUS_PILL[item.action]?.cls||'pill-gray'}`}>{STATUS_PILL[item.action]?.label||item.action}</span>
                   </div>
                   <div className="machine-serial">{item.serialNumber}</div>
                   <div className="machine-bottom">
@@ -480,61 +479,6 @@ export default function Home() {
                   </div>
                   {item.problem && <div className="machine-problem">🔧 {item.problem}</div>}
                   {item.user && <div className="machine-user">👤 {item.user}</div>}
-                </div>
-              </div>
-            ))}
-          </div>
-          <button className="btn-ghost" style={{marginTop:'12px'}} onClick={loadInventory}>🔄 Ανανέωση</button>
-        </div>
-      )}
-
-      {tab === 'warehouse' && (
-        <div className="fade-in">
-          <div className="inv-stats">
-            <div className="stat-card"><div className="stat-label">Διαθέσιμα</div><div className="stat-val">{warehouseItems.length}</div><div className="stat-sub">έτοιμα για αποστολή</div></div>
-            <div className="stat-card"><div className="stat-label">Σύνολο</div><div className="stat-val">{inventory.length}</div><div className="stat-sub">μηχανήματα</div></div>
-            <div className="stat-card"><div className="stat-label">Σε επισκευή</div><div className="stat-val">{inventory.filter(i=>normalizeAction(i.action)==='Εισαγωγή για επισκευή').length}</div><div className="stat-sub">εκτός αποθήκης</div></div>
-            <div className="stat-card"><div className="stat-label">Αποστολές</div><div className="stat-val">{inventory.filter(i=>['Αποστολή σε κατάστημα','Αποστολή στα κεντρικά'].includes(normalizeAction(i.action))).length}</div><div className="stat-sub">έχουν φύγει</div></div>
-          </div>
-          {loadingInv && <div className="loading">⏳ Φόρτωση...</div>}
-          {!loadingInv && warehouseItems.length === 0 && <div className="empty">Δεν υπάρχουν διαθέσιμα μηχανήματα στην αποθήκη.</div>}
-          {!loadingInv && warehouseItems.length > 0 && (
-            <div className="dt-table desktop-only">
-              <div className="dt-head">
-                <div className="dt-th">Model / Serial</div>
-                <div className="dt-th">Τελευταίο κατάστημα</div>
-                <div className="dt-th">Κατάσταση</div>
-                <div className="dt-th">Ημερομηνία</div>
-                <div className="dt-th">Χρήστης</div>
-              </div>
-              {warehouseItems.map((item, i) => (
-                <div key={i} className="dt-row" onClick={()=>{setTab('history');loadHistory(item.serialNumber);}}>
-                  <div className="dt-td">
-                    <span className="dt-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
-                    <div><div className="dt-model">{item.model || '—'}</div><div className="dt-serial">{item.serialNumber}</div></div>
-                  </div>
-                  <div className="dt-td dt-muted">{item.store || '—'}</div>
-                  <div className="dt-td"><span className={`status-pill ${STATUS_PILL[normalizeAction(item.action)]?.cls||'pill-gray'}`}>{STATUS_PILL[normalizeAction(item.action)]?.label||normalizeAction(item.action)}</span></div>
-                  <div className="dt-td dt-muted">{item.date}</div>
-                  <div className="dt-td dt-muted">{item.user || '—'}</div>
-                </div>
-              ))}
-            </div>
-          )}
-          <div className="mobile-only">
-            {warehouseItems.map((item, i) => (
-              <div key={i} className="machine-row" onClick={()=>{setTab('history');loadHistory(item.serialNumber);}}>
-                <div className="machine-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
-                <div className="machine-info">
-                  <div className="machine-name-row">
-                    <div className="machine-name">{item.model || 'Άγνωστο model'}</div>
-                    <span className={`status-pill ${STATUS_PILL[normalizeAction(item.action)]?.cls||'pill-gray'}`}>{STATUS_PILL[normalizeAction(item.action)]?.label||normalizeAction(item.action)}</span>
-                  </div>
-                  <div className="machine-serial">{item.serialNumber}</div>
-                  <div className="machine-bottom">
-                    <span className="machine-store">🏪 {item.store || '—'}</span>
-                    <span className="machine-date">📅 {item.date}</span>
-                  </div>
                 </div>
               </div>
             ))}
@@ -581,13 +525,13 @@ export default function Home() {
           {history && history.map((item, i) => (
             <div key={i} className="history-item">
               <div className="h-dot-wrap">
-                <div className="h-dot" style={{borderColor:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
+                <div className="h-dot" style={{borderColor:STATUS_COLOR[item.action]||'#888'}} />
                 {i < history.length-1 && <div className="h-line" />}
               </div>
               <div className="h-card">
                 <div className="h-action-row">
-                  <div className="h-action">{normalizeAction(item.action)}</div>
-                  <span className={`status-pill ${STATUS_PILL[normalizeAction(item.action)]?.cls||'pill-gray'}`}>{STATUS_PILL[normalizeAction(item.action)]?.label||normalizeAction(item.action)}</span>
+                  <div className="h-action">{item.action}</div>
+                  <span className={`status-pill ${STATUS_PILL[item.action]?.cls||'pill-gray'}`}>{STATUS_PILL[item.action]?.label||item.action}</span>
                 </div>
                 <div className="h-meta">🏪 {item.store} · 📅 {item.date}{item.user ? ` · 👤 ${item.user}` : ''}</div>
                 {item.problem && <div className="h-notes">🔧 {item.problem}</div>}
@@ -644,7 +588,7 @@ export default function Home() {
           </div>
           <nav className="sb-nav">
             <div className="sb-section">Κύριο μενού</div>
-            {NAV_ITEMS.filter(n => n.id !== 'settings').map(n => (
+            {NAV_ITEMS.slice(0,3).map(n => (
               <button key={n.id} className={`sb-item ${tab===n.id?'active':''}`} onClick={()=>handleTabClick(n.id)}>
                 <span className="sb-icon">{n.icon}</span>{n.label}
               </button>
@@ -665,13 +609,13 @@ export default function Home() {
         <div className="desktop-main">
           <div className="desktop-header">
             <div className="desktop-title">
-              {tab==='scan'?'Scan':tab==='inventory'?'Απόθεμα':tab==='warehouse'?'Αποθήκη':tab==='history'?'Ιστορικό':'Ρυθμίσεις'}
+              {tab==='scan'?'Scan':tab==='inventory'?'Απόθεμα':tab==='history'?'Ιστορικό':'Ρυθμίσεις'}
             </div>
-            {(tab==='inventory' || tab==='warehouse') && (
+            {tab==='inventory' && (
               <div className="desktop-header-actions">
-                {tab==='inventory' && ['Όλα','Επισκευή'].map(f => (
-                  <button key={f} className={`filter-pill ${filterAction===(f==='Επισκευή'?'Εισαγωγή για επισκευή':f)?'active':''}`}
-                    onClick={()=>setFilterAction(f==='Επισκευή'?'Εισαγωγή για επισκευή':'Όλα')}>
+                {['Όλα','Επισκευή'].map(f => (
+                  <button key={f} className={`filter-pill ${filterAction===(f==='Επισκευή'?'Σε επισκευή':f)?'active':''}`}
+                    onClick={()=>setFilterAction(f==='Επισκευή'?'Σε επισκευή':'Όλα')}>
                     {f}
                   </button>
                 ))}
@@ -744,8 +688,8 @@ export default function Home() {
         .sb-logout:hover { color: #ef4444; }
 
         /* ─── DESKTOP MAIN ─── */
-        .desktop-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #d2d4ce; }
-        .desktop-header { padding: 14px 24px 12px; background: #e4e5df; border-bottom: 1px solid #c7c9c0; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .desktop-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #f7f7f5; }
+        .desktop-header { padding: 14px 24px 12px; background: #fff; border-bottom: 1px solid #ebebea; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .desktop-title { font-size: 15px; font-weight: 600; color: #1a1a18; flex-shrink: 0; }
         .desktop-header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .btn-new { padding: 6px 14px; background: #fff; color: #1a1a18; border: 1px solid #d1d5db; border-radius: 7px; font-size: 12px; font-family: 'DM Sans', sans-serif; cursor: pointer; font-weight: 500; transition: all 0.1s; }
@@ -779,27 +723,26 @@ export default function Home() {
         .pill-purple { background: #fff; color: #1a1a18; border: 1px solid #d1d5db; }
 
         /* ─── MOBILE HEADER ─── */
-        .mob-header { background: #e4e5df; border-bottom: 1px solid #c7c9c0; position: sticky; top: 0; z-index: 10; }
+        .mob-header { background: #1a1a18; border-bottom: none; position: sticky; top: 0; z-index: 10; }
         .mob-header-top { padding: 12px 16px 10px; display: flex; align-items: center; justify-content: space-between; }
-        .logo { font-size: 15px; font-weight: 600; color: #1a1a18; letter-spacing: -0.2px; }
-        .logo span { color: #9ca3af; font-weight: 400; }
+        .logo { font-size: 15px; font-weight: 600; color: #fff; letter-spacing: -0.2px; }
+        .logo span { color: #6b6b68; font-weight: 400; }
         .user-area { display: flex; align-items: center; gap: 8px; }
-        .user-name { font-size: 12px; color: #6b7280; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .btn-logout { background: none; border: 1px solid #ebebea; border-radius: 7px; padding: 4px 10px; font-size: 12px; cursor: pointer; color: #9ca3af; transition: all 0.1s; font-family: 'DM Sans', sans-serif; }
+        .user-name { font-size: 12px; color: #8a8a86; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .btn-logout { background: none; border: 1px solid #2d2d2b; border-radius: 7px; padding: 4px 10px; font-size: 12px; cursor: pointer; color: #8a8a86; transition: all 0.1s; font-family: 'DM Sans', sans-serif; }
         .btn-logout:hover { border-color: #ef4444; color: #ef4444; }
         .mob-nav { display: flex; padding: 0 12px 10px; gap: 2px; }
-        .mob-nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 4px; border-radius: 8px; border: none; background: transparent; font-size: 11px; font-family: 'DM Sans', sans-serif; cursor: pointer; color: #9ca3af; transition: all 0.1s; }
-        .mob-nav-btn span:first-child { font-size: 15px; opacity: 0.5; }
-        .mob-nav-btn.active { color: #1a1a18; background: #f7f7f5; }
-        .mob-nav-btn.active span:first-child { opacity: 1; }
-        .mob-main { flex: 1; padding: 14px 16px; background: #d2d4ce; }
+        .mob-nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 4px; border-radius: 8px; border: none; background: transparent; font-size: 11px; font-family: 'DM Sans', sans-serif; cursor: pointer; color: #6b6b68; transition: all 0.1s; }
+        .mob-nav-btn span:first-child { font-size: 15px; }
+        .mob-nav-btn.active { color: #fff; background: #2d2d2b; }
+        .mob-main { flex: 1; padding: 14px 16px; background: #f7f7f5; }
 
         /* ─── SHARED COMPONENTS ─── */
-        .card { background: #f7f7f4; border: 1px solid #c4c6bd; border-radius: 12px; padding: 16px; margin-bottom: 10px; box-shadow: 0 12px 28px rgba(26, 26, 24, 0.08); }
+        .card { background: #fff; border: 1px solid #ebebea; border-radius: 12px; padding: 16px; margin-bottom: 10px; }
         .card-title { font-size: 14px; font-weight: 600; margin-bottom: 3px; }
         .card-sub { font-size: 12px; color: #6b7280; margin-bottom: 14px; }
-        .upload-area { border: 1.5px dashed #b8bab2; border-radius: 10px; padding: 32px 20px; text-align: center; cursor: pointer; transition: all 0.12s; background: #fbfbf9; }
-        .upload-area:hover { border-color: #85887e; background: #f1f2ee; }
+        .upload-area { border: 1.5px dashed #d1d5db; border-radius: 10px; padding: 32px 20px; text-align: center; cursor: pointer; transition: all 0.12s; background: #fafaf9; }
+        .upload-area:hover { border-color: #9ca3af; background: #f7f7f5; }
         .upload-icon { font-size: 26px; margin-bottom: 8px; }
         .upload-title { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
         .upload-sub { font-size: 12px; color: #9ca3af; }
@@ -886,11 +829,6 @@ export default function Home() {
         .divider-or::before { left: 0; } .divider-or::after { right: 0; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
         .fade-in { animation: fadeIn 0.18s ease; }
-        @media (max-width: 767px) {
-          .inv-stats { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 7px; }
-          .stat-card { padding: 12px; }
-          .stat-val { font-size: 24px; }
-        }
       `}</style>
     </>
   );
