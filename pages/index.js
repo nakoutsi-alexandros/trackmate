@@ -104,6 +104,7 @@ export default function Home() {
   const [historySerial, setHistorySerial] = useState('');
   const [historyStore, setHistoryStore] = useState('');
   const [filterAction, setFilterAction] = useState('Όλα');
+  const [sortOrder, setSortOrder] = useState('desc');
   const [filterPeriod, setFilterPeriod] = useState('all'); // all | today | 7 | 30 | custom
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
@@ -391,8 +392,36 @@ export default function Home() {
     });
   };
 
-  const filtered = applyDateFilter(filterAction === 'Όλα' ? inventory : inventory.filter(i => normalizeAction(i.action) === filterAction));
-  const warehouseItems = inventory.filter(i => ['Καινούριο Μηχάνημα', 'Εισαγωγή για επισκευή'].includes(normalizeAction(i.action)));
+  const parseGreekTimestamp = (ts) => {
+    if (!ts) return 0;
+    try {
+      const [datePart, timePart] = ts.split(', ');
+      const [day, month, year] = datePart.split('/').map(Number);
+      const parts = timePart.split(' ');
+      const meridiem = parts[1] || '';
+      let [hours, minutes, seconds] = parts[0].split(':').map(Number);
+      if (meridiem.includes('μ.μ') && hours !== 12) hours += 12;
+      if (meridiem.includes('π.μ') && hours === 12) hours = 0;
+      return new Date(year, month - 1, day, hours, minutes, seconds || 0).getTime();
+    } catch { return 0; }
+  };
+
+  const sortItems = (items) => [...items].sort((a, b) => {
+    const ta = parseGreekTimestamp(a.timestamp) || 0;
+    const tb = parseGreekTimestamp(b.timestamp) || 0;
+    if (ta === 0 && tb === 0) return 0;
+    return sortOrder === 'desc' ? tb - ta : ta - tb;
+  });
+
+  const filtered = sortItems(applyDateFilter(filterAction === 'Όλα' ? inventory : inventory.filter(i => normalizeAction(i.action) === filterAction)));
+  const warehouseItems = sortItems(inventory.filter(i => ['Καινούριο Μηχάνημα', 'Εισαγωγή για επισκευή'].includes(normalizeAction(i.action))));
+
+  // Εμφάνιση store: αν είναι κενό και η κίνηση είναι Καινούριο Μηχάνημα → "Αποθήκη"
+  const displayStore = (item) => {
+    if (item.store && item.store.trim()) return item.store;
+    if (normalizeAction(item.action) === 'Καινούριο Μηχάνημα') return 'Αποθήκη';
+    return '—';
+  };
 
   // Υπολογισμός ημερών από την τελευταία καταχώρηση
   const getDaysInRepair = (item) => {
@@ -569,6 +598,7 @@ export default function Home() {
           <div className="desktop-only">
             <div className="filter-row">
               {FILTERS.map(f => <button key={f} className={`filter-pill ${filterAction===f?'active':''}`} onClick={()=>setFilterAction(f)}>{f}</button>)}
+              <button className="sort-btn" onClick={()=>setSortOrder(s=>s==='desc'?'asc':'desc')}>{sortOrder==='desc'?'↓ Νεότερα':'↑ Παλαιότερα'}</button>
             </div>
             <div className="period-row">
               {[{id:'all',label:'Όλα'},{id:'today',label:'Σήμερα'},{id:'7',label:'7 μέρες'},{id:'30',label:'30 μέρες'},{id:'custom',label:'Εύρος'}].map(p => (
@@ -599,7 +629,7 @@ export default function Home() {
                       <span className="dt-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
                       <div><div className="dt-model">{item.model || '—'}</div><div className="dt-serial">{item.serialNumber}</div></div>
                     </div>
-                    <div className="dt-td dt-muted">{item.store || '—'}</div>
+                    <div className="dt-td dt-muted">{displayStore(item)}</div>
                     <div className="dt-td"><span className={`status-pill ${STATUS_PILL[normalizeAction(item.action)]?.cls||'pill-gray'}`}>{STATUS_PILL[normalizeAction(item.action)]?.label||normalizeAction(item.action)}</span></div>
                     <div className="dt-td dt-muted">{item.date}</div>
                     <div className="dt-td dt-muted">{item.user || '—'}</div>
@@ -613,6 +643,7 @@ export default function Home() {
           <div className="mobile-only">
             <div className="filter-row">
               {FILTERS.map(f => <button key={f} className={`filter-pill ${filterAction===f?'active':''}`} onClick={()=>setFilterAction(f)}>{f}</button>)}
+              <button className="sort-btn" onClick={()=>setSortOrder(s=>s==='desc'?'asc':'desc')}>{sortOrder==='desc'?'↓ Νεότερα':'↑ Παλαιότερα'}</button>
             </div>
             <div className="period-row">
               {[{id:'all',label:'Όλα'},{id:'today',label:'Σήμερα'},{id:'7',label:'7 μέρες'},{id:'30',label:'30 μέρες'},{id:'custom',label:'Εύρος'}].map(p => (
@@ -639,7 +670,7 @@ export default function Home() {
                   </div>
                   <div className="machine-serial">{item.serialNumber}</div>
                   <div className="machine-bottom">
-                    <span className="machine-store">🏪 {item.store || '—'}</span>
+                    <span className="machine-store">🏪 {displayStore(item)}</span>
                     <span className="machine-date">📅 {item.date}</span>
                   </div>
                   {item.problem && <div className="machine-problem">🔧 {item.problem}</div>}
@@ -685,7 +716,7 @@ export default function Home() {
                         </div>
                         {badge && <span className={`repair-badge repair-badge-${badge.type}`}>{badge.type==='danger'?'🔴':'🟡'} {badge.label}</span>}
                       </div>
-                      <div className="dt-td dt-muted">{item.store || '—'}</div>
+                      <div className="dt-td dt-muted">{displayStore(item)}</div>
                       <div className="dt-td"><span className={`status-pill ${STATUS_PILL[normalizeAction(item.action)]?.cls||'pill-gray'}`}>{STATUS_PILL[normalizeAction(item.action)]?.label||normalizeAction(item.action)}</span></div>
                       <div className="dt-td dt-muted">{item.date}</div>
                       <div className="dt-td dt-muted" style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
@@ -730,7 +761,7 @@ export default function Home() {
                     </div>
                     <div className="machine-serial">{item.serialNumber}</div>
                     <div className="machine-bottom">
-                      <span className="machine-store">🏪 {item.store || '—'}</span>
+                      <span className="machine-store">🏪 {displayStore(item)}</span>
                       <span className="machine-date">📅 {item.date}</span>
                     </div>
                     {badge && <div className={`repair-badge repair-badge-${badge.type}`}>{badge.type==='danger'?'🔴':'🟡'} Σε επισκευή {badge.label}</div>}
@@ -1295,6 +1326,10 @@ export default function Home() {
         .period-pill { padding: 4px 10px; border-radius: 6px; border: 1px solid #ebebea; background: #fff; font-size: 11px; cursor: pointer; color: #6b7280; font-family: 'DM Sans', sans-serif; transition: all 0.1s; }
         .period-pill:hover { border-color: #9ca3af; color: #1a1a18; }
         .period-pill.active { background: #1a1a18; color: #fff; border-color: #1a1a18; }
+        .sort-btn { padding: 4px 10px; border-radius: 6px; border: 1px solid #ebebea; background: #fff; font-size: 11px; cursor: pointer; color: #6b7280; font-family: 'DM Sans', sans-serif; transition: all 0.1s; white-space: nowrap; }
+        .sort-btn:hover { border-color: #1a1a18; color: #1a1a18; }
+        .dark .sort-btn { background: #1c1c1a; border-color: #2e2e2c; color: #888884; }
+        .dark .sort-btn:hover { border-color: #888884; color: #d8d8d4; }
         .custom-date-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
         .custom-date-row .field-label { margin: 0; white-space: nowrap; }
         .dt-note-row { padding: 5px 14px 8px; background: #fafaf9; border-bottom: 1px solid #f0f0ee; }
