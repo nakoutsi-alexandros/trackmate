@@ -666,6 +666,7 @@ export default function Home() {
                   <div className="h-machine">
                     <span className="h-machine-model">{item.model || '—'}</span>
                     <span className="h-machine-serial">{item.serialNumber}</span>
+                    <button className="btn-quick-action" style={{marginLeft:'auto'}} onClick={e=>{e.stopPropagation();startNewAction(item.serialNumber,item.model);}}>+ Νέα κίνηση</button>
                   </div>
                 )}
                 <div className="h-meta">🏪 {item.store} · 📅 {item.date}{item.user ? ` · 👤 ${item.user}` : ''}</div>
