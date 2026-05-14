@@ -256,6 +256,15 @@ export default function Home() {
     setProblem(''); setNotes('');
   };
 
+  // Quick action: πάει στη φόρμα με serial+model προσυμπληρωμένα
+  const startNewAction = (serial, mdl) => {
+    handleReset();
+    setSerialNumber(serial || '');
+    setModel(mdl || '');
+    setStep(2);
+    setTab('scan');
+  };
+
   const loadInventory = async () => {
     setLoadingInv(true);
     try {
@@ -554,7 +563,10 @@ export default function Home() {
                     <div className="dt-td dt-muted">{item.store || '—'}</div>
                     <div className="dt-td"><span className={`status-pill ${STATUS_PILL[normalizeAction(item.action)]?.cls||'pill-gray'}`}>{STATUS_PILL[normalizeAction(item.action)]?.label||normalizeAction(item.action)}</span></div>
                     <div className="dt-td dt-muted">{item.date}</div>
-                    <div className="dt-td dt-muted">{item.user || '—'}</div>
+                    <div className="dt-td dt-muted" style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                      <span>{item.user || '—'}</span>
+                      <button className="btn-quick-action" onClick={e=>{e.stopPropagation();startNewAction(item.serialNumber,item.model);}}>+ Νέα</button>
+                    </div>
                   </div>
                 );
               })}
@@ -577,6 +589,7 @@ export default function Home() {
                       <span className="machine-date">📅 {item.date}</span>
                     </div>
                     {badge && <div className={`repair-badge repair-badge-${badge.type}`}>{badge.type==='danger'?'🔴':'🟡'} Σε επισκευή {badge.label}</div>}
+                    <button className="btn-quick-action" style={{marginTop:'8px'}} onClick={e=>{e.stopPropagation();startNewAction(item.serialNumber,item.model);}}>+ Νέα κίνηση</button>
                   </div>
                 </div>
               );
@@ -621,6 +634,17 @@ export default function Home() {
           </div>
           {history === null && <div className="empty">Γράψε serial number για να δεις το ιστορικό.</div>}
           {history && history.length === 0 && <div className="empty">Δεν βρέθηκε ιστορικό.</div>}
+          {history && history.length > 0 && (
+            <div className="quick-action-bar">
+              <div className="quick-action-info">
+                <span className="quick-serial">{history[0]?.serialNumber}</span>
+                <span className="quick-model">{history[0]?.model}</span>
+              </div>
+              <button className="btn-quick-action" onClick={()=>startNewAction(history[0]?.serialNumber, history[0]?.model)}>
+                + Νέα κίνηση
+              </button>
+            </div>
+          )}
           {history && history.map((item, i) => (
             <div key={i} className="history-item">
               <div className="h-dot-wrap">
@@ -929,6 +953,12 @@ export default function Home() {
         .divider-or { text-align: center; color: #c4c4c2; font-size: 11px; margin: 8px 0; position: relative; }
         .divider-or::before, .divider-or::after { content: ''; position: absolute; top: 50%; width: 44%; height: 1px; background: #ebebea; }
         .divider-or::before { left: 0; } .divider-or::after { right: 0; }
+        .quick-action-bar { display: flex; align-items: center; justify-content: space-between; background: #fff; border: 1px solid #ebebea; border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; }
+        .quick-action-info { display: flex; flex-direction: column; gap: 2px; }
+        .quick-serial { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; color: #1a1a18; }
+        .quick-model { font-size: 11px; color: #9ca3af; }
+        .btn-quick-action { padding: 5px 12px; background: #1a1a18; color: #fff; border: none; border-radius: 7px; font-size: 11px; font-family: 'DM Sans', sans-serif; cursor: pointer; font-weight: 500; transition: opacity 0.1s; white-space: nowrap; flex-shrink: 0; }
+        .btn-quick-action:hover { opacity: 0.8; }
         .repair-badge { font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 5px; white-space: nowrap; margin-left: 6px; }
         .repair-badge-warning { background: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
         .repair-badge-danger  { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
