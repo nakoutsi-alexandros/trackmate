@@ -117,6 +117,10 @@ export default function Home() {
   const [editingNote, setEditingNote] = useState(null);
   const [noteInput, setNoteInput] = useState('');
   const [savingNote, setSavingNote] = useState(false);
+  const [editingStore, setEditingStore] = useState(null); // serial που επεξεργάζεται κατάστημα
+  const [editStoreSearch, setEditStoreSearch] = useState('');
+  const [editStoreChain, setEditStoreChain] = useState('all');
+  const [savingStore, setSavingStore] = useState(false);
   const fileRef = useRef();
   const cameraRef = useRef();
 
@@ -306,6 +310,41 @@ export default function Home() {
     setExistingItem(null);
   };
 
+  const handleUpdateStore = async (serialNumber, newStore) => {
+    setSavingStore(true);
+    try {
+      const res = await fetch('/api/warehouse', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serialNumber, newStore }),
+      });
+      if (!res.ok) throw new Error();
+      setEditingStore(null);
+      setEditStoreSearch('');
+      setEditStoreChain('all');
+      loadInventory();
+    } catch (e) {
+      alert('Σφάλμα ενημέρωσης καταστήματος.');
+    } finally {
+      setSavingStore(false);
+    }
+  };
+
+  const handleDeleteItem = async (item) => {
+    if (!confirm(`Διαγραφή "${item.model || item.serialNumber}" από την αποθήκη;\n\nΤο ιστορικό θα παραμείνει.`)) return;
+    try {
+      const res = await fetch('/api/warehouse', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serialNumber: item.serialNumber, model: item.model, store: item.store }),
+      });
+      if (!res.ok) throw new Error();
+      loadInventory();
+    } catch (e) {
+      alert('Σφάλμα διαγραφής.');
+    }
+  };
+
   // Quick mark as repaired - άμεση καταχώρηση χωρίς φόρμα
   const handleMarkRepaired = async (item) => {
     if (!confirm(`Το "${item.model || item.serialNumber}" επισκευάστηκε;`)) return;
@@ -462,6 +501,7 @@ export default function Home() {
     'Εισαγωγή για επισκευή':   { label: 'Επισκευή',         cls: 'pill-amber'  },
     'Αποστολή σε κατάστημα':   { label: 'Κατάστημα',        cls: 'pill-green'  },
     'Αποστολή στα κεντρικά':   { label: 'Κεντρικά',         cls: 'pill-purple' },
+    'Διαγράφηκε':              { label: 'Διαγράφηκε',       cls: 'pill-gray'   },
   };
 
   const FILTERS = ['Όλα','Καινούριο Μηχάνημα','Εισαγωγή για επισκευή','Αποστολή σε κατάστημα','Αποστολή στα κεντρικά'];
@@ -743,7 +783,43 @@ export default function Home() {
                         </div>
                         {badge && <span className={`repair-badge repair-badge-${badge.type}`}>{badge.type==='danger'?'🔴':'🟡'} {badge.label}</span>}
                       </div>
-                      <div className="dt-td dt-muted">{displayStore(item)}</div>
+                      <div className="dt-td" onClick={e=>e.stopPropagation()}>
+                        {editingStore === item.serialNumber ? (
+                          <div className="store-edit-picker">
+                            <input className="text-input" style={{fontSize:'11px',padding:'4px 8px'}}
+                              placeholder="🔍 Αναζήτηση..." value={editStoreSearch}
+                              onChange={e=>{setEditStoreSearch(e.target.value);setEditStoreChain('all');}} autoFocus />
+                            <div className="chain-tabs" style={{padding:'4px 0'}}>
+                              {STORE_CHAINS.map(c=>(
+                                <button key={c.id} className={`chain-tab ${editStoreChain===c.id?'active':''}`}
+                                  onClick={()=>{setEditStoreChain(c.id);setEditStoreSearch('');}}>
+                                  {c.label}
+                                </button>
+                              ))}
+                            </div>
+                            <div className="store-list" style={{maxHeight:'140px'}}>
+                              {storesList.filter(s=>{
+                                const mc = editStoreChain==='all'?true:editStoreChain==='other'?!['ΚΩΤΣΟΒΟΛΟΣ','MINI KIOSK','ΚΤΕΛ','THE BEAUTY BAR','ΡΟΥΠΑΣ'].some(c=>s.startsWith(c)):s.startsWith(editStoreChain);
+                                return mc&&(editStoreSearch===''||s.toLowerCase().includes(editStoreSearch.toLowerCase()));
+                              }).map(s=>(
+                                <div key={s} className="store-item"
+                                  onClick={()=>handleUpdateStore(item.serialNumber, s)}>
+                                  {s}
+                                </div>
+                              ))}
+                            </div>
+                            <button className="btn-note-cancel" style={{marginTop:'4px',width:'100%'}}
+                              onClick={()=>{setEditingStore(null);setEditStoreSearch('');setEditStoreChain('all');}}>
+                              Άκυρο
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="store-edit-display dt-muted" onClick={()=>setEditingStore(item.serialNumber)}
+                            title="Κλικ για αλλαγή καταστήματος">
+                            {displayStore(item)} ✏️
+                          </span>
+                        )}
+                      </div>
                       <div className="dt-td"><span className={`status-pill ${STATUS_PILL[normalizeAction(item.action)]?.cls||'pill-gray'}`}>{STATUS_PILL[normalizeAction(item.action)]?.label||normalizeAction(item.action)}</span></div>
                       <div className="dt-td dt-muted">{item.date}</div>
                       <div className="dt-td dt-muted" style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
@@ -753,6 +829,7 @@ export default function Home() {
                             <button className="btn-repaired" onClick={e=>{e.stopPropagation();handleMarkRepaired(item);}}>✓ Επισκευάστηκε</button>
                           )}
                           <button className="btn-quick-action" onClick={e=>{e.stopPropagation();startNewAction(item.serialNumber,item.model);}}>+ Νέα</button>
+                          <button className="btn-delete" onClick={e=>{e.stopPropagation();handleDeleteItem(item);}}>🗑</button>
                         </div>
                       </div>
                     </div>
@@ -787,8 +864,26 @@ export default function Home() {
                       <span className={`status-pill ${STATUS_PILL[normalizeAction(item.action)]?.cls||'pill-gray'}`}>{STATUS_PILL[normalizeAction(item.action)]?.label||normalizeAction(item.action)}</span>
                     </div>
                     <div className="machine-serial">{item.serialNumber}</div>
-                    <div className="machine-bottom">
-                      <span className="machine-store">🏪 {displayStore(item)}</span>
+                    <div className="machine-bottom" onClick={e=>e.stopPropagation()}>
+                      {editingStore === item.serialNumber ? (
+                        <div style={{width:'100%'}}>
+                          <input className="text-input" style={{fontSize:'11px',padding:'4px 8px',marginBottom:'4px'}}
+                            placeholder="🔍 Αναζήτηση καταστήματος..." value={editStoreSearch}
+                            onChange={e=>setEditStoreSearch(e.target.value)} autoFocus />
+                          <div className="store-list" style={{maxHeight:'120px'}}>
+                            {storesList.filter(s=>editStoreSearch===''||s.toLowerCase().includes(editStoreSearch.toLowerCase())).map(s=>(
+                              <div key={s} className="store-item" onClick={()=>handleUpdateStore(item.serialNumber, s)}>{s}</div>
+                            ))}
+                          </div>
+                          <button className="btn-note-cancel" style={{marginTop:'4px',width:'100%'}}
+                            onClick={()=>{setEditingStore(null);setEditStoreSearch('');}}>Άκυρο</button>
+                        </div>
+                      ) : (
+                        <span className="machine-store" onClick={()=>setEditingStore(item.serialNumber)}
+                          style={{cursor:'pointer'}}>
+                          🏪 {displayStore(item)} ✏️
+                        </span>
+                      )}
                       <span className="machine-date">📅 {item.date}</span>
                     </div>
                     {badge && <div className={`repair-badge repair-badge-${badge.type}`}>{badge.type==='danger'?'🔴':'🟡'} Σε επισκευή {badge.label}</div>}
@@ -813,6 +908,7 @@ export default function Home() {
                         <button className="btn-repaired" onClick={e=>{e.stopPropagation();handleMarkRepaired(item);}}>✓ Επισκευάστηκε</button>
                       )}
                       <button className="btn-quick-action" onClick={e=>{e.stopPropagation();startNewAction(item.serialNumber,item.model);}}>+ Νέα κίνηση</button>
+                      <button className="btn-delete" onClick={e=>{e.stopPropagation();handleDeleteItem(item);}}>🗑</button>
                     </div>
                   </div>
                 </div>
@@ -1377,6 +1473,15 @@ export default function Home() {
         .dark .existing-item-title { color: #fbbf24; }
         .dark .existing-item-info { color: #d8d8d4; }
         .dark .existing-item-note { color: #fbbf24; }
+        .btn-delete { padding: 5px 8px; background: transparent; color: #9ca3af; border: 1px solid #ebebea; border-radius: 7px; font-size: 12px; cursor: pointer; transition: all 0.1s; flex-shrink: 0; }
+        .btn-delete:hover { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+        .dark .btn-delete { border-color: #2e2e2c; color: #555552; }
+        .dark .btn-delete:hover { background: #2e1515; color: #f87171; border-color: #5a2a2a; }
+        .store-edit-picker { min-width: 220px; background: #fff; border: 1px solid #ebebea; border-radius: 10px; padding: 8px; }
+        .dark .store-edit-picker { background: #1c1c1a; border-color: #2e2e2c; }
+        .store-edit-display { cursor: pointer; color: #6b7280; font-size: 12px; }
+        .store-edit-display:hover { color: #1a1a18; }
+        .dark .store-edit-display:hover { color: #f5f5f3; }
         .repair-badge { font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 5px; white-space: nowrap; margin-left: 6px; }
         .repair-badge-warning { background: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
         .repair-badge-danger  { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
