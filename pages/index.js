@@ -88,6 +88,7 @@ export default function Home() {
   const [serialNumber, setSerialNumber] = useState('');
   const [model, setModel] = useState('');
   const [action, setAction] = useState('');
+  const [existingItem, setExistingItem] = useState(null); // υπάρχον μηχάνημα με ίδιο serial
   const [actionCat, setActionCat] = useState(null);
   const [store, setStore] = useState('');
   const [storeSearch, setStoreSearch] = useState('');
@@ -302,6 +303,7 @@ export default function Home() {
     setStore(''); setStoreSearch(''); setStoreChain('all'); setShowStorePicker(false);
     setDate(new Date().toISOString().split('T')[0]);
     setProblem(''); setNotes('');
+    setExistingItem(null);
   };
 
   // Quick mark as repaired - άμεση καταχώρηση χωρίς φόρμα
@@ -514,8 +516,33 @@ export default function Home() {
               <div className="section-label">Στοιχεία μηχανήματος</div>
               <div className="field-group">
                 <label className="field-label">Serial Number *</label>
-                <input className="text-input" value={serialNumber} onChange={e=>setSerialNumber(e.target.value)} placeholder="π.χ. A4829301" />
+                <input className="text-input" value={serialNumber}
+                  onChange={e=>{ setSerialNumber(e.target.value); setExistingItem(null); }}
+                  onBlur={e=>{
+                    const sn = e.target.value.trim();
+                    if (!sn) return;
+                    const found = inventory.find(i => i.serialNumber.replace(/^'/, '') === sn.replace(/^'/, ''));
+                    setExistingItem(found || null);
+                  }}
+                  placeholder="π.χ. A4829301" />
               </div>
+
+              {existingItem && (
+                <div className="existing-item-banner">
+                  <div className="existing-item-title">⚠️ Αυτό το serial υπάρχει ήδη</div>
+                  <div className="existing-item-info">
+                    <span><strong>{existingItem.model || 'Άγνωστο model'}</strong></span>
+                    <span className={`status-pill ${STATUS_PILL[normalizeAction(existingItem.action)]?.cls||'pill-gray'}`}>
+                      {STATUS_PILL[normalizeAction(existingItem.action)]?.label||normalizeAction(existingItem.action)}
+                    </span>
+                  </div>
+                  <div className="existing-item-meta">
+                    🏪 {displayStore(existingItem)} · 📅 {existingItem.date}
+                    {existingItem.user ? ` · 👤 ${existingItem.user}` : ''}
+                  </div>
+                  <div className="existing-item-note">Συνέχισε μόνο αν θέλεις να καταχωρήσεις νέα κίνηση για αυτό το μηχάνημα.</div>
+                </div>
+              )}
               <div className="field-group">
                 <label className="field-label">Model</label>
                 <input className="text-input" value={model} onChange={e=>setModel(e.target.value)} placeholder="π.χ. Keurig K-Elite" />
@@ -1341,6 +1368,15 @@ export default function Home() {
         .note-text { font-size: 11px; color: #6b7280; }
         .note-empty { font-size: 11px; color: #c4c4c2; }
         .btn-note-cancel { padding: 5px 10px; border: 1px solid #ebebea; border-radius: 7px; background: #fff; font-size: 11px; cursor: pointer; color: #9ca3af; font-family: 'DM Sans', sans-serif; }
+        .existing-item-banner { background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; }
+        .existing-item-title { font-size: 13px; font-weight: 600; color: #92400e; margin-bottom: 6px; }
+        .existing-item-info { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 13px; color: #1a1a18; }
+        .existing-item-meta { font-size: 11px; color: #6b7280; margin-bottom: 6px; }
+        .existing-item-note { font-size: 11px; color: #92400e; font-style: italic; }
+        .dark .existing-item-banner { background: #2e2510; border-color: #5a4a20; }
+        .dark .existing-item-title { color: #fbbf24; }
+        .dark .existing-item-info { color: #d8d8d4; }
+        .dark .existing-item-note { color: #fbbf24; }
         .repair-badge { font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 5px; white-space: nowrap; margin-left: 6px; }
         .repair-badge-warning { background: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
         .repair-badge-danger  { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
