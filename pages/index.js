@@ -829,7 +829,7 @@ export default function Home() {
                             <button className="btn-repaired" onClick={e=>{e.stopPropagation();handleMarkRepaired(item);}}>✓ Επισκευάστηκε</button>
                           )}
                           <button className="btn-quick-action" onClick={e=>{e.stopPropagation();startNewAction(item.serialNumber,item.model);}}>+ Νέα</button>
-                          <button className="btn-delete" onClick={e=>{e.stopPropagation();handleDeleteItem(item);}}>🗑</button>
+                          <button className="btn-delete" onClick={e=>{e.stopPropagation();handleDeleteItem(item);}}>✕ Διαγραφή</button>
                         </div>
                       </div>
                     </div>
@@ -908,7 +908,7 @@ export default function Home() {
                         <button className="btn-repaired" onClick={e=>{e.stopPropagation();handleMarkRepaired(item);}}>✓ Επισκευάστηκε</button>
                       )}
                       <button className="btn-quick-action" onClick={e=>{e.stopPropagation();startNewAction(item.serialNumber,item.model);}}>+ Νέα κίνηση</button>
-                      <button className="btn-delete" onClick={e=>{e.stopPropagation();handleDeleteItem(item);}}>🗑</button>
+                      <button className="btn-delete" onClick={e=>{e.stopPropagation();handleDeleteItem(item);}}>✕ Διαγραφή</button>
                     </div>
                   </div>
                 </div>
@@ -1473,10 +1473,10 @@ export default function Home() {
         .dark .existing-item-title { color: #fbbf24; }
         .dark .existing-item-info { color: #d8d8d4; }
         .dark .existing-item-note { color: #fbbf24; }
-        .btn-delete { padding: 5px 8px; background: transparent; color: #9ca3af; border: 1px solid #ebebea; border-radius: 7px; font-size: 12px; cursor: pointer; transition: all 0.1s; flex-shrink: 0; }
-        .btn-delete:hover { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
-        .dark .btn-delete { border-color: #2e2e2c; color: #555552; }
-        .dark .btn-delete:hover { background: #2e1515; color: #f87171; border-color: #5a2a2a; }
+        .btn-delete { padding: 5px 10px; background: transparent; color: #ef4444; border: 1px solid #fca5a5; border-radius: 7px; font-size: 11px; font-weight: 500; cursor: pointer; transition: all 0.1s; flex-shrink: 0; font-family: 'DM Sans', sans-serif; }
+        .btn-delete:hover { background: #fee2e2; border-color: #ef4444; }
+        .dark .btn-delete { color: #f87171; border-color: #5a2a2a; background: transparent; }
+        .dark .btn-delete:hover { background: #2e1515; border-color: #f87171; }
         .store-edit-picker { min-width: 220px; background: #fff; border: 1px solid #ebebea; border-radius: 10px; padding: 8px; }
         .dark .store-edit-picker { background: #1c1c1a; border-color: #2e2e2c; }
         .store-edit-display { cursor: pointer; color: #6b7280; font-size: 12px; }
