@@ -346,7 +346,52 @@ export default function Home() {
   };
 
   // Quick mark as repaired - άμεση καταχώρηση χωρίς φόρμα
-  const handleMarkRepaired = async (item) => {
+  const handleExportExcel = () => {
+    try {
+      const XLSX = require('xlsx');
+
+      // Δεδομένα Αποθήκης
+      const warehouseData = warehouseItems.map(item => ({
+        'Serial Number': item.serialNumber,
+        'Model': item.model || '',
+        'Κατάσταση': normalizeAction(item.action),
+        'Από Κατάστημα': displayStore(item),
+        'Ημερομηνία': item.date,
+        'Χρήστης': item.user || '',
+        'Πρόβλημα': item.problem || '',
+        'Σημείωση': warehouseNotes[item.serialNumber]?.note || '',
+      }));
+
+      // Δεδομένα Κινήσεων (όλες)
+      const movementsData = inventory.map(item => ({
+        'Serial Number': item.serialNumber,
+        'Model': item.model || '',
+        'Τελευταία Κίνηση': normalizeAction(item.action),
+        'Κατάστημα': item.store || '',
+        'Ημερομηνία': item.date,
+        'Χρήστης': item.user || '',
+        'Πρόβλημα': item.problem || '',
+        'Σημειώσεις': item.notes || '',
+      }));
+
+      const wb = XLSX.utils.book_new();
+
+      // Sheet 1: Αποθήκη
+      const ws1 = XLSX.utils.json_to_sheet(warehouseData);
+      ws1['!cols'] = [20,20,18,30,14,18,25,30].map(w=>({wch:w}));
+      XLSX.utils.book_append_sheet(wb, ws1, 'Αποθήκη');
+
+      // Sheet 2: Κινήσεις
+      const ws2 = XLSX.utils.json_to_sheet(movementsData);
+      ws2['!cols'] = [20,20,20,30,14,18,25,30].map(w=>({wch:w}));
+      XLSX.utils.book_append_sheet(wb, ws2, 'Κινήσεις');
+
+      const date = new Date().toISOString().split('T')[0];
+      XLSX.writeFile(wb, `TrackMate_${date}.xlsx`);
+    } catch (e) {
+      alert('Σφάλμα εξαγωγής. Δοκιμάστε ξανά.');
+    }
+  };
     if (!confirm(`Το "${item.model || item.serialNumber}" επισκευάστηκε;`)) return;
     try {
       const res = await fetch('/api/log', {
@@ -1001,6 +1046,18 @@ export default function Home() {
       {tab === 'settings' && (
         <div className="fade-in">
           <div className="card">
+            <div className="card-title">📥 Εξαγωγή δεδομένων</div>
+            <div className="card-sub">Κατέβασε τα δεδομένα σε Excel για να τα ανεβάσεις στο SharePoint</div>
+            <div style={{display:'flex',gap:'8px',flexWrap:'wrap',marginTop:'4px'}}>
+              <div style={{fontSize:'12px',color:'#6b7280',flex:1}}>
+                Περιλαμβάνει: <strong>Αποθήκη</strong> ({warehouseItems.length} μηχανήματα) και <strong>Κινήσεις</strong> ({inventory.length} εγγραφές) σε 2 sheets.
+              </div>
+            </div>
+            <button className="btn-export" onClick={handleExportExcel}>
+              📥 Κατέβασε Excel
+            </button>
+          </div>
+          <div className="card">
             <div className="card-title">Ρυθμίσεις</div>
             <div className="card-sub">Διαχείριση καταστημάτων</div>
             <div className="section-label">Προσθήκη νέου καταστήματος</div>
@@ -1473,6 +1530,9 @@ export default function Home() {
         .dark .existing-item-title { color: #fbbf24; }
         .dark .existing-item-info { color: #d8d8d4; }
         .dark .existing-item-note { color: #fbbf24; }
+        .btn-export { width: 100%; padding: 11px; background: #1a1a18; color: #fff; border: none; border-radius: 9px; font-size: 13px; font-weight: 500; font-family: 'DM Sans', sans-serif; cursor: pointer; margin-top: 12px; transition: opacity 0.1s; display: block; }
+        .btn-export:hover { opacity: 0.8; }
+        .dark .btn-export { background: #f5f5f3; color: #111110; }
         .btn-delete { padding: 5px 10px; background: transparent; color: #ef4444; border: 1px solid #fca5a5; border-radius: 7px; font-size: 11px; font-weight: 500; cursor: pointer; transition: all 0.1s; flex-shrink: 0; font-family: 'DM Sans', sans-serif; }
         .btn-delete:hover { background: #fee2e2; border-color: #ef4444; }
         .dark .btn-delete { color: #f87171; border-color: #5a2a2a; background: transparent; }
