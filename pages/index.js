@@ -346,11 +346,10 @@ export default function Home() {
   };
 
   // Quick mark as repaired - άμεση καταχώρηση χωρίς φόρμα
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     try {
-      const XLSX = require('xlsx');
+      const XLSX = await import('xlsx');
 
-      // Δεδομένα Αποθήκης
       const warehouseData = warehouseItems.map(item => ({
         'Serial Number': item.serialNumber,
         'Model': item.model || '',
@@ -362,7 +361,6 @@ export default function Home() {
         'Σημείωση': warehouseNotes[item.serialNumber]?.note || '',
       }));
 
-      // Δεδομένα Κινήσεων (όλες)
       const movementsData = inventory.map(item => ({
         'Serial Number': item.serialNumber,
         'Model': item.model || '',
@@ -376,12 +374,10 @@ export default function Home() {
 
       const wb = XLSX.utils.book_new();
 
-      // Sheet 1: Αποθήκη
       const ws1 = XLSX.utils.json_to_sheet(warehouseData);
       ws1['!cols'] = [20,20,18,30,14,18,25,30].map(w=>({wch:w}));
       XLSX.utils.book_append_sheet(wb, ws1, 'Αποθήκη');
 
-      // Sheet 2: Κινήσεις
       const ws2 = XLSX.utils.json_to_sheet(movementsData);
       ws2['!cols'] = [20,20,20,30,14,18,25,30].map(w=>({wch:w}));
       XLSX.utils.book_append_sheet(wb, ws2, 'Κινήσεις');
@@ -392,6 +388,8 @@ export default function Home() {
       alert('Σφάλμα εξαγωγής. Δοκιμάστε ξανά.');
     }
   };
+
+  const handleMarkRepaired = async (item) => {
     if (!confirm(`Το "${item.model || item.serialNumber}" επισκευάστηκε;`)) return;
     try {
       const res = await fetch('/api/log', {
