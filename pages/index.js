@@ -68,7 +68,7 @@ const STORE_CHAINS = [
 export default function Home() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState(null);
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(true);
 
   const toggleDarkMode = () => {
     setDarkMode(prev => {
@@ -1082,7 +1082,7 @@ export default function Home() {
       <Head>
         <title>TrackMate</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="theme-color" content="#1a1a18" />
+        <meta name="theme-color" content="#080810" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="TrackMate" />
@@ -1092,7 +1092,7 @@ export default function Home() {
       </Head>
 
       {/* ─── DESKTOP LAYOUT ─── */}
-      <div className={`desktop-layout${darkMode?' dark':''}`}>
+      <div className="desktop-layout">
         <aside className="sidebar">
           <div className="sb-logo" onClick={()=>{setTab('scan');handleReset();}} style={{cursor:'pointer'}}>
             <div className="sb-logo-mark">
@@ -1166,7 +1166,7 @@ export default function Home() {
       </div>
 
       {/* ─── MOBILE LAYOUT ─── */}
-      <div className={`mobile-layout${darkMode?' dark':''}`}>
+      <div className="mobile-layout">
         <header className="mob-header">
           <div className="mob-header-top">
             <div className="mob-logo" onClick={()=>{setTab('scan');handleReset();}} style={{cursor:'pointer'}}>
