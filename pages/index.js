@@ -89,6 +89,7 @@ export default function Home() {
   const [model, setModel] = useState('');
   const [itemsList, setItemsList] = useState([]);
   const [itemSearch, setItemSearch] = useState('');
+  const [showItemPicker, setShowItemPicker] = useState(false);
   const [manualItemEntry, setManualItemEntry] = useState(false);
   const [action, setAction] = useState('');
   const [existingItem, setExistingItem] = useState(null); // υπάρχον μηχάνημα με ίδιο serial
@@ -467,7 +468,7 @@ ${table}
   const handleReset = () => {
     setStep(1); setImagePreview(null); setImageBase64(null);
     setSerialNumber(''); setModel(''); setScanError(null);
-    setItemSearch(''); setManualItemEntry(false);
+    setItemSearch(''); setShowItemPicker(false); setManualItemEntry(false);
     setAction(''); setActionCat(null);
     setStore(''); setStoreSearch(''); setStoreChain('all'); setShowStorePicker(false);
     setDate(new Date().toISOString().split('T')[0]);
@@ -686,6 +687,7 @@ ${table}
     setModel(item.code);
     setShipmentItemDescription(item.description || '');
     setItemSearch('');
+    setShowItemPicker(false);
     setManualItemEntry(false);
   };
 
@@ -825,22 +827,33 @@ ${table}
                 <label className="field-label">Κωδικός Είδους</label>
                 {!manualItemEntry ? (
                   <div className="item-picker">
-                    <input className="text-input" value={itemSearch} onChange={e=>setItemSearch(e.target.value)} placeholder={model ? model : 'Αναζήτηση κωδικού ή περιγραφής...'} />
-                    {model && <div className="selected-action-badge">✓ {model}{shipmentItemDescription ? ` · ${shipmentItemDescription}` : ''}</div>}
-                    <div className="item-list">
-                      {filteredItems.slice(0, 8).map(item => (
-                        <button key={item.code} type="button" className={`item-option ${model===item.code?'active':''}`} onClick={()=>handleSelectItem(item)}>
-                          <span>{item.code}</span>
-                          <small>{item.description || 'Χωρίς περιγραφή'}</small>
+                    <button type="button" className="item-picker-trigger" onClick={()=>setShowItemPicker(v=>!v)}>
+                      <span>{model || 'Επίλεξε κωδικό είδους...'}</span>
+                      <small>{shipmentItemDescription || 'Πάτα για λίστα κωδικών'}</small>
+                    </button>
+                    {showItemPicker && (
+                      <div className="item-picker-menu">
+                        <button className="item-option manual" type="button" onClick={()=>{setManualItemEntry(true);setShowItemPicker(false);setItemSearch('');}}>
+                          <span>✏️ Χειροκίνητη καταχώρηση</span>
+                          <small>Γράψε ελεύθερα κωδικό και περιγραφή</small>
                         </button>
-                      ))}
-                      {filteredItems.length === 0 && <div className="item-empty">Δεν βρέθηκε κωδικός.</div>}
-                    </div>
-                    <button className="btn-ghost" type="button" onClick={()=>{setManualItemEntry(true);setItemSearch('');}}>✏️ Χειροκίνητη καταχώρηση</button>
+                        <input className="text-input" value={itemSearch} onChange={e=>setItemSearch(e.target.value)} placeholder="Αναζήτηση κωδικού ή περιγραφής..." autoFocus />
+                        <div className="item-list">
+                          {filteredItems.slice(0, 12).map(item => (
+                            <button key={item.code} type="button" className={`item-option ${model===item.code?'active':''}`} onClick={()=>handleSelectItem(item)}>
+                              <span>{item.code}</span>
+                              <small>{item.description || 'Χωρίς περιγραφή'}</small>
+                            </button>
+                          ))}
+                          {filteredItems.length === 0 && <div className="item-empty">Δεν βρέθηκε κωδικός.</div>}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div>
                     <input className="text-input" value={model} onChange={e=>setModel(e.target.value)} placeholder="π.χ. BV-11-SO-EU" />
+                    <textarea value={shipmentItemDescription} onChange={e=>setShipmentItemDescription(e.target.value)} placeholder="Περιγραφή είδους..." style={{marginTop:'8px'}} />
                     <button className="btn-ghost" type="button" onClick={()=>setManualItemEntry(false)}>↩ Επιλογή από λίστα</button>
                   </div>
                 )}
@@ -2067,9 +2080,15 @@ ${table}
         .store-item { padding: 8px 10px; border-radius: var(--r-sm); font-size: 12px; cursor: pointer; color: var(--t2); transition: all 0.1s; }
         .store-item:hover { background: var(--glass2); color: var(--t1); }
         .store-item.active { background: var(--glow2); color: var(--acc); font-weight: 600; }
-        .item-picker { border: 1px solid var(--border2); border-radius: var(--r-lg); background: var(--glass); padding: 10px; }
+        .item-picker { position: relative; }
+        .item-picker-trigger { width: 100%; display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; border: 1px solid var(--border2); border-radius: var(--r); background: var(--glass2); color: var(--t1); text-align: left; cursor: pointer; font-family: var(--font); transition: all 0.15s; }
+        .item-picker-trigger:hover { border-color: var(--acc); background: var(--glow2); }
+        .item-picker-trigger span { font-size: 12px; font-weight: 800; }
+        .item-picker-trigger small { font-size: 11px; color: var(--t3); line-height: 1.35; }
+        .item-picker-menu { border: 1px solid var(--border2); border-radius: var(--r-lg); background: var(--bg3); padding: 10px; margin-top: 8px; box-shadow: 0 12px 32px rgba(0,0,0,0.35), 0 0 18px var(--glow2); }
         .item-list { display: flex; flex-direction: column; gap: 4px; max-height: 240px; overflow-y: auto; margin-top: 8px; }
         .item-option { display: flex; flex-direction: column; gap: 2px; width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--r); background: var(--glass2); color: var(--t2); text-align: left; cursor: pointer; font-family: var(--font); transition: all 0.15s; }
+        .item-option.manual { margin-bottom: 8px; border-color: var(--border2); color: var(--acc); background: var(--glow2); }
         .item-option:hover, .item-option.active { border-color: var(--acc); background: var(--glow2); color: var(--t1); }
         .item-option span { font-size: 12px; font-weight: 800; }
         .item-option small { font-size: 11px; color: var(--t3); line-height: 1.35; }
@@ -2393,6 +2412,10 @@ ${table}
           .shipment-table-preview { max-width: 100%; overflow-x: auto; }
           .shipment-table-top { grid-template-columns: 38px 120px 180px; min-width: 338px; }
           .shipment-table-body { grid-template-columns: 38px 120px 180px; min-width: 338px; }
+          select, textarea, .text-input, input[type="date"].text-input { font-size: 16px; }
+          .store-item, .item-option, .item-picker-trigger { font-size: 16px; }
+          .item-option span, .item-picker-trigger span { font-size: 14px; }
+          .item-option small, .item-picker-trigger small { font-size: 12px; }
         }
       `}</style>
     </>
