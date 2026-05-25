@@ -349,6 +349,42 @@ ${table}
 Ευχαριστώ.`;
   };
 
+  const escapeHtml = (value) => String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+    .replace(/\n/g, '<br>');
+
+  const buildShipmentEmailHtml = () => {
+    const destination = getSelectedStoreDetails();
+    const rows = getShipmentRows(destination);
+    const bodyRows = rows.map(([label, value], index) => `
+      <tr>
+        ${index === 0 ? `<td rowspan="${rows.length}" style="border:1px solid #7f7f7f;padding:8px;text-align:center;vertical-align:top;width:42px;">1</td>` : ''}
+        <td style="border:1px solid #7f7f7f;background:#d8d1ff;padding:6px 8px;width:150px;vertical-align:top;">${escapeHtml(label)}:</td>
+        <td style="border:1px solid #7f7f7f;padding:6px 8px;vertical-align:top;min-width:220px;">${escapeHtml(value)}</td>
+      </tr>
+    `).join('');
+
+    return `
+      <div style="font-family:Arial, sans-serif;font-size:14px;color:#000;">
+        <p>Καλησπέρα,</p>
+        <p>Παρακαλώ δείτε τα στοιχεία αποστολής:</p>
+        <table cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:1px solid #7f7f7f;font-family:Arial, sans-serif;font-size:14px;color:#000;">
+          <tr>
+            <th style="border:1px solid #7f7f7f;background:#c9c1ff;padding:7px 8px;width:42px;text-align:left;">A/A</th>
+            <th style="border:1px solid #7f7f7f;background:#c9c1ff;padding:7px 8px;text-align:left;">TrackMate</th>
+            <th style="border:1px solid #7f7f7f;background:#c9c1ff;padding:7px 8px;text-align:center;">Εξαγωγή ειδών</th>
+          </tr>
+          ${bodyRows}
+        </table>
+        <p>Ευχαριστώ.</p>
+      </div>
+    `;
+  };
+
   const getShipmentRows = (destination = getSelectedStoreDetails()) => {
     const rows = [
       ['Επωνυμία Πελάτη', destination.name || store || '—'],
@@ -370,7 +406,18 @@ ${table}
 
   const copyShipmentEmail = async () => {
     try {
-      await navigator.clipboard.writeText(buildShipmentEmail());
+      if (window.ClipboardItem) {
+        const html = buildShipmentEmailHtml();
+        const text = buildShipmentEmail();
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            'text/html': new Blob([html], { type: 'text/html' }),
+            'text/plain': new Blob([text], { type: 'text/plain' }),
+          }),
+        ]);
+      } else {
+        await navigator.clipboard.writeText(buildShipmentEmail());
+      }
       setCopiedShipmentEmail(true);
       setTimeout(() => setCopiedShipmentEmail(false), 1800);
     } catch (e) {
