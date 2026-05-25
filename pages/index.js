@@ -87,6 +87,9 @@ export default function Home() {
 
   const [serialNumber, setSerialNumber] = useState('');
   const [model, setModel] = useState('');
+  const [itemsList, setItemsList] = useState([]);
+  const [itemSearch, setItemSearch] = useState('');
+  const [manualItemEntry, setManualItemEntry] = useState(false);
   const [action, setAction] = useState('');
   const [existingItem, setExistingItem] = useState(null); // υπάρχον μηχάνημα με ίδιο serial
   const [actionCat, setActionCat] = useState(null);
@@ -151,6 +154,14 @@ export default function Home() {
       const res = await fetch('/api/notes');
       const data = await res.json();
       setWarehouseNotes(data.notes || {});
+    } catch (e) {}
+  };
+
+  const loadItems = async () => {
+    try {
+      const res = await fetch('/api/items');
+      const data = await res.json();
+      setItemsList(data.items || []);
     } catch (e) {}
   };
 
@@ -225,6 +236,7 @@ export default function Home() {
     loadStores();
     loadInventory();
     loadNotes();
+    loadItems();
 
     // Καταχώρηση Service Worker για αυτόματο update
     if ('serviceWorker' in navigator) {
@@ -455,6 +467,7 @@ ${table}
   const handleReset = () => {
     setStep(1); setImagePreview(null); setImageBase64(null);
     setSerialNumber(''); setModel(''); setScanError(null);
+    setItemSearch(''); setManualItemEntry(false);
     setAction(''); setActionCat(null);
     setStore(''); setStoreSearch(''); setStoreChain('all'); setShowStorePicker(false);
     setDate(new Date().toISOString().split('T')[0]);
@@ -663,6 +676,24 @@ ${table}
   const storeRows = storeDetailsList.length
     ? storeDetailsList
     : storesList.map(name => ({ name, phone: '', address: '', vat: '' }));
+  const filteredItems = itemsList.filter(item => {
+    const q = itemSearch.trim().toLowerCase();
+    if (!q) return true;
+    return item.code.toLowerCase().includes(q) || item.description.toLowerCase().includes(q);
+  });
+
+  const handleSelectItem = (item) => {
+    setModel(item.code);
+    setShipmentItemDescription(item.description || '');
+    setItemSearch('');
+    setManualItemEntry(false);
+  };
+
+  useEffect(() => {
+    if (!model || shipmentItemDescription || itemsList.length === 0) return;
+    const match = itemsList.find(item => item.code.toLowerCase() === model.toLowerCase());
+    if (match?.description) setShipmentItemDescription(match.description);
+  }, [model, shipmentItemDescription, itemsList]);
 
   // Εμφάνιση store: αν είναι κενό και η κίνηση είναι Καινούριο Μηχάνημα → "Αποθήκη"
   const displayStore = (item) => {
@@ -792,7 +823,27 @@ ${table}
               )}
               <div className="field-group">
                 <label className="field-label">Κωδικός Είδους</label>
-                <input className="text-input" value={model} onChange={e=>setModel(e.target.value)} placeholder="π.χ. BV-11-SO-EU" />
+                {!manualItemEntry ? (
+                  <div className="item-picker">
+                    <input className="text-input" value={itemSearch} onChange={e=>setItemSearch(e.target.value)} placeholder={model ? model : 'Αναζήτηση κωδικού ή περιγραφής...'} />
+                    {model && <div className="selected-action-badge">✓ {model}{shipmentItemDescription ? ` · ${shipmentItemDescription}` : ''}</div>}
+                    <div className="item-list">
+                      {filteredItems.slice(0, 8).map(item => (
+                        <button key={item.code} type="button" className={`item-option ${model===item.code?'active':''}`} onClick={()=>handleSelectItem(item)}>
+                          <span>{item.code}</span>
+                          <small>{item.description || 'Χωρίς περιγραφή'}</small>
+                        </button>
+                      ))}
+                      {filteredItems.length === 0 && <div className="item-empty">Δεν βρέθηκε κωδικός.</div>}
+                    </div>
+                    <button className="btn-ghost" type="button" onClick={()=>{setManualItemEntry(true);setItemSearch('');}}>✏️ Χειροκίνητη καταχώρηση</button>
+                  </div>
+                ) : (
+                  <div>
+                    <input className="text-input" value={model} onChange={e=>setModel(e.target.value)} placeholder="π.χ. BV-11-SO-EU" />
+                    <button className="btn-ghost" type="button" onClick={()=>setManualItemEntry(false)}>↩ Επιλογή από λίστα</button>
+                  </div>
+                )}
               </div>
               <div className="section-label" style={{marginTop:'16px'}}>Τύπος κίνησης</div>
               <div className="action-grid">
@@ -2016,6 +2067,13 @@ ${table}
         .store-item { padding: 8px 10px; border-radius: var(--r-sm); font-size: 12px; cursor: pointer; color: var(--t2); transition: all 0.1s; }
         .store-item:hover { background: var(--glass2); color: var(--t1); }
         .store-item.active { background: var(--glow2); color: var(--acc); font-weight: 600; }
+        .item-picker { border: 1px solid var(--border2); border-radius: var(--r-lg); background: var(--glass); padding: 10px; }
+        .item-list { display: flex; flex-direction: column; gap: 4px; max-height: 240px; overflow-y: auto; margin-top: 8px; }
+        .item-option { display: flex; flex-direction: column; gap: 2px; width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--r); background: var(--glass2); color: var(--t2); text-align: left; cursor: pointer; font-family: var(--font); transition: all 0.15s; }
+        .item-option:hover, .item-option.active { border-color: var(--acc); background: var(--glow2); color: var(--t1); }
+        .item-option span { font-size: 12px; font-weight: 800; }
+        .item-option small { font-size: 11px; color: var(--t3); line-height: 1.35; }
+        .item-empty { padding: 10px; color: var(--t3); font-size: 12px; text-align: center; }
 
         /* ── FILTERS ── */
         .filter-row { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
