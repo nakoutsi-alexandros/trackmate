@@ -1140,7 +1140,7 @@ export default function Home() {
         <meta name="apple-mobile-web-app-title" content="TrackMate" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
-        <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
       </Head>
 
       {/* ─── DESKTOP LAYOUT ─── */}
@@ -1271,7 +1271,7 @@ export default function Home() {
       </div>
 
       <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1289,10 +1289,10 @@ export default function Home() {
           --acc2:     #7c3aed;
           --glow:     rgba(167,139,250,0.2);
           --glow2:    rgba(167,139,250,0.06);
-          --t1:       #f0f0ff;
-          --t2:       #9090b8;
-          --t3:       #50506a;
-          --t4:       #2a2a3e;
+          --t1:       #f5f3ff;
+          --t2:       #d7d9f4;
+          --t3:       #a8add2;
+          --t4:       #7d84ad;
           --green:    #34d399;
           --gbg:      rgba(52,211,153,0.08);
           --gg:       rgba(52,211,153,0.25);
@@ -1307,7 +1307,7 @@ export default function Home() {
           --blue:     #60a5fa;
           --bbg:      rgba(96,165,250,0.08);
           --bg-l:     rgba(96,165,250,0.25);
-          --font:     'Space Grotesk', -apple-system, sans-serif;
+          --font:     'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           --mono:     'JetBrains Mono', monospace;
           --r:        10px;
           --r-sm:     6px;
@@ -1556,9 +1556,9 @@ export default function Home() {
           opacity: 0.5;
         }
         .stat-card:hover { border-color: var(--border2); transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px var(--border); }
-        .stat-label { font-size: 9px; color: var(--t3); margin-bottom: 6px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; display: flex; align-items: center; gap: 5px; }
-        .stat-val { font-size: 28px; font-weight: 700; line-height: 1; }
-        .stat-sub { font-size: 10px; color: var(--t4); margin-top: 4px; font-weight: 500; }
+        .stat-label { font-size: 9px; color: var(--t3); margin-bottom: 6px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; display: flex; align-items: center; gap: 5px; }
+        .stat-val { font-size: 28px; font-weight: 800; line-height: 1; color: var(--t1); }
+        .stat-sub { font-size: 10px; color: var(--t3); margin-top: 4px; font-weight: 600; }
 
         /* ══════════════════════════
            TABLE
@@ -1573,18 +1573,18 @@ export default function Home() {
           display: grid; grid-template-columns: 2fr 2fr 1.2fr 1fr 1fr;
           background: rgba(8,8,16,0.6); border-bottom: 1px solid var(--border);
         }
-        .dt-th { font-size: 9px; font-weight: 700; color: var(--t4); padding: 9px 14px; text-transform: uppercase; letter-spacing: 0.12em; }
+        .dt-th { font-size: 9px; font-weight: 800; color: var(--t3); padding: 9px 14px; text-transform: uppercase; letter-spacing: 0.12em; }
         .dt-row {
           display: grid; grid-template-columns: 2fr 2fr 1.2fr 1fr 1fr;
           border-bottom: 1px solid rgba(167,139,250,0.05); cursor: pointer; transition: background 0.15s;
         }
         .dt-row:last-child { border-bottom: none; }
         .dt-row:hover { background: rgba(167,139,250,0.04); }
-        .dt-td { font-size: 11px; color: var(--t2); padding: 10px 14px; display: flex; align-items: center; gap: 7px; }
-        .dt-td.dt-muted { color: var(--t3); font-size: 11px; }
+        .dt-td { font-size: 11px; color: var(--t2); padding: 10px 14px; display: flex; align-items: center; gap: 7px; font-weight: 500; }
+        .dt-td.dt-muted { color: var(--t3); font-size: 11px; font-weight: 500; }
         .dt-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
         .dt-model { font-size: 12px; font-weight: 600; color: var(--t1); }
-        .dt-serial { font-family: var(--mono); font-size: 10px; color: var(--t2); margin-top: 2px; letter-spacing: 0.03em; font-weight: 500; }
+        .dt-serial { font-family: var(--mono); font-size: 10px; color: var(--t2); margin-top: 2px; letter-spacing: 0.03em; font-weight: 600; }
         .dt-note-row { padding: 5px 14px 8px; background: rgba(8,8,16,0.4); border-bottom: 1px solid var(--border); }
 
         /* ══════════════════════════
@@ -1780,8 +1780,8 @@ export default function Home() {
         .machine-name { font-size: 13px; font-weight: 700; color: var(--t1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .machine-serial { font-family: var(--mono); font-size: 10px; color: var(--t2); font-weight: 500; letter-spacing: 0.03em; }
         .machine-bottom { display: flex; gap: 10px; margin-top: 5px; flex-wrap: wrap; }
-        .machine-store { font-size: 11px; color: var(--t3); }
-        .machine-date { font-size: 11px; color: var(--t4); }
+        .machine-store { font-size: 11px; color: var(--t3); font-weight: 500; }
+        .machine-date { font-size: 11px; color: var(--t3); font-weight: 500; }
         .machine-problem { font-size: 11px; color: var(--orange); margin-top: 3px; }
         .machine-user { font-size: 11px; color: var(--green); margin-top: 2px; }
 
@@ -1802,8 +1802,8 @@ export default function Home() {
         .h-card:hover { border-color: var(--border2); }
         .h-action-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
         .h-action { font-size: 12px; font-weight: 700; color: var(--t1); }
-        .h-meta { font-size: 10px; color: var(--t4); }
-        .h-notes { font-size: 11px; color: var(--t3); margin-top: 4px; }
+        .h-meta { font-size: 10px; color: var(--t3); font-weight: 500; }
+        .h-notes { font-size: 11px; color: var(--t3); margin-top: 4px; font-weight: 500; }
         .h-machine { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
         .h-machine-model { font-size: 12px; font-weight: 700; color: var(--t1); }
         .h-machine-serial { font-family: var(--mono); font-size: 11px; color: var(--t2); font-weight: 500; letter-spacing: 0.03em; }
@@ -1817,7 +1817,7 @@ export default function Home() {
         .history-machine-info { flex: 1; min-width: 0; }
         .history-machine-model { font-size: 15px; font-weight: 700; color: var(--t1); margin-bottom: 3px; }
         .history-machine-serial { font-family: var(--mono); font-size: 12px; color: var(--t2); margin-bottom: 4px; font-weight: 500; letter-spacing: 0.03em; }
-        .history-machine-count { font-size: 10px; color: var(--t4); font-weight: 600; }
+        .history-machine-count { font-size: 10px; color: var(--t3); font-weight: 600; }
         .history-store-header { padding: 8px 0 12px; }
         .history-store-count { font-size: 13px; color: var(--t3); }
         .quick-action-bar {
@@ -1828,7 +1828,7 @@ export default function Home() {
         }
         .quick-action-info { display: flex; flex-direction: column; gap: 3px; }
         .quick-serial { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--t1); }
-        .quick-model { font-size: 11px; color: var(--t4); }
+        .quick-model { font-size: 11px; color: var(--t3); font-weight: 500; }
 
         /* ── SUCCESS ── */
         .success-card { text-align: center; padding: 40px 20px; }
@@ -1852,8 +1852,8 @@ export default function Home() {
         .note-count:hover { background: rgba(167,139,250,0.15); }
         .note-history { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
         .note-history-item { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; background: var(--glass); border-radius: var(--r-sm); border-left: 2px solid var(--border2); }
-        .note-history-text { font-size: 11px; color: var(--t3); }
-        .note-history-meta { font-size: 9px; color: var(--t4); font-weight: 500; }
+        .note-history-text { font-size: 11px; color: var(--t2); font-weight: 500; }
+        .note-history-meta { font-size: 9px; color: var(--t3); font-weight: 600; }
         .light .note-add-btn { background: rgba(255,255,255,0.8); color: var(--t3); border-color: var(--border2); }
         .light .note-count { color: var(--acc); background: var(--glow2); }
         .light .note-history-item { background: rgba(124,58,237,0.03); border-left-color: var(--border2); }
@@ -1864,8 +1864,8 @@ export default function Home() {
         .note-input { width: 100%; padding: 8px 11px; border: 1px solid var(--border2); border-radius: var(--r); font-size: 12px; font-family: var(--font); resize: none; height: 60px; background: var(--glass2); color: var(--t1); transition: border-color 0.2s; }
         .note-input:focus { border-color: var(--acc); outline: none; box-shadow: 0 0 12px var(--glow2); }
         .note-display { margin-top: 6px; cursor: pointer; padding: 4px 0; }
-        .note-text { font-size: 11px; color: var(--t3); }
-        .note-empty { font-size: 11px; color: var(--t4); }
+        .note-text { font-size: 11px; color: var(--t2); font-weight: 500; }
+        .note-empty { font-size: 11px; color: var(--t3); font-weight: 500; }
         .store-edit-picker { min-width: 240px; background: var(--bg3); backdrop-filter: blur(16px); border: 1px solid var(--border2); border-radius: var(--r-lg); padding: 10px; box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 20px var(--glow2); }
         .store-edit-display { cursor: pointer; color: var(--t3); font-size: 12px; transition: color 0.15s; }
         .store-edit-display:hover { color: var(--acc); }
@@ -1874,8 +1874,8 @@ export default function Home() {
         .divider-or::before, .divider-or::after { content: ''; position: absolute; top: 50%; width: 44%; height: 1px; background: var(--border2); }
         .divider-or::before { left: 0; } .divider-or::after { right: 0; }
         .settings-store-item { padding: 8px 4px; font-size: 12px; color: var(--t3); border-bottom: 1px solid var(--border); font-weight: 500; }
-        .loading { text-align: center; padding: 48px; color: var(--t4); font-size: 13px; font-weight: 500; }
-        .empty { text-align: center; padding: 48px 20px; color: var(--t4); font-size: 13px; line-height: 1.7; font-weight: 500; }
+        .loading { text-align: center; padding: 48px; color: var(--t3); font-size: 13px; font-weight: 600; }
+        .empty { text-align: center; padding: 48px 20px; color: var(--t3); font-size: 13px; line-height: 1.7; font-weight: 600; }
         .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
 
         /* ══════════════════════════
@@ -1903,10 +1903,10 @@ export default function Home() {
           --acc2:    #5b21b6;
           --glow:    rgba(124,58,237,0.18);
           --glow2:   rgba(124,58,237,0.06);
-          --t1:      #1a1a2e;
-          --t2:      #4a4a6a;
-          --t3:      #8888aa;
-          --t4:      #bbbbcc;
+          --t1:      #17172a;
+          --t2:      #34344f;
+          --t3:      #5d5d7a;
+          --t4:      #74748f;
           --green:   #059669;
           --gbg:     rgba(5,150,105,0.08);
           --gg:      rgba(5,150,105,0.25);
@@ -1938,7 +1938,7 @@ export default function Home() {
         .light .desktop-main { background: var(--bg); }
         .light .dt-table { background: rgba(255,255,255,0.9); border-color: var(--border); }
         .light .dt-head { background: rgba(124,58,237,0.03); border-bottom-color: var(--border); }
-        .light .dt-th { color: var(--t4); }
+        .light .dt-th { color: var(--t3); }
         .light .dt-row { border-bottom-color: rgba(124,58,237,0.05); }
         .light .dt-row:hover { background: rgba(124,58,237,0.03); }
         .light .dt-td { color: var(--t2); }
@@ -1950,7 +1950,7 @@ export default function Home() {
         .light .stat-card:hover { box-shadow: 0 8px 32px rgba(124,58,237,0.08); }
         .light .stat-label { color: var(--t3); }
         .light .stat-val { color: var(--t1); }
-        .light .stat-sub { color: var(--t4); }
+        .light .stat-sub { color: var(--t3); }
         .light .card { background: rgba(255,255,255,0.9); border-color: var(--border); }
         .light .card-title { color: var(--t1); }
         .light .card-sub { color: var(--t3); }
@@ -1959,10 +1959,10 @@ export default function Home() {
         .light .machine-name { color: var(--t1); }
         .light .machine-serial { color: #4a4a6a; }
         .light .machine-store { color: var(--t3); }
-        .light .machine-date { color: var(--t4); }
+        .light .machine-date { color: var(--t3); }
         .light .h-card { background: rgba(255,255,255,0.9); border-color: var(--border); }
         .light .h-action { color: var(--t1); }
-        .light .h-meta { color: var(--t4); }
+        .light .h-meta { color: var(--t3); }
         .light .h-dot { background: #fff; }
         .light .h-line { background: var(--border); }
         .light .history-machine-header { background: rgba(255,255,255,0.95); }
@@ -1994,24 +1994,24 @@ export default function Home() {
         .light .btn-clear { background: rgba(255,255,255,0.8); border-color: var(--border2); }
         .light .btn-export { background: rgba(255,255,255,0.8); border-color: var(--border2); color: var(--t2); }
         .light .note-input { background: rgba(255,255,255,0.9); border-color: var(--border2); color: var(--t1); }
-        .light .note-text { color: var(--t3); }
-        .light .note-empty { color: var(--t4); }
+        .light .note-text { color: var(--t2); }
+        .light .note-empty { color: var(--t3); }
         .light .store-edit-picker { background: #fff; border-color: var(--border2); }
         .light .store-edit-display { color: var(--t3); }
         .light .wh-section-title { color: var(--t2); border-bottom-color: var(--border); }
         .light .divider-or { color: var(--t4); }
         .light .divider-or::before, .light .divider-or::after { background: var(--border2); }
         .light .settings-store-item { color: var(--t3); border-bottom-color: var(--border); }
-        .light .section-label { color: var(--t4); }
+        .light .section-label { color: var(--t3); }
         .light .field-label { color: var(--t3); }
-        .light .loading { color: var(--t4); }
-        .light .empty { color: var(--t4); }
+        .light .loading { color: var(--t3); }
+        .light .empty { color: var(--t3); }
         .light .success-title { color: var(--t1); }
         .light .mob-header { background: rgba(255,255,255,0.97); border-bottom-color: var(--border); }
         .light .mob-logo span:first-of-type { color: var(--t1); }
         .light .user-name { color: var(--t3); }
         .light .btn-logout { background: rgba(255,255,255,0.8); border-color: var(--border2); color: var(--t3); }
-        .light .mob-nav-btn { color: var(--t4); }
+        .light .mob-nav-btn { color: var(--t3); }
         .light .mob-nav-btn.active { background: linear-gradient(135deg, rgba(124,58,237,0.1), rgba(91,33,182,0.05)); color: var(--acc); }
         .light .mob-main { background: var(--bg); }
         .light .dt-table { backdrop-filter: none; }
