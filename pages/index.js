@@ -1092,7 +1092,7 @@ export default function Home() {
       </Head>
 
       {/* ─── DESKTOP LAYOUT ─── */}
-      <div className="desktop-layout">
+      <div className={`desktop-layout${darkMode?'':' light'}`}>
         <aside className="sidebar">
           <div className="sb-logo" onClick={()=>{setTab('scan');handleReset();}} style={{cursor:'pointer'}}>
             <div className="sb-logo-mark">
@@ -1166,7 +1166,7 @@ export default function Home() {
       </div>
 
       {/* ─── MOBILE LAYOUT ─── */}
-      <div className="mobile-layout">
+      <div className={`mobile-layout${darkMode?'':' light'}`}>
         <header className="mob-header">
           <div className="mob-header-top">
             <div className="mob-logo" onClick={()=>{setTab('scan');handleReset();}} style={{cursor:'pointer'}}>
@@ -1820,6 +1820,137 @@ export default function Home() {
         @keyframes glowPulse { 0%,100% { box-shadow: 0 0 16px var(--glow); } 50% { box-shadow: 0 0 32px var(--glow), 0 0 48px rgba(124,58,237,0.15); } }
         @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
         .fade-in { animation: fadeIn 0.22s cubic-bezier(0.4,0,0.2,1); }
+
+        /* ══════════════════════════
+           LIGHT MODE
+        ══════════════════════════ */
+        .light {
+          --bg:      #f4f4f8;
+          --bg2:     #ffffff;
+          --bg3:     #f0f0f5;
+          --bg4:     #e8e8f0;
+          --glass:   rgba(255,255,255,0.8);
+          --glass2:  rgba(255,255,255,0.9);
+          --border:  rgba(124,58,237,0.12);
+          --border2: rgba(124,58,237,0.2);
+          --border3: rgba(124,58,237,0.35);
+          --acc:     #7c3aed;
+          --acc2:    #5b21b6;
+          --glow:    rgba(124,58,237,0.18);
+          --glow2:   rgba(124,58,237,0.06);
+          --t1:      #1a1a2e;
+          --t2:      #4a4a6a;
+          --t3:      #8888aa;
+          --t4:      #bbbbcc;
+          --green:   #059669;
+          --gbg:     rgba(5,150,105,0.08);
+          --gg:      rgba(5,150,105,0.25);
+          --glow-g:  rgba(5,150,105,0.12);
+          --orange:  #d97706;
+          --obg:     rgba(217,119,6,0.08);
+          --og:      rgba(217,119,6,0.25);
+          --glow-o:  rgba(217,119,6,0.12);
+          --red:     #dc2626;
+          --rbg:     rgba(220,38,38,0.07);
+          --rg:      rgba(220,38,38,0.2);
+          --blue:    #2563eb;
+          --bbg:     rgba(37,99,235,0.08);
+          --bg-l:    rgba(37,99,235,0.2);
+        }
+        .light body { background: var(--bg); color: var(--t1); background-image: radial-gradient(ellipse at 20% 0%, rgba(124,58,237,0.04) 0%, transparent 50%), radial-gradient(ellipse at 80% 100%, rgba(16,185,129,0.03) 0%, transparent 50%); }
+        .light .sidebar { background: rgba(255,255,255,0.95); border-right-color: var(--border); }
+        .light .sidebar::after { opacity: 0.15; }
+        .light .sb-logo { border-bottom-color: var(--border); }
+        .light .sb-section { color: var(--t4); }
+        .light .sb-item { color: var(--t3); }
+        .light .sb-item:hover { background: rgba(124,58,237,0.05); color: var(--t2); }
+        .light .sb-item.active { background: linear-gradient(135deg, rgba(124,58,237,0.1), rgba(91,33,182,0.05)); border-color: var(--border2); }
+        .light .sb-footer { border-top-color: var(--border); }
+        .light .sb-username { color: var(--t3); }
+        .light .desktop-header { background: rgba(255,255,255,0.9); border-bottom-color: var(--border); }
+        .light .desktop-title { color: var(--t1); }
+        .light .desktop-content { background: var(--bg); }
+        .light .desktop-main { background: var(--bg); }
+        .light .dt-table { background: rgba(255,255,255,0.9); border-color: var(--border); }
+        .light .dt-head { background: rgba(124,58,237,0.03); border-bottom-color: var(--border); }
+        .light .dt-th { color: var(--t4); }
+        .light .dt-row { border-bottom-color: rgba(124,58,237,0.05); }
+        .light .dt-row:hover { background: rgba(124,58,237,0.03); }
+        .light .dt-td { color: var(--t2); }
+        .light .dt-td.dt-muted { color: var(--t3); }
+        .light .dt-model { color: var(--t1); }
+        .light .dt-serial { color: var(--t4); }
+        .light .dt-note-row { background: rgba(124,58,237,0.02); border-bottom-color: var(--border); }
+        .light .stat-card { background: rgba(255,255,255,0.9); border-color: var(--border); }
+        .light .stat-card:hover { box-shadow: 0 8px 32px rgba(124,58,237,0.08); }
+        .light .stat-label { color: var(--t3); }
+        .light .stat-val { color: var(--t1); }
+        .light .stat-sub { color: var(--t4); }
+        .light .card { background: rgba(255,255,255,0.9); border-color: var(--border); }
+        .light .card-title { color: var(--t1); }
+        .light .card-sub { color: var(--t3); }
+        .light .machine-row { background: rgba(255,255,255,0.9); border-color: var(--border); }
+        .light .machine-row:hover { border-color: var(--border2); box-shadow: 0 4px 16px rgba(124,58,237,0.08); }
+        .light .machine-name { color: var(--t1); }
+        .light .machine-serial { color: var(--t4); }
+        .light .machine-store { color: var(--t3); }
+        .light .machine-date { color: var(--t4); }
+        .light .h-card { background: rgba(255,255,255,0.9); border-color: var(--border); }
+        .light .h-action { color: var(--t1); }
+        .light .h-meta { color: var(--t4); }
+        .light .h-dot { background: #fff; }
+        .light .h-line { background: var(--border); }
+        .light .history-machine-header { background: rgba(255,255,255,0.95); }
+        .light .history-machine-model { color: var(--t1); }
+        .light .history-machine-serial { color: var(--t3); }
+        .light .quick-action-bar { background: rgba(255,255,255,0.9); border-color: var(--border2); }
+        .light .quick-serial { color: var(--t1); }
+        .light .filter-pill { background: rgba(255,255,255,0.9); color: var(--t3); border-color: var(--border2); }
+        .light .filter-pill.active { background: var(--glow2); color: var(--acc); }
+        .light .period-pill { background: rgba(255,255,255,0.9); color: var(--t3); border-color: var(--border2); }
+        .light .period-pill.active { background: var(--glow2); color: var(--acc); }
+        .light .sort-btn { background: rgba(255,255,255,0.9); color: var(--t3); border-color: var(--border2); }
+        .light select, .light textarea, .light .text-input { background: rgba(255,255,255,0.9); border-color: var(--border2); color: var(--t1); }
+        .light .text-input::placeholder { color: var(--t4); }
+        .light .upload-area { background: rgba(255,255,255,0.7); border-color: var(--border2); }
+        .light .upload-title { color: var(--t2); }
+        .light .action-tile { background: rgba(255,255,255,0.8); border-color: var(--border2); }
+        .light .action-title { color: var(--t2); }
+        .light .sub-action-item { background: rgba(255,255,255,0.8); border-color: var(--border2); }
+        .light .sub-action-label { color: var(--t2); }
+        .light .store-picker { background: rgba(255,255,255,0.9); border-color: var(--border2); }
+        .light .store-item { color: var(--t2); }
+        .light .store-item:hover { background: rgba(124,58,237,0.05); color: var(--t1); }
+        .light .chain-tab { background: rgba(255,255,255,0.8); color: var(--t3); border-color: var(--border2); }
+        .light .btn-ghost { background: rgba(255,255,255,0.8); border-color: var(--border2); color: var(--t3); }
+        .light .btn-half { background: rgba(255,255,255,0.8); border-color: var(--border2); color: var(--t2); }
+        .light .btn-quick-action { background: rgba(255,255,255,0.8); border-color: var(--border2); color: var(--t2); }
+        .light .btn-clear { background: rgba(255,255,255,0.8); border-color: var(--border2); }
+        .light .btn-export { background: rgba(255,255,255,0.8); border-color: var(--border2); color: var(--t2); }
+        .light .note-input { background: rgba(255,255,255,0.9); border-color: var(--border2); color: var(--t1); }
+        .light .note-text { color: var(--t3); }
+        .light .note-empty { color: var(--t4); }
+        .light .store-edit-picker { background: #fff; border-color: var(--border2); }
+        .light .store-edit-display { color: var(--t3); }
+        .light .wh-section-title { color: var(--t2); border-bottom-color: var(--border); }
+        .light .divider-or { color: var(--t4); }
+        .light .divider-or::before, .light .divider-or::after { background: var(--border2); }
+        .light .settings-store-item { color: var(--t3); border-bottom-color: var(--border); }
+        .light .section-label { color: var(--t4); }
+        .light .field-label { color: var(--t3); }
+        .light .loading { color: var(--t4); }
+        .light .empty { color: var(--t4); }
+        .light .success-title { color: var(--t1); }
+        .light .mob-header { background: rgba(255,255,255,0.97); border-bottom-color: var(--border); }
+        .light .mob-logo span:first-of-type { color: var(--t1); }
+        .light .user-name { color: var(--t3); }
+        .light .btn-logout { background: rgba(255,255,255,0.8); border-color: var(--border2); color: var(--t3); }
+        .light .mob-nav-btn { color: var(--t4); }
+        .light .mob-nav-btn.active { background: linear-gradient(135deg, rgba(124,58,237,0.1), rgba(91,33,182,0.05)); color: var(--acc); }
+        .light .mob-main { background: var(--bg); }
+        .light .dt-table { backdrop-filter: none; }
+        .light .card { backdrop-filter: none; }
+        .light .stat-card { backdrop-filter: none; }
 
         @media (prefers-reduced-motion: reduce) {
           *, .fade-in { animation: none !important; transition: none !important; }
