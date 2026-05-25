@@ -110,11 +110,12 @@ export default function Home() {
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
   const [storesList, setStoresList] = useState([]);
+  const [storeDetailsList, setStoreDetailsList] = useState([]);
+  const [selectedStoreDetails, setSelectedStoreDetails] = useState(null);
   const [newStoreName, setNewStoreName] = useState('');
   const [newStorePhone, setNewStorePhone] = useState('');
   const [newStoreAddress, setNewStoreAddress] = useState('');
-  const [newStoreCustomerName, setNewStoreCustomerName] = useState('');
-  const [newStoreTaxId, setNewStoreTaxId] = useState('');
+  const [newStoreVat, setNewStoreVat] = useState('');
   const [addingStore, setAddingStore] = useState(false);
   const [addStoreMsg, setAddStoreMsg] = useState(null);
   const [warehouseNotes, setWarehouseNotes] = useState({});
@@ -135,6 +136,7 @@ export default function Home() {
       const res = await fetch('/api/stores');
       const data = await res.json();
       setStoresList(data.stores || []);
+      setStoreDetailsList(data.storeDetails || []);
     } catch (e) {}
   };
 
@@ -182,8 +184,7 @@ export default function Home() {
           name: newStoreName.trim(),
           phone: newStorePhone.trim(),
           address: newStoreAddress.trim(),
-          customerName: newStoreCustomerName.trim(),
-          taxId: newStoreTaxId.trim(),
+          vat: newStoreVat.trim(),
         }),
       });
       const data = await res.json();
@@ -194,8 +195,7 @@ export default function Home() {
         setNewStoreName('');
         setNewStorePhone('');
         setNewStoreAddress('');
-        setNewStoreCustomerName('');
-        setNewStoreTaxId('');
+        setNewStoreVat('');
         loadStores();
       }
     } catch (e) {
@@ -520,6 +520,9 @@ export default function Home() {
 
   const filtered = sortItems(applyDateFilter(filterAction === 'Όλα' ? inventory : inventory.filter(i => normalizeAction(i.action) === filterAction)));
   const warehouseItems = sortItems(inventory.filter(i => ['Καινούριο Μηχάνημα', 'Εισαγωγή για επισκευή'].includes(normalizeAction(i.action))));
+  const storeRows = storeDetailsList.length
+    ? storeDetailsList
+    : storesList.map(name => ({ name, phone: '', address: '', vat: '' }));
 
   // Εμφάνιση store: αν είναι κενό και η κίνηση είναι Καινούριο Μηχάνημα → "Αποθήκη"
   const displayStore = (item) => {
@@ -1136,24 +1139,55 @@ export default function Home() {
               </div>
               <div className="field-group">
                 <label className="field-label">ΑΦΜ</label>
-                <input className="text-input" value={newStoreTaxId} onChange={e=>{setNewStoreTaxId(e.target.value);setAddStoreMsg(null);}} placeholder="π.χ. 123456789" />
+                <input className="text-input" value={newStoreVat} onChange={e=>{setNewStoreVat(e.target.value);setAddStoreMsg(null);}} placeholder="π.χ. 123456789" />
               </div>
             </div>
             <div className="field-group">
               <label className="field-label">Διεύθυνση</label>
               <input className="text-input" value={newStoreAddress} onChange={e=>{setNewStoreAddress(e.target.value);setAddStoreMsg(null);}} placeholder="π.χ. Πατησίων 100, Αθήνα" />
             </div>
-            <div className="field-group">
-              <label className="field-label">Όνομα πελάτη</label>
-              <input className="text-input" value={newStoreCustomerName} onChange={e=>{setNewStoreCustomerName(e.target.value);setAddStoreMsg(null);}} placeholder="π.χ. Γιώργος Παπαδόπουλος" />
-            </div>
             {addStoreMsg && <div className={addStoreMsg.type==='success'?'banner-success':'error-banner'} style={{marginBottom:'12px'}}>{addStoreMsg.type==='success'?'✅ ':'⚠️ '}{addStoreMsg.text}</div>}
             <button className="btn-primary" onClick={handleAddStore} disabled={addingStore||!newStoreName.trim()}>{addingStore?'⏳ Προσθήκη...':'➕ Προσθήκη καταστήματος'}</button>
           </div>
           <div className="card">
             <div className="section-label">Λίστα καταστημάτων ({storesList.length})</div>
-            <div style={{maxHeight:'300px',overflowY:'auto',marginTop:'8px'}}>
-              {storesList.map((s,i) => <div key={i} className="settings-store-item">{s}</div>)}
+            <div className="settings-store-layout">
+              <div className="settings-store-list">
+                {storeRows.map((store,i) => (
+                  <button
+                    key={`${store.name}-${i}`}
+                    className={`settings-store-item ${selectedStoreDetails?.name===store.name?'active':''}`}
+                    onClick={()=>setSelectedStoreDetails(store)}
+                  >
+                    {store.name}
+                  </button>
+                ))}
+              </div>
+              {selectedStoreDetails && (
+                <div className="store-detail-card">
+                  <div className="store-detail-head">
+                    <div>
+                      <div className="store-detail-title">{selectedStoreDetails.name}</div>
+                      <div className="store-detail-sub">Στοιχεία καταστήματος</div>
+                    </div>
+                    <button className="btn-note-cancel" onClick={()=>setSelectedStoreDetails(null)}>✕</button>
+                  </div>
+                  <div className="store-detail-grid">
+                    <div className="store-detail-field">
+                      <span>Τηλέφωνο</span>
+                      <strong>{selectedStoreDetails.phone || '—'}</strong>
+                    </div>
+                    <div className="store-detail-field">
+                      <span>ΑΦΜ</span>
+                      <strong>{selectedStoreDetails.vat || '—'}</strong>
+                    </div>
+                    <div className="store-detail-field wide">
+                      <span>Διεύθυνση</span>
+                      <strong>{selectedStoreDetails.address || '—'}</strong>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
             <button className="btn-ghost" style={{marginTop:'12px'}} onClick={loadStores}>🔄 Ανανέωση</button>
           </div>
@@ -1906,7 +1940,20 @@ export default function Home() {
         .divider-or { text-align: center; color: var(--t4); font-size: 11px; margin: 8px 0; position: relative; }
         .divider-or::before, .divider-or::after { content: ''; position: absolute; top: 50%; width: 44%; height: 1px; background: var(--border2); }
         .divider-or::before { left: 0; } .divider-or::after { right: 0; }
-        .settings-store-item { padding: 8px 4px; font-size: 12px; color: var(--t3); border-bottom: 1px solid var(--border); font-weight: 500; }
+        .settings-store-layout { display: grid; grid-template-columns: minmax(220px, 0.8fr) minmax(280px, 1.2fr); gap: 12px; margin-top: 8px; align-items: start; }
+        .settings-store-list { max-height: 300px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--r); background: var(--glass); }
+        .settings-store-item { width: 100%; padding: 10px 12px; font-size: 12px; color: var(--t3); border: none; border-bottom: 1px solid var(--border); font-weight: 600; background: transparent; font-family: var(--font); text-align: left; cursor: pointer; transition: all 0.15s; }
+        .settings-store-item:last-child { border-bottom: none; }
+        .settings-store-item:hover, .settings-store-item.active { color: var(--t1); background: var(--glow2); }
+        .store-detail-card { border: 1px solid var(--border2); border-radius: var(--r-lg); background: var(--glass2); padding: 14px; box-shadow: 0 0 18px var(--glow2); }
+        .store-detail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+        .store-detail-title { font-size: 15px; font-weight: 800; color: var(--t1); }
+        .store-detail-sub { font-size: 10px; color: var(--t3); font-weight: 600; margin-top: 2px; }
+        .store-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .store-detail-field { border: 1px solid var(--border); border-radius: var(--r); padding: 10px 11px; background: var(--glass); min-width: 0; }
+        .store-detail-field.wide { grid-column: 1 / -1; }
+        .store-detail-field span { display: block; font-size: 9px; color: var(--t3); font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
+        .store-detail-field strong { display: block; font-size: 12px; color: var(--t1); font-weight: 700; overflow-wrap: anywhere; }
         .store-extra-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
         .loading { text-align: center; padding: 48px; color: var(--t3); font-size: 13px; font-weight: 600; }
         .empty { text-align: center; padding: 48px 20px; color: var(--t3); font-size: 13px; line-height: 1.7; font-weight: 600; }
@@ -2059,6 +2106,9 @@ export default function Home() {
           .inv-stats { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
           .stat-card { padding: 12px; }
           .stat-val { font-size: 24px; }
+          .settings-store-layout { grid-template-columns: 1fr; }
+          .settings-store-list { max-height: 220px; }
+          .store-detail-grid { grid-template-columns: 1fr; }
           .store-extra-grid { grid-template-columns: 1fr; gap: 0; }
         }
       `}</style>

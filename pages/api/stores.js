@@ -2,13 +2,14 @@
 // GET  → επιστρέφει λίστα καταστημάτων από το Sheet
 // POST → προσθέτει νέο κατάστημα στο Sheet
 
-import { getStores, addStoreDetails } from '../../lib/sheets';
+import { getStores, getStoreDetails, addStoreDetails } from '../../lib/sheets';
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
     try {
       const stores = await getStores();
-      return res.status(200).json({ stores });
+      const storeDetails = await getStoreDetails();
+      return res.status(200).json({ stores, storeDetails });
     } catch (err) {
       console.error('getStores error:', err);
       return res.status(500).json({ error: 'Σφάλμα φόρτωσης καταστημάτων' });
@@ -17,7 +18,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'POST') {
     try {
-      const { name, phone = '', address = '', customerName = '', taxId = '' } = req.body;
+      const { name, phone = '', address = '', vat = '' } = req.body;
 
       if (!name || !name.trim()) {
         return res.status(400).json({ error: 'Το όνομα καταστήματος είναι υποχρεωτικό' });
@@ -36,8 +37,7 @@ export default async function handler(req, res) {
         name: name.trim(),
         phone: phone.trim(),
         address: address.trim(),
-        customerName: customerName.trim(),
-        taxId: taxId.trim(),
+        vat: vat.trim(),
       });
       return res.status(200).json({ success: true });
     } catch (err) {
