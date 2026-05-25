@@ -110,6 +110,7 @@ export default function Home() {
   const [historySerial, setHistorySerial] = useState('');
   const [historyStore, setHistoryStore] = useState('');
   const [filterAction, setFilterAction] = useState('Όλα');
+  const [warehouseFilter, setWarehouseFilter] = useState('all');
   const [sortOrder, setSortOrder] = useState('desc');
   const [filterPeriod, setFilterPeriod] = useState('all'); // all | today | 7 | 30 | custom
   const [filterDateFrom, setFilterDateFrom] = useState('');
@@ -651,6 +652,14 @@ ${table}
 
   const filtered = sortItems(applyDateFilter(filterAction === 'Όλα' ? inventory : inventory.filter(i => normalizeAction(i.action) === filterAction)));
   const warehouseItems = sortItems(inventory.filter(i => ['Καινούριο Μηχάνημα', 'Εισαγωγή για επισκευή'].includes(normalizeAction(i.action))));
+  const shippedItems = sortItems(inventory.filter(i => ['Αποστολή σε κατάστημα','Αποστολή στα κεντρικά'].includes(normalizeAction(i.action))));
+  const warehouseVisibleItems = warehouseFilter === 'new'
+    ? warehouseItems.filter(i => normalizeAction(i.action) === 'Καινούριο Μηχάνημα')
+    : warehouseFilter === 'repair'
+      ? warehouseItems.filter(i => normalizeAction(i.action) === 'Εισαγωγή για επισκευή')
+      : warehouseFilter === 'shipped'
+        ? shippedItems
+        : warehouseItems;
   const storeRows = storeDetailsList.length
     ? storeDetailsList
     : storesList.map(name => ({ name, phone: '', address: '', vat: '' }));
@@ -1009,14 +1018,14 @@ ${table}
       {tab === 'warehouse' && (
         <div className="fade-in">
           <div className="inv-stats">
-            <div className="stat-card"><div className="stat-label">Σύνολο αποθήκης</div><div className="stat-val">{warehouseItems.length}</div><div className="stat-sub">μηχανήματα</div></div>
-            <div className="stat-card"><div className="stat-label">Καινούρια</div><div className="stat-val">{inventory.filter(i=>normalizeAction(i.action)==='Καινούριο Μηχάνημα').length}</div><div className="stat-sub">έτοιμα για αποστολή</div></div>
-            <div className="stat-card"><div className="stat-label">Σε επισκευή</div><div className="stat-val">{inventory.filter(i=>normalizeAction(i.action)==='Εισαγωγή για επισκευή').length}</div><div className="stat-sub">στην αποθήκη</div></div>
-            <div className="stat-card"><div className="stat-label">Αποσταλμένα</div><div className="stat-val">{inventory.filter(i=>['Αποστολή σε κατάστημα','Αποστολή στα κεντρικά'].includes(normalizeAction(i.action))).length}</div><div className="stat-sub">έχουν φύγει</div></div>
+            <button className={`stat-card stat-card-btn ${warehouseFilter==='all'?'active':''}`} onClick={()=>setWarehouseFilter('all')}><div className="stat-label">Σύνολο αποθήκης</div><div className="stat-val">{warehouseItems.length}</div><div className="stat-sub">μηχανήματα</div></button>
+            <button className={`stat-card stat-card-btn ${warehouseFilter==='new'?'active':''}`} onClick={()=>setWarehouseFilter('new')}><div className="stat-label">Καινούρια</div><div className="stat-val">{warehouseItems.filter(i=>normalizeAction(i.action)==='Καινούριο Μηχάνημα').length}</div><div className="stat-sub">έτοιμα για αποστολή</div></button>
+            <button className={`stat-card stat-card-btn ${warehouseFilter==='repair'?'active':''}`} onClick={()=>setWarehouseFilter('repair')}><div className="stat-label">Σε επισκευή</div><div className="stat-val">{warehouseItems.filter(i=>normalizeAction(i.action)==='Εισαγωγή για επισκευή').length}</div><div className="stat-sub">στην αποθήκη</div></button>
+            <button className={`stat-card stat-card-btn ${warehouseFilter==='shipped'?'active':''}`} onClick={()=>setWarehouseFilter('shipped')}><div className="stat-label">Αποσταλμένα</div><div className="stat-val">{shippedItems.length}</div><div className="stat-sub">έχουν φύγει</div></button>
           </div>
           {loadingInv && <div className="loading">⏳ Φόρτωση...</div>}
-          {!loadingInv && warehouseItems.length === 0 && <div className="empty">Δεν υπάρχουν μηχανήματα στην αποθήκη.</div>}
-          {!loadingInv && warehouseItems.length > 0 && (
+          {!loadingInv && warehouseVisibleItems.length === 0 && <div className="empty">Δεν υπάρχουν μηχανήματα για αυτό το φίλτρο.</div>}
+          {!loadingInv && warehouseVisibleItems.length > 0 && (
             <div className="dt-table desktop-only">
               <div className="dt-head">
                 <div className="dt-th">Model / Serial</div>
@@ -1025,7 +1034,7 @@ ${table}
                 <div className="dt-th">Ημερομηνία</div>
                 <div className="dt-th">Χρήστης</div>
               </div>
-              {warehouseItems.map((item, i) => {
+              {warehouseVisibleItems.map((item, i) => {
                 const badge = getRepairBadge(item);
                 const itemNote = warehouseNotes[item.serialNumber]; // array ή undefined
                 return (
@@ -1134,7 +1143,7 @@ ${table}
             </div>
           )}
           <div className="mobile-only">
-            {warehouseItems.map((item, i) => {
+            {warehouseVisibleItems.map((item, i) => {
               const badge = getRepairBadge(item);
               return (
                 <div key={i} className="machine-row" onClick={()=>{setTab('history');loadHistory(item.serialNumber);}}>
@@ -1812,6 +1821,9 @@ ${table}
           opacity: 0.5;
         }
         .stat-card:hover { border-color: var(--border2); transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px var(--border); }
+        .stat-card-btn { width: 100%; text-align: left; font-family: var(--font); color: inherit; cursor: pointer; }
+        .stat-card-btn.active { border-color: var(--acc); background: linear-gradient(135deg, rgba(167,139,250,0.14), rgba(124,58,237,0.07)); box-shadow: 0 0 22px var(--glow), inset 0 0 18px rgba(167,139,250,0.04); }
+        .stat-card-btn.active::before { opacity: 1; }
         .stat-label { font-size: 9px; color: var(--t3); margin-bottom: 6px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; display: flex; align-items: center; gap: 5px; }
         .stat-val { font-size: 28px; font-weight: 800; line-height: 1; color: var(--t1); }
         .stat-sub { font-size: 10px; color: var(--t3); margin-top: 4px; font-weight: 600; }
