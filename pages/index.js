@@ -99,7 +99,7 @@ export default function Home() {
   const [notes, setNotes] = useState('');
   const [shipmentMethod, setShipmentMethod] = useState('ours');
   const [shipmentCourier, setShipmentCourier] = useState('');
-  const [shipmentTracking, setShipmentTracking] = useState('');
+  const [shipmentItemDescription, setShipmentItemDescription] = useState('');
   const [shipmentNotes, setShipmentNotes] = useState('');
   const [copiedShipmentEmail, setCopiedShipmentEmail] = useState(false);
 
@@ -329,7 +329,7 @@ export default function Home() {
     if (notes.trim()) parts.push(notes.trim());
     parts.push(`Τρόπος μεταφοράς: ${getShipmentMethodLabel()}`);
     if (shipmentMethod === 'courier' && shipmentCourier.trim()) parts.push(`Courier: ${shipmentCourier.trim()}`);
-    if (shipmentMethod === 'courier' && shipmentTracking.trim()) parts.push(`Tracking: ${shipmentTracking.trim()}`);
+    if (shipmentItemDescription.trim()) parts.push(`Περιγραφή είδους: ${shipmentItemDescription.trim()}`);
     if (shipmentNotes.trim()) parts.push(`Σημειώσεις αποστολής: ${shipmentNotes.trim()}`);
     return parts.join('\n');
   };
@@ -392,13 +392,13 @@ ${table}
       ['ΑΦΜ', destination.vat || '—'],
       ['Υποκατάστημα', destination.address || '—'],
       ['Κωδικός Είδους', model || '—'],
+      ['Περιγραφή Είδους', shipmentItemDescription || '—'],
       ['Σειριακός', serialNumber || '—'],
       ['Ποσότητα', '1'],
       ['Τρόπος αποστολής', getShipmentMethodLabel()],
     ];
     if (shipmentMethod === 'courier') {
       rows.push(['Courier', shipmentCourier || '—']);
-      rows.push(['Tracking', shipmentTracking || '—']);
     }
     if (shipmentNotes.trim()) rows.push(['Σημειώσεις', shipmentNotes.trim()]);
     return rows;
@@ -459,7 +459,7 @@ ${table}
     setStore(''); setStoreSearch(''); setStoreChain('all'); setShowStorePicker(false);
     setDate(new Date().toISOString().split('T')[0]);
     setProblem(''); setNotes('');
-    setShipmentMethod('ours'); setShipmentCourier(''); setShipmentTracking(''); setShipmentNotes(''); setCopiedShipmentEmail(false);
+    setShipmentMethod('ours'); setShipmentCourier(''); setShipmentItemDescription(''); setShipmentNotes(''); setCopiedShipmentEmail(false);
     setExistingItem(null);
   };
 
@@ -565,7 +565,7 @@ ${table}
     }
   };
 
-  // Quick action: πάει στη φόρμα με serial+model προσυμπληρωμένα
+  // Quick action: πάει στη φόρμα με serial+κωδικό είδους προσυμπληρωμένα
   const startNewAction = (serial, mdl) => {
     handleReset();
     setSerialNumber(serial || '');
@@ -735,7 +735,7 @@ ${table}
           {step===1 && (
             <div className="card">
               <div className="card-title">Φωτογράφισε το μηχάνημα</div>
-              <div className="card-sub">Ανέβασε φωτογραφία για αυτόματη αναγνώριση serial & model</div>
+              <div className="card-sub">Ανέβασε φωτογραφία για αυτόματη αναγνώριση serial & κωδικού είδους</div>
               <div className="upload-area"
                 onDragOver={e=>e.preventDefault()} onDrop={handleDrop}
                 onClick={() => fileRef.current.click()}
@@ -752,7 +752,7 @@ ${table}
                 <button className="btn-half" onClick={() => fileRef.current.click()}>🖼️ Γκαλερί</button>
               </div>
               {scanError && <div className="error-banner" style={{marginTop:'12px'}}>⚠️ {scanError}</div>}
-              {imagePreview && <button className="btn-primary" onClick={handleScan} disabled={scanning}>{scanning ? '🔍 Αναγνώριση...' : '🔍 Αναγνώριση serial & model'}</button>}
+              {imagePreview && <button className="btn-primary" onClick={handleScan} disabled={scanning}>{scanning ? '🔍 Αναγνώριση...' : '🔍 Αναγνώριση serial & κωδικού είδους'}</button>}
               <button className="btn-ghost" onClick={handleSkipScan}>✏️ Συμπλήρωσε χειροκίνητα</button>
             </div>
           )}
@@ -778,7 +778,7 @@ ${table}
                 <div className="existing-item-banner">
                   <div className="existing-item-title">⚠️ Αυτό το serial υπάρχει ήδη</div>
                   <div className="existing-item-info">
-                    <span><strong>{existingItem.model || 'Άγνωστο model'}</strong></span>
+                    <span><strong>{existingItem.model || 'Άγνωστος κωδικός είδους'}</strong></span>
                     <span className={`status-pill ${STATUS_PILL[normalizeAction(existingItem.action)]?.cls||'pill-gray'}`}>
                       {STATUS_PILL[normalizeAction(existingItem.action)]?.label||normalizeAction(existingItem.action)}
                     </span>
@@ -791,8 +791,8 @@ ${table}
                 </div>
               )}
               <div className="field-group">
-                <label className="field-label">Model</label>
-                <input className="text-input" value={model} onChange={e=>setModel(e.target.value)} placeholder="π.χ. Keurig K-Elite" />
+                <label className="field-label">Κωδικός Είδους</label>
+                <input className="text-input" value={model} onChange={e=>setModel(e.target.value)} placeholder="π.χ. BV-11-SO-EU" />
               </div>
               <div className="section-label" style={{marginTop:'16px'}}>Τύπος κίνησης</div>
               <div className="action-grid">
@@ -857,17 +857,15 @@ ${table}
                     <button type="button" className={`shipment-method ${shipmentMethod==='courier'?'active':''}`} onClick={()=>setShipmentMethod('courier')}>Courier</button>
                   </div>
                   {shipmentMethod === 'courier' && (
-                    <div className="store-extra-grid">
-                      <div className="field-group">
-                        <label className="field-label">Courier εταιρεία</label>
-                        <input className="text-input" value={shipmentCourier} onChange={e=>setShipmentCourier(e.target.value)} placeholder="π.χ. ACS, Γενική Ταχυδρομική" />
-                      </div>
-                      <div className="field-group">
-                        <label className="field-label">Tracking number</label>
-                        <input className="text-input" value={shipmentTracking} onChange={e=>setShipmentTracking(e.target.value)} placeholder="π.χ. 123456789" />
-                      </div>
+                    <div className="field-group">
+                      <label className="field-label">Courier εταιρεία</label>
+                      <input className="text-input" value={shipmentCourier} onChange={e=>setShipmentCourier(e.target.value)} placeholder="π.χ. ACS, Γενική Ταχυδρομική" />
                     </div>
                   )}
+                  <div className="field-group">
+                    <label className="field-label">Περιγραφή Είδους</label>
+                    <textarea value={shipmentItemDescription} onChange={e=>setShipmentItemDescription(e.target.value)} placeholder="π.χ. Coin validator Pelicano, ανταλλακτικό CashDro..." />
+                  </div>
                   <div className="field-group">
                     <label className="field-label">Σημειώσεις αποστολής</label>
                     <textarea value={shipmentNotes} onChange={e=>setShipmentNotes(e.target.value)} placeholder="π.χ. Να παραδοθεί πρωί, εύθραυστο, παραλαβή από Χάρη..." />
@@ -890,7 +888,7 @@ ${table}
             <div className="card fade-in success-card">
               <div className="success-icon">✅</div>
               <div className="success-title">Καταχωρήθηκε!</div>
-              <div className="success-sub"><strong>{model || 'Μηχάνημα'}</strong> · {serialNumber}<br/>🏪 {store}<br/>{action}{problem ? ` · 🔧 ${problem}` : ''}</div>
+              <div className="success-sub"><strong>{model || 'Κωδικός είδους'}</strong> · {serialNumber}<br/>🏪 {store}<br/>{action}{problem ? ` · 🔧 ${problem}` : ''}</div>
               {isShipmentAction() && (
                 <div className="shipment-email-card">
                   <div className="shipment-email-head">
@@ -949,7 +947,7 @@ ${table}
             {!loadingInv && filtered.length > 0 && (
               <div className="dt-table">
                 <div className="dt-head">
-                  <div className="dt-th">Model / Serial</div>
+                  <div className="dt-th">Κωδικός / Serial</div>
                   <div className="dt-th">Κατάστημα</div>
                   <div className="dt-th">Κατάσταση</div>
                   <div className="dt-th">Ημερομηνία</div>
@@ -997,7 +995,7 @@ ${table}
                 <div className="machine-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
                 <div className="machine-info">
                   <div className="machine-name-row">
-                    <div className="machine-name">{item.model || 'Άγνωστο model'}</div>
+                    <div className="machine-name">{item.model || 'Άγνωστος κωδικός είδους'}</div>
                     <span className={`status-pill ${STATUS_PILL[normalizeAction(item.action)]?.cls||'pill-gray'}`}>{STATUS_PILL[normalizeAction(item.action)]?.label||normalizeAction(item.action)}</span>
                   </div>
                   <div className="machine-serial">{item.serialNumber}</div>
@@ -1028,7 +1026,7 @@ ${table}
           {!loadingInv && warehouseVisibleItems.length > 0 && (
             <div className="dt-table desktop-only">
               <div className="dt-head">
-                <div className="dt-th">Model / Serial</div>
+                <div className="dt-th">Κωδικός / Serial</div>
                 <div className="dt-th">Από κατάστημα</div>
                 <div className="dt-th">Κατάσταση</div>
                 <div className="dt-th">Ημερομηνία</div>
@@ -1150,7 +1148,7 @@ ${table}
                   <div className="machine-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
                   <div className="machine-info">
                     <div className="machine-name-row">
-                      <div className="machine-name">{item.model || 'Άγνωστο model'}</div>
+                      <div className="machine-name">{item.model || 'Άγνωστος κωδικός είδους'}</div>
                       <span className={`status-pill ${STATUS_PILL[normalizeAction(item.action)]?.cls||'pill-gray'}`}>{STATUS_PILL[normalizeAction(item.action)]?.label||normalizeAction(item.action)}</span>
                     </div>
                     <div className="machine-serial">{item.serialNumber}</div>
@@ -1267,7 +1265,7 @@ ${table}
           {history && history.length > 0 && historySerial && (
             <div className="history-machine-header">
               <div className="history-machine-info">
-                <div className="history-machine-model">{history[0]?.model || 'Άγνωστο model'}</div>
+                <div className="history-machine-model">{history[0]?.model || 'Άγνωστος κωδικός είδους'}</div>
                 <div className="history-machine-serial">{history[0]?.serialNumber}</div>
                 <div className="history-machine-count">{history.length} κινήσεις</div>
               </div>
