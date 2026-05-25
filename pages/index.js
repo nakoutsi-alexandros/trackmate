@@ -839,7 +839,7 @@ ${table}
                         </button>
                         <input className="text-input" value={itemSearch} onChange={e=>setItemSearch(e.target.value)} placeholder="Αναζήτηση κωδικού ή περιγραφής..." autoFocus />
                         <div className="item-list">
-                          {filteredItems.slice(0, 12).map(item => (
+                          {filteredItems.map(item => (
                             <button key={item.code} type="button" className={`item-option ${model===item.code?'active':''}`} onClick={()=>handleSelectItem(item)}>
                               <span>{item.code}</span>
                               <small>{item.description || 'Χωρίς περιγραφή'}</small>
@@ -884,7 +884,7 @@ ${table}
                 <label className="field-label">🏪 Κατάστημα</label>
                 {!showStorePicker ? (
                   <div style={{display:'flex',gap:'8px'}}>
-                    <div className="text-input store-display" onClick={()=>setShowStorePicker(true)} style={{cursor:'pointer',color:store?'#1a1a18':'#999'}}>{store || 'Επίλεξε κατάστημα...'}</div>
+                    <div className="text-input store-display" onClick={()=>setShowStorePicker(true)} style={{cursor:'pointer',color:store?'var(--t1)':'var(--t3)'}}>{store || 'Επίλεξε κατάστημα...'}</div>
                     {store && <button className="btn-clear" onClick={()=>setStore('')}>✕</button>}
                   </div>
                 ) : (
@@ -1304,7 +1304,7 @@ ${table}
           <div className="field-group">
             <label className="field-label">Αναζήτηση με Κατάστημα</label>
             <div style={{display:'flex',gap:'8px'}}>
-              <div className="text-input store-display" style={{cursor:'pointer',color:historyStore?'#1a1a18':'#999',flex:1}} onClick={()=>setShowStorePicker('history')}>{historyStore || 'Επίλεξε κατάστημα...'}</div>
+              <div className="text-input store-display" style={{cursor:'pointer',color:historyStore?'var(--t1)':'var(--t3)',flex:1}} onClick={()=>setShowStorePicker('history')}>{historyStore || 'Επίλεξε κατάστημα...'}</div>
               {historyStore && <button className="btn-clear" onClick={()=>setHistoryStore('')}>✕</button>}
               <button className="btn-search" onClick={()=>loadHistory('', historyStore)}>Αναζήτηση</button>
             </div>
