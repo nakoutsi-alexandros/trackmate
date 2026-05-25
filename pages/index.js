@@ -117,6 +117,7 @@ export default function Home() {
   const [editingNote, setEditingNote] = useState(null);
   const [noteInput, setNoteInput] = useState('');
   const [savingNote, setSavingNote] = useState(false);
+  const [expandedNotes, setExpandedNotes] = useState({}); // serials με ανοιχτό ιστορικό
   const [editingStore, setEditingStore] = useState(null); // serial που επεξεργάζεται κατάστημα
   const [editStoreSearch, setEditStoreSearch] = useState('');
   const [editStoreChain, setEditStoreChain] = useState('all');
@@ -142,6 +143,7 @@ export default function Home() {
   };
 
   const handleSaveNote = async (serialNumber) => {
+    if (!noteInput.trim()) return;
     setSavingNote(true);
     try {
       await fetch('/api/notes', {
@@ -149,7 +151,12 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ serialNumber, note: noteInput }),
       });
-      setWarehouseNotes(prev => ({ ...prev, [serialNumber]: { note: noteInput, updatedAt: 'μόλις τώρα', updatedBy: currentUser?.fullName || '' } }));
+      // Ενημερώνουμε τοπικά — προσθέτουμε στο array αντί να αντικαθιστούμε
+      const newNote = { note: noteInput, createdAt: 'μόλις τώρα', createdBy: currentUser?.fullName || '' };
+      setWarehouseNotes(prev => ({
+        ...prev,
+        [serialNumber]: [newNote, ...(prev[serialNumber] || [])],
+      }));
       setEditingNote(null);
       setNoteInput('');
     } catch (e) {
@@ -814,7 +821,7 @@ export default function Home() {
               </div>
               {warehouseItems.map((item, i) => {
                 const badge = getRepairBadge(item);
-                const itemNote = warehouseNotes[item.serialNumber];
+                const itemNote = warehouseNotes[item.serialNumber]; // array ή undefined
                 return (
                   <div key={i}>
                     <div className="dt-row" onClick={()=>{setTab('history');loadHistory(item.serialNumber);}}>
@@ -876,17 +883,42 @@ export default function Home() {
                         </div>
                       </div>
                     </div>
-                    {/* Note row */}
+                    {/* Note row με ιστορικό */}
                     <div className="dt-note-row" onClick={e=>e.stopPropagation()}>
                       {editingNote === item.serialNumber ? (
                         <div style={{display:'flex',alignItems:'center',gap:'8px',width:'100%'}}>
-                          <input className="text-input note-input-inline" value={noteInput} onChange={e=>setNoteInput(e.target.value)} placeholder="Γράψε σημείωση..." autoFocus onKeyDown={e=>{if(e.key==='Enter')handleSaveNote(item.serialNumber);if(e.key==='Escape'){setEditingNote(null);setNoteInput('');}}} />
+                          <input className="text-input note-input-inline" value={noteInput}
+                            onChange={e=>setNoteInput(e.target.value)}
+                            placeholder="Γράψε νέα σημείωση..."
+                            autoFocus
+                            onKeyDown={e=>{if(e.key==='Enter')handleSaveNote(item.serialNumber);if(e.key==='Escape'){setEditingNote(null);setNoteInput('');}}} />
                           <button className="btn-quick-action" onClick={()=>handleSaveNote(item.serialNumber)} disabled={savingNote}>{savingNote?'...':'Αποθήκευση'}</button>
                           <button className="btn-note-cancel" onClick={()=>{setEditingNote(null);setNoteInput('');}}>✕</button>
                         </div>
                       ) : (
-                        <div className="note-display-desktop" onClick={()=>{setEditingNote(item.serialNumber);setNoteInput(itemNote?.note||'');}}>
-                          {itemNote?.note ? <span className="note-text">📌 {itemNote.note}</span> : <span className="note-empty">+ Σημείωση</span>}
+                        <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+                          {itemNote && itemNote.length > 0 ? (
+                            <>
+                              <span className="note-text" style={{flex:1}}>📌 {itemNote[0].note}</span>
+                              <span className="note-count" onClick={()=>setExpandedNotes(p=>({...p,[item.serialNumber]:!p[item.serialNumber]}))}>
+                                {itemNote.length > 1 ? `${itemNote.length} σημ. ${expandedNotes[item.serialNumber]?'▲':'▼'}` : ''}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="note-empty">+ Σημείωση</span>
+                          )}
+                          <button className="note-add-btn" onClick={()=>{setEditingNote(item.serialNumber);setNoteInput('');}}>+ Νέα</button>
+                        </div>
+                      )}
+                      {/* Ιστορικό σημειώσεων */}
+                      {expandedNotes[item.serialNumber] && itemNote && itemNote.length > 1 && (
+                        <div className="note-history">
+                          {itemNote.slice(1).map((n, i) => (
+                            <div key={i} className="note-history-item">
+                              <span className="note-history-text">📌 {n.note}</span>
+                              <span className="note-history-meta">{n.createdAt} · {n.createdBy}</span>
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>
@@ -930,20 +962,40 @@ export default function Home() {
                       <span className="machine-date">📅 {item.date}</span>
                     </div>
                     {badge && <div className={`repair-badge repair-badge-${badge.type}`}>{badge.type==='danger'?'🔴':'🟡'} Σε επισκευή {badge.label}</div>}
-                    {/* Note section */}
+                    {/* Note section mobile */}
                     {editingNote === item.serialNumber ? (
                       <div className="note-edit" onClick={e=>e.stopPropagation()}>
-                        <textarea className="note-input" value={noteInput} onChange={e=>setNoteInput(e.target.value)} placeholder="Γράψε σημείωση..." autoFocus />
+                        <textarea className="note-input" value={noteInput} onChange={e=>setNoteInput(e.target.value)} placeholder="Γράψε νέα σημείωση..." autoFocus />
                         <div style={{display:'flex',gap:'6px',marginTop:'6px'}}>
                           <button className="btn-quick-action" onClick={()=>handleSaveNote(item.serialNumber)} disabled={savingNote}>{savingNote?'...':'💾 Αποθήκευση'}</button>
                           <button className="btn-note-cancel" onClick={()=>{setEditingNote(null);setNoteInput('');}}>Άκυρο</button>
                         </div>
                       </div>
                     ) : (
-                      <div className="note-display" onClick={e=>{e.stopPropagation();setEditingNote(item.serialNumber);setNoteInput(warehouseNotes[item.serialNumber]?.note||'');}}>
-                        {warehouseNotes[item.serialNumber]?.note
-                          ? <span className="note-text">📌 {warehouseNotes[item.serialNumber].note}</span>
-                          : <span className="note-empty">+ Προσθήκη σημείωσης</span>}
+                      <div className="note-display" onClick={e=>e.stopPropagation()}>
+                        {warehouseNotes[item.serialNumber]?.length > 0 ? (
+                          <>
+                            <div style={{display:'flex',alignItems:'center',gap:'6px',marginBottom:'4px'}}>
+                              <span className="note-text" style={{flex:1}}>📌 {warehouseNotes[item.serialNumber][0].note}</span>
+                              {warehouseNotes[item.serialNumber].length > 1 && (
+                                <span className="note-count" onClick={()=>setExpandedNotes(p=>({...p,[item.serialNumber]:!p[item.serialNumber]}))}>
+                                  {warehouseNotes[item.serialNumber].length} σημ. {expandedNotes[item.serialNumber]?'▲':'▼'}
+                                </span>
+                              )}
+                            </div>
+                            {expandedNotes[item.serialNumber] && warehouseNotes[item.serialNumber].slice(1).map((n,i) => (
+                              <div key={i} className="note-history-item">
+                                <span className="note-history-text">📌 {n.note}</span>
+                                <span className="note-history-meta">{n.createdAt} · {n.createdBy}</span>
+                              </div>
+                            ))}
+                          </>
+                        ) : (
+                          <span className="note-empty">+ Προσθήκη σημείωσης</span>
+                        )}
+                        <button className="note-add-btn" style={{marginTop:'6px',width:'100%'}} onClick={()=>{setEditingNote(item.serialNumber);setNoteInput('');}}>
+                          + Νέα σημείωση
+                        </button>
                       </div>
                     )}
                     <div style={{display:'flex',gap:'6px',marginTop:'8px'}}>
@@ -1532,7 +1584,7 @@ export default function Home() {
         .dt-td.dt-muted { color: var(--t3); font-size: 11px; }
         .dt-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
         .dt-model { font-size: 12px; font-weight: 600; color: var(--t1); }
-        .dt-serial { font-family: var(--mono); font-size: 9px; color: var(--t4); margin-top: 1px; }
+        .dt-serial { font-family: var(--mono); font-size: 10px; color: var(--t2); margin-top: 2px; letter-spacing: 0.03em; font-weight: 500; }
         .dt-note-row { padding: 5px 14px 8px; background: rgba(8,8,16,0.4); border-bottom: 1px solid var(--border); }
 
         /* ══════════════════════════
@@ -1726,7 +1778,7 @@ export default function Home() {
         .machine-info { flex: 1; min-width: 0; }
         .machine-name-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 3px; }
         .machine-name { font-size: 13px; font-weight: 700; color: var(--t1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .machine-serial { font-family: var(--mono); font-size: 9px; color: var(--t4); }
+        .machine-serial { font-family: var(--mono); font-size: 10px; color: var(--t2); font-weight: 500; letter-spacing: 0.03em; }
         .machine-bottom { display: flex; gap: 10px; margin-top: 5px; flex-wrap: wrap; }
         .machine-store { font-size: 11px; color: var(--t3); }
         .machine-date { font-size: 11px; color: var(--t4); }
@@ -1754,7 +1806,7 @@ export default function Home() {
         .h-notes { font-size: 11px; color: var(--t3); margin-top: 4px; }
         .h-machine { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
         .h-machine-model { font-size: 12px; font-weight: 700; color: var(--t1); }
-        .h-machine-serial { font-family: var(--mono); font-size: 10px; color: var(--t4); }
+        .h-machine-serial { font-family: var(--mono); font-size: 11px; color: var(--t2); font-weight: 500; letter-spacing: 0.03em; }
         .history-machine-header {
           background: var(--glass); backdrop-filter: blur(16px);
           border: 1px solid var(--acc); border-radius: var(--r-lg);
@@ -1764,7 +1816,7 @@ export default function Home() {
         }
         .history-machine-info { flex: 1; min-width: 0; }
         .history-machine-model { font-size: 15px; font-weight: 700; color: var(--t1); margin-bottom: 3px; }
-        .history-machine-serial { font-family: var(--mono); font-size: 11px; color: var(--t3); margin-bottom: 4px; }
+        .history-machine-serial { font-family: var(--mono); font-size: 12px; color: var(--t2); margin-bottom: 4px; font-weight: 500; letter-spacing: 0.03em; }
         .history-machine-count { font-size: 10px; color: var(--t4); font-weight: 600; }
         .history-store-header { padding: 8px 0 12px; }
         .history-store-count { font-size: 13px; color: var(--t3); }
@@ -1794,6 +1846,19 @@ export default function Home() {
         .existing-item-meta { font-size: 11px; color: var(--t3); margin-bottom: 6px; }
         .existing-item-note { font-size: 10px; color: var(--orange); font-style: italic; }
         .note-display-desktop { cursor: pointer; display: inline-flex; align-items: center; }
+        .note-add-btn { padding: 3px 10px; background: var(--glass2); color: var(--t3); border: 1px solid var(--border2); border-radius: var(--r-sm); font-size: 10px; cursor: pointer; font-family: var(--font); transition: all 0.15s; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+        .note-add-btn:hover { border-color: var(--acc); color: var(--acc); }
+        .note-count { font-size: 10px; color: var(--acc); cursor: pointer; font-weight: 600; padding: 2px 7px; background: var(--glow2); border-radius: 20px; border: 1px solid var(--border2); white-space: nowrap; transition: all 0.15s; flex-shrink: 0; }
+        .note-count:hover { background: rgba(167,139,250,0.15); }
+        .note-history { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
+        .note-history-item { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; background: var(--glass); border-radius: var(--r-sm); border-left: 2px solid var(--border2); }
+        .note-history-text { font-size: 11px; color: var(--t3); }
+        .note-history-meta { font-size: 9px; color: var(--t4); font-weight: 500; }
+        .light .note-add-btn { background: rgba(255,255,255,0.8); color: var(--t3); border-color: var(--border2); }
+        .light .note-count { color: var(--acc); background: var(--glow2); }
+        .light .note-history-item { background: rgba(124,58,237,0.03); border-left-color: var(--border2); }
+        .light .note-history-text { color: var(--t3); }
+        .light .note-history-meta { color: var(--t4); }
         .note-input-inline { flex: 1; padding: 6px 10px; font-size: 12px; }
         .note-edit { margin-top: 8px; }
         .note-input { width: 100%; padding: 8px 11px; border: 1px solid var(--border2); border-radius: var(--r); font-size: 12px; font-family: var(--font); resize: none; height: 60px; background: var(--glass2); color: var(--t1); transition: border-color 0.2s; }
@@ -1879,7 +1944,7 @@ export default function Home() {
         .light .dt-td { color: var(--t2); }
         .light .dt-td.dt-muted { color: var(--t3); }
         .light .dt-model { color: var(--t1); }
-        .light .dt-serial { color: var(--t4); }
+        .light .dt-serial { color: #4a4a6a; }
         .light .dt-note-row { background: rgba(124,58,237,0.02); border-bottom-color: var(--border); }
         .light .stat-card { background: rgba(255,255,255,0.9); border-color: var(--border); }
         .light .stat-card:hover { box-shadow: 0 8px 32px rgba(124,58,237,0.08); }
@@ -1892,7 +1957,7 @@ export default function Home() {
         .light .machine-row { background: rgba(255,255,255,0.9); border-color: var(--border); }
         .light .machine-row:hover { border-color: var(--border2); box-shadow: 0 4px 16px rgba(124,58,237,0.08); }
         .light .machine-name { color: var(--t1); }
-        .light .machine-serial { color: var(--t4); }
+        .light .machine-serial { color: #4a4a6a; }
         .light .machine-store { color: var(--t3); }
         .light .machine-date { color: var(--t4); }
         .light .h-card { background: rgba(255,255,255,0.9); border-color: var(--border); }
@@ -1902,7 +1967,8 @@ export default function Home() {
         .light .h-line { background: var(--border); }
         .light .history-machine-header { background: rgba(255,255,255,0.95); }
         .light .history-machine-model { color: var(--t1); }
-        .light .history-machine-serial { color: var(--t3); }
+        .light .history-machine-serial { color: #4a4a6a; }
+        .light .h-machine-serial { color: #4a4a6a; }
         .light .quick-action-bar { background: rgba(255,255,255,0.9); border-color: var(--border2); }
         .light .quick-serial { color: var(--t1); }
         .light .filter-pill { background: rgba(255,255,255,0.9); color: var(--t3); border-color: var(--border2); }
