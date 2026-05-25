@@ -97,6 +97,11 @@ export default function Home() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [problem, setProblem] = useState('');
   const [notes, setNotes] = useState('');
+  const [shipmentMethod, setShipmentMethod] = useState('ours');
+  const [shipmentCourier, setShipmentCourier] = useState('');
+  const [shipmentTracking, setShipmentTracking] = useState('');
+  const [shipmentNotes, setShipmentNotes] = useState('');
+  const [copiedShipmentEmail, setCopiedShipmentEmail] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [inventory, setInventory] = useState([]);
@@ -302,6 +307,72 @@ export default function Home() {
     setStep(2);
   };
 
+  const isShipmentAction = () => ['Αποστολή σε κατάστημα', 'Αποστολή στα κεντρικά'].includes(action);
+
+  const getSelectedStoreDetails = () => (
+    storeDetailsList.find(s => s.name === store) || {
+      name: store || (action === 'Αποστολή στα κεντρικά' ? 'Κεντρικά' : ''),
+      phone: '',
+      address: '',
+      vat: '',
+    }
+  );
+
+  const getShipmentMethodLabel = () => (
+    shipmentMethod === 'courier' ? 'Courier' : 'Με δική μας μεταφορά'
+  );
+
+  const buildMovementNotes = () => {
+    if (!isShipmentAction()) return notes;
+    const parts = [];
+    if (notes.trim()) parts.push(notes.trim());
+    parts.push(`Τρόπος μεταφοράς: ${getShipmentMethodLabel()}`);
+    if (shipmentMethod === 'courier' && shipmentCourier.trim()) parts.push(`Courier: ${shipmentCourier.trim()}`);
+    if (shipmentMethod === 'courier' && shipmentTracking.trim()) parts.push(`Tracking: ${shipmentTracking.trim()}`);
+    if (shipmentNotes.trim()) parts.push(`Σημειώσεις αποστολής: ${shipmentNotes.trim()}`);
+    return parts.join('\n');
+  };
+
+  const buildShipmentEmail = () => {
+    const destination = getSelectedStoreDetails();
+    const rows = [
+      ['Μηχάνημα', model || '—'],
+      ['Serial', serialNumber || '—'],
+      ['Κίνηση', action || '—'],
+      ['Προορισμός', destination.name || store || '—'],
+      ['Τηλέφωνο', destination.phone || '—'],
+      ['Διεύθυνση', destination.address || '—'],
+      ['ΑΦΜ', destination.vat || '—'],
+      ['Τρόπος μεταφοράς', getShipmentMethodLabel()],
+    ];
+    if (shipmentMethod === 'courier') {
+      rows.push(['Courier', shipmentCourier || '—']);
+      rows.push(['Tracking', shipmentTracking || '—']);
+    }
+    if (shipmentNotes.trim()) rows.push(['Σημειώσεις', shipmentNotes.trim()]);
+
+    const table = rows.map(([label, value]) => `${label}: ${value}`).join('\n');
+    return `Θέμα: Αποστολή μηχανήματος ${model || serialNumber || ''} προς ${destination.name || store || 'προορισμό'}
+
+Καλησπέρα,
+
+Παρακαλώ δείτε τα στοιχεία αποστολής:
+
+${table}
+
+Ευχαριστώ.`;
+  };
+
+  const copyShipmentEmail = async () => {
+    try {
+      await navigator.clipboard.writeText(buildShipmentEmail());
+      setCopiedShipmentEmail(true);
+      setTimeout(() => setCopiedShipmentEmail(false), 1800);
+    } catch (e) {
+      alert('Δεν ήταν δυνατή η αντιγραφή. Δοκίμασε να επιλέξεις το κείμενο χειροκίνητα.');
+    }
+  };
+
   const handleSubmit = async () => {
     if (!serialNumber) { alert('Βάλε Serial Number!'); return; }
     if (!action) { alert('Επίλεξε τύπο κίνησης!'); return; }
@@ -310,7 +381,7 @@ export default function Home() {
       const res = await fetch('/api/log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ serialNumber, model, action, store, date, problem, notes }),
+        body: JSON.stringify({ serialNumber, model, action, store, date, problem, notes: buildMovementNotes() }),
       });
       if (!res.ok) throw new Error();
       setStep(3);
@@ -328,6 +399,7 @@ export default function Home() {
     setStore(''); setStoreSearch(''); setStoreChain('all'); setShowStorePicker(false);
     setDate(new Date().toISOString().split('T')[0]);
     setProblem(''); setNotes('');
+    setShipmentMethod('ours'); setShipmentCourier(''); setShipmentTracking(''); setShipmentNotes(''); setCopiedShipmentEmail(false);
     setExistingItem(null);
   };
 
@@ -703,6 +775,37 @@ export default function Home() {
                 <label className="field-label">📅 Ημερομηνία</label>
                 <input className="text-input" type="date" value={date} onChange={e=>setDate(e.target.value)} />
               </div>
+              {isShipmentAction() && (
+                <div className="shipment-box">
+                  <div className="section-label">Στοιχεία αποστολής</div>
+                  {store && (
+                    <div className="shipment-destination">
+                      <strong>{getSelectedStoreDetails().name}</strong>
+                      <span>{getSelectedStoreDetails().address || 'Χωρίς διεύθυνση'} · {getSelectedStoreDetails().phone || 'χωρίς τηλέφωνο'} · ΑΦΜ {getSelectedStoreDetails().vat || '—'}</span>
+                    </div>
+                  )}
+                  <div className="shipment-method-row">
+                    <button type="button" className={`shipment-method ${shipmentMethod==='ours'?'active':''}`} onClick={()=>setShipmentMethod('ours')}>Με εμάς</button>
+                    <button type="button" className={`shipment-method ${shipmentMethod==='courier'?'active':''}`} onClick={()=>setShipmentMethod('courier')}>Courier</button>
+                  </div>
+                  {shipmentMethod === 'courier' && (
+                    <div className="store-extra-grid">
+                      <div className="field-group">
+                        <label className="field-label">Courier εταιρεία</label>
+                        <input className="text-input" value={shipmentCourier} onChange={e=>setShipmentCourier(e.target.value)} placeholder="π.χ. ACS, Γενική Ταχυδρομική" />
+                      </div>
+                      <div className="field-group">
+                        <label className="field-label">Tracking number</label>
+                        <input className="text-input" value={shipmentTracking} onChange={e=>setShipmentTracking(e.target.value)} placeholder="π.χ. 123456789" />
+                      </div>
+                    </div>
+                  )}
+                  <div className="field-group">
+                    <label className="field-label">Σημειώσεις αποστολής</label>
+                    <textarea value={shipmentNotes} onChange={e=>setShipmentNotes(e.target.value)} placeholder="π.χ. Να παραδοθεί πρωί, εύθραυστο, παραλαβή από Χάρη..." />
+                  </div>
+                </div>
+              )}
               <div className="field-group">
                 <label className="field-label">🔧 Πρόβλημα</label>
                 <input className="text-input" value={problem} onChange={e=>setProblem(e.target.value)} placeholder="π.χ. Χαλασμένη οθόνη, δεν ανάβει..." />
@@ -720,6 +823,18 @@ export default function Home() {
               <div className="success-icon">✅</div>
               <div className="success-title">Καταχωρήθηκε!</div>
               <div className="success-sub"><strong>{model || 'Μηχάνημα'}</strong> · {serialNumber}<br/>🏪 {store}<br/>{action}{problem ? ` · 🔧 ${problem}` : ''}</div>
+              {isShipmentAction() && (
+                <div className="shipment-email-card">
+                  <div className="shipment-email-head">
+                    <div>
+                      <div className="shipment-email-title">Έτοιμο email αποστολής</div>
+                      <div className="shipment-email-sub">Κάνε αντιγραφή και επικόλληση στο email σου.</div>
+                    </div>
+                    <button className="btn-quick-action" onClick={copyShipmentEmail}>{copiedShipmentEmail ? '✓ Αντιγράφηκε' : 'Αντιγραφή email'}</button>
+                  </div>
+                  <pre className="shipment-email-preview">{buildShipmentEmail()}</pre>
+                </div>
+              )}
               <button className="btn-primary" onClick={handleReset}>📷 Νέο scan</button>
             </div>
           )}
@@ -1902,6 +2017,18 @@ export default function Home() {
         .success-icon { font-size: 48px; margin-bottom: 12px; display: block; }
         .success-title { font-size: 20px; font-weight: 700; color: var(--t1); margin-bottom: 8px; }
         .success-sub { font-size: 13px; color: var(--t3); line-height: 1.8; margin-bottom: 20px; }
+        .shipment-box { border: 1px solid var(--border2); border-radius: var(--r-lg); background: var(--glass); padding: 14px; margin: 16px 0 12px; }
+        .shipment-destination { display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--border); border-radius: var(--r); background: var(--glass2); padding: 10px 12px; margin-bottom: 10px; }
+        .shipment-destination strong { color: var(--t1); font-size: 13px; }
+        .shipment-destination span { color: var(--t3); font-size: 11px; line-height: 1.5; }
+        .shipment-method-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+        .shipment-method { padding: 9px 12px; border-radius: var(--r); border: 1px solid var(--border2); background: var(--glass2); color: var(--t3); font-family: var(--font); font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.15s; }
+        .shipment-method:hover, .shipment-method.active { border-color: var(--acc); color: var(--acc); background: var(--glow2); box-shadow: 0 0 12px var(--glow2); }
+        .shipment-email-card { text-align: left; border: 1px solid var(--border2); border-radius: var(--r-lg); background: var(--glass); padding: 14px; margin: 0 0 18px; }
+        .shipment-email-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+        .shipment-email-title { font-size: 13px; font-weight: 800; color: var(--t1); }
+        .shipment-email-sub { font-size: 11px; color: var(--t3); margin-top: 2px; }
+        .shipment-email-preview { white-space: pre-wrap; color: var(--t2); background: rgba(0,0,0,0.16); border: 1px solid var(--border); border-radius: var(--r); padding: 12px; font-family: var(--font); font-size: 12px; line-height: 1.6; max-height: 360px; overflow: auto; }
 
         /* ── MISC ── */
         .repair-badge { font-size: 9px; font-weight: 700; padding: 3px 8px; border-radius: 20px; white-space: nowrap; margin-left: 6px; letter-spacing: 0.04em; }
@@ -2110,6 +2237,8 @@ export default function Home() {
           .settings-store-list { max-height: 220px; }
           .store-detail-grid { grid-template-columns: 1fr; }
           .store-extra-grid { grid-template-columns: 1fr; gap: 0; }
+          .shipment-method-row { grid-template-columns: 1fr; }
+          .shipment-email-head { flex-direction: column; }
         }
       `}</style>
     </>
