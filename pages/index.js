@@ -335,23 +335,9 @@ export default function Home() {
 
   const buildShipmentEmail = () => {
     const destination = getSelectedStoreDetails();
-    const rows = [
-      ['Μηχάνημα', model || '—'],
-      ['Serial', serialNumber || '—'],
-      ['Κίνηση', action || '—'],
-      ['Προορισμός', destination.name || store || '—'],
-      ['Τηλέφωνο', destination.phone || '—'],
-      ['Διεύθυνση', destination.address || '—'],
-      ['ΑΦΜ', destination.vat || '—'],
-      ['Τρόπος μεταφοράς', getShipmentMethodLabel()],
-    ];
-    if (shipmentMethod === 'courier') {
-      rows.push(['Courier', shipmentCourier || '—']);
-      rows.push(['Tracking', shipmentTracking || '—']);
-    }
-    if (shipmentNotes.trim()) rows.push(['Σημειώσεις', shipmentNotes.trim()]);
+    const rows = getShipmentRows(destination);
 
-    const table = rows.map(([label, value]) => `${label}: ${value}`).join('\n');
+    const table = rows.map(([label, value]) => `${label}\t${value}`).join('\n');
     return `Θέμα: Αποστολή μηχανήματος ${model || serialNumber || ''} προς ${destination.name || store || 'προορισμό'}
 
 Καλησπέρα,
@@ -361,6 +347,25 @@ export default function Home() {
 ${table}
 
 Ευχαριστώ.`;
+  };
+
+  const getShipmentRows = (destination = getSelectedStoreDetails()) => {
+    const rows = [
+      ['Επωνυμία Πελάτη', destination.name || store || '—'],
+      ['ΑΦΜ', destination.vat || '—'],
+      ['Υποκατάστημα', destination.address || '—'],
+      ['Μηχάνημα', model || '—'],
+      ['Serial', serialNumber || '—'],
+      ['Κίνηση', action || '—'],
+      ['Τηλέφωνο', destination.phone || '—'],
+      ['Τρόπος μεταφοράς', getShipmentMethodLabel()],
+    ];
+    if (shipmentMethod === 'courier') {
+      rows.push(['Courier', shipmentCourier || '—']);
+      rows.push(['Tracking', shipmentTracking || '—']);
+    }
+    if (shipmentNotes.trim()) rows.push(['Σημειώσεις', shipmentNotes.trim()]);
+    return rows;
   };
 
   const copyShipmentEmail = async () => {
@@ -832,7 +837,22 @@ ${table}
                     </div>
                     <button className="btn-quick-action" onClick={copyShipmentEmail}>{copiedShipmentEmail ? '✓ Αντιγράφηκε' : 'Αντιγραφή email'}</button>
                   </div>
-                  <pre className="shipment-email-preview">{buildShipmentEmail()}</pre>
+                  <div className="shipment-table-preview">
+                    <div className="shipment-table-top">
+                      <div>A/A</div>
+                      <div>TrackMate</div>
+                      <div>Εξαγωγή ειδών</div>
+                    </div>
+                    <div className="shipment-table-body">
+                      <div className="shipment-table-index">1</div>
+                      <div className="shipment-table-labels">
+                        {getShipmentRows().map(([label]) => <div key={label}>{label}:</div>)}
+                      </div>
+                      <div className="shipment-table-values">
+                        {getShipmentRows().map(([label, value]) => <div key={label}>{value}</div>)}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
               <button className="btn-primary" onClick={handleReset}>📷 Νέο scan</button>
@@ -2029,6 +2049,15 @@ ${table}
         .shipment-email-title { font-size: 13px; font-weight: 800; color: var(--t1); }
         .shipment-email-sub { font-size: 11px; color: var(--t3); margin-top: 2px; }
         .shipment-email-preview { white-space: pre-wrap; color: var(--t2); background: rgba(0,0,0,0.16); border: 1px solid var(--border); border-radius: var(--r); padding: 12px; font-family: var(--font); font-size: 12px; line-height: 1.6; max-height: 360px; overflow: auto; }
+        .shipment-table-preview { border: 1px solid var(--border2); border-radius: var(--r); overflow: hidden; background: rgba(255,255,255,0.95); color: #0f1020; max-width: 680px; }
+        .shipment-table-top { display: grid; grid-template-columns: 44px 1fr 1.6fr; background: #c9c1ff; border-bottom: 1px solid #b4a9ef; font-size: 12px; font-weight: 800; }
+        .shipment-table-top > div { padding: 7px 8px; border-right: 1px solid #b4a9ef; }
+        .shipment-table-top > div:last-child { border-right: none; text-align: center; }
+        .shipment-table-body { display: grid; grid-template-columns: 44px 160px minmax(0, 1fr); align-items: stretch; font-size: 12px; line-height: 1.45; }
+        .shipment-table-index { display: flex; align-items: flex-start; justify-content: center; padding: 22px 6px; border-right: 1px solid #d9d5ff; }
+        .shipment-table-labels { background: #d8d1ff; padding: 10px 8px; font-weight: 500; }
+        .shipment-table-values { padding: 10px 8px; font-weight: 600; }
+        .shipment-table-labels > div, .shipment-table-values > div { min-height: 21px; overflow-wrap: anywhere; }
 
         /* ── MISC ── */
         .repair-badge { font-size: 9px; font-weight: 700; padding: 3px 8px; border-radius: 20px; white-space: nowrap; margin-left: 6px; letter-spacing: 0.04em; }
@@ -2239,6 +2268,9 @@ ${table}
           .store-extra-grid { grid-template-columns: 1fr; gap: 0; }
           .shipment-method-row { grid-template-columns: 1fr; }
           .shipment-email-head { flex-direction: column; }
+          .shipment-table-preview { max-width: 100%; overflow-x: auto; }
+          .shipment-table-top { grid-template-columns: 38px 120px 180px; min-width: 338px; }
+          .shipment-table-body { grid-template-columns: 38px 120px 180px; min-width: 338px; }
         }
       `}</style>
     </>
