@@ -406,18 +406,26 @@ ${table}
 
   const copyShipmentEmail = async () => {
     try {
-      if (window.ClipboardItem) {
-        const html = buildShipmentEmailHtml();
-        const text = buildShipmentEmail();
-        await navigator.clipboard.write([
-          new ClipboardItem({
-            'text/html': new Blob([html], { type: 'text/html' }),
-            'text/plain': new Blob([text], { type: 'text/plain' }),
-          }),
-        ]);
-      } else {
-        await navigator.clipboard.writeText(buildShipmentEmail());
-      }
+      const html = buildShipmentEmailHtml();
+      const temp = document.createElement('div');
+      temp.contentEditable = 'true';
+      temp.style.position = 'fixed';
+      temp.style.left = '-9999px';
+      temp.style.top = '0';
+      temp.innerHTML = html;
+      document.body.appendChild(temp);
+
+      const range = document.createRange();
+      range.selectNodeContents(temp);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+
+      const copied = document.execCommand('copy');
+      selection.removeAllRanges();
+      document.body.removeChild(temp);
+
+      if (!copied) await navigator.clipboard.writeText(buildShipmentEmail());
       setCopiedShipmentEmail(true);
       setTimeout(() => setCopiedShipmentEmail(false), 1800);
     } catch (e) {
