@@ -111,6 +111,10 @@ export default function Home() {
   const [filterDateTo, setFilterDateTo] = useState('');
   const [storesList, setStoresList] = useState([]);
   const [newStoreName, setNewStoreName] = useState('');
+  const [newStorePhone, setNewStorePhone] = useState('');
+  const [newStoreAddress, setNewStoreAddress] = useState('');
+  const [newStoreCustomerName, setNewStoreCustomerName] = useState('');
+  const [newStoreTaxId, setNewStoreTaxId] = useState('');
   const [addingStore, setAddingStore] = useState(false);
   const [addStoreMsg, setAddStoreMsg] = useState(null);
   const [warehouseNotes, setWarehouseNotes] = useState({});
@@ -174,7 +178,13 @@ export default function Home() {
       const res = await fetch('/api/stores', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newStoreName.trim() }),
+        body: JSON.stringify({
+          name: newStoreName.trim(),
+          phone: newStorePhone.trim(),
+          address: newStoreAddress.trim(),
+          customerName: newStoreCustomerName.trim(),
+          taxId: newStoreTaxId.trim(),
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -182,6 +192,10 @@ export default function Home() {
       } else {
         setAddStoreMsg({ type: 'success', text: 'Το κατάστημα προστέθηκε!' });
         setNewStoreName('');
+        setNewStorePhone('');
+        setNewStoreAddress('');
+        setNewStoreCustomerName('');
+        setNewStoreTaxId('');
         loadStores();
       }
     } catch (e) {
@@ -1112,7 +1126,26 @@ export default function Home() {
             <div className="card-sub">Διαχείριση καταστημάτων</div>
             <div className="section-label">Προσθήκη νέου καταστήματος</div>
             <div className="field-group">
+              <label className="field-label">Όνομα καταστήματος *</label>
               <input className="text-input" value={newStoreName} onChange={e=>{setNewStoreName(e.target.value);setAddStoreMsg(null);}} placeholder="π.χ. ΚΩΤΣΟΒΟΛΟΣ 999 Νέα Πόλη" onKeyDown={e=>{if(e.key==='Enter')handleAddStore();}} />
+            </div>
+            <div className="store-extra-grid">
+              <div className="field-group">
+                <label className="field-label">Τηλέφωνο</label>
+                <input className="text-input" value={newStorePhone} onChange={e=>{setNewStorePhone(e.target.value);setAddStoreMsg(null);}} placeholder="π.χ. 2101234567" />
+              </div>
+              <div className="field-group">
+                <label className="field-label">ΑΦΜ</label>
+                <input className="text-input" value={newStoreTaxId} onChange={e=>{setNewStoreTaxId(e.target.value);setAddStoreMsg(null);}} placeholder="π.χ. 123456789" />
+              </div>
+            </div>
+            <div className="field-group">
+              <label className="field-label">Διεύθυνση</label>
+              <input className="text-input" value={newStoreAddress} onChange={e=>{setNewStoreAddress(e.target.value);setAddStoreMsg(null);}} placeholder="π.χ. Πατησίων 100, Αθήνα" />
+            </div>
+            <div className="field-group">
+              <label className="field-label">Όνομα πελάτη</label>
+              <input className="text-input" value={newStoreCustomerName} onChange={e=>{setNewStoreCustomerName(e.target.value);setAddStoreMsg(null);}} placeholder="π.χ. Γιώργος Παπαδόπουλος" />
             </div>
             {addStoreMsg && <div className={addStoreMsg.type==='success'?'banner-success':'error-banner'} style={{marginBottom:'12px'}}>{addStoreMsg.type==='success'?'✅ ':'⚠️ '}{addStoreMsg.text}</div>}
             <button className="btn-primary" onClick={handleAddStore} disabled={addingStore||!newStoreName.trim()}>{addingStore?'⏳ Προσθήκη...':'➕ Προσθήκη καταστήματος'}</button>
@@ -1874,6 +1907,7 @@ export default function Home() {
         .divider-or::before, .divider-or::after { content: ''; position: absolute; top: 50%; width: 44%; height: 1px; background: var(--border2); }
         .divider-or::before { left: 0; } .divider-or::after { right: 0; }
         .settings-store-item { padding: 8px 4px; font-size: 12px; color: var(--t3); border-bottom: 1px solid var(--border); font-weight: 500; }
+        .store-extra-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
         .loading { text-align: center; padding: 48px; color: var(--t3); font-size: 13px; font-weight: 600; }
         .empty { text-align: center; padding: 48px 20px; color: var(--t3); font-size: 13px; line-height: 1.7; font-weight: 600; }
         .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
@@ -2025,6 +2059,7 @@ export default function Home() {
           .inv-stats { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
           .stat-card { padding: 12px; }
           .stat-val { font-size: 24px; }
+          .store-extra-grid { grid-template-columns: 1fr; gap: 0; }
         }
       `}</style>
     </>
