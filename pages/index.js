@@ -139,6 +139,7 @@ export default function Home() {
   const [editStoreSearch, setEditStoreSearch] = useState('');
   const [editStoreChain, setEditStoreChain] = useState('all');
   const [savingStore, setSavingStore] = useState(false);
+  const [openActionMenu, setOpenActionMenu] = useState(null);
   const fileRef = useRef();
   const cameraRef = useRef();
 
@@ -585,6 +586,29 @@ ${table}
     }
   };
 
+  const handleMoveToRepair = async (item) => {
+    if (!confirm(`Να μπει το "${item.model || item.serialNumber}" σε επισκευή;`)) return;
+    try {
+      const res = await fetch('/api/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          serialNumber: item.serialNumber,
+          model: item.model,
+          action: 'Εισαγωγή για επισκευή',
+          store: item.store || '',
+          date: new Date().toISOString().split('T')[0],
+          problem: '',
+          notes: 'Μεταφέρθηκε σε επισκευή από την αποθήκη',
+        }),
+      });
+      if (!res.ok) throw new Error();
+      loadInventory();
+    } catch (e) {
+      alert('Σφάλμα καταχώρησης.');
+    }
+  };
+
   // Quick action: πάει στη φόρμα με serial+κωδικό είδους προσυμπληρωμένα
   const startNewAction = (serial, mdl) => {
     handleReset();
@@ -761,6 +785,7 @@ ${table}
   ];
 
   const handleTabClick = (t) => {
+    setOpenActionMenu(null);
     setTab(t);
     if (t === 'inventory' || t === 'warehouse') loadInventory();
     if (t === 'settings') loadStores();
@@ -781,6 +806,45 @@ ${table}
     if (nextTab === 'inventory' || nextTab === 'warehouse') loadInventory();
     if (nextTab === 'settings') loadStores();
   }, [router.isReady, router.query.tab]);
+
+  const renderWarehouseActions = (item) => {
+    const action = normalizeAction(item.action);
+    const isRepair = action === 'Εισαγωγή για επισκευή';
+    const isAvailable = action === 'Καινούριο Μηχάνημα';
+    const menuId = `${item.serialNumber}-${item.model || ''}`;
+
+    const runMenuAction = (e, fn) => {
+      e.stopPropagation();
+      setOpenActionMenu(null);
+      fn();
+    };
+
+    return (
+      <div className="item-actions" onClick={e=>e.stopPropagation()}>
+        <button
+          className="action-menu-btn"
+          onClick={e=>{e.stopPropagation();setOpenActionMenu(openActionMenu === menuId ? null : menuId);}}
+          aria-label="Ενέργειες μηχανήματος"
+          title="Ενέργειες"
+        >
+          ⋯
+        </button>
+        {openActionMenu === menuId && (
+          <div className="action-menu">
+            <button className="action-menu-item" onClick={e=>runMenuAction(e, ()=>startNewAction(item.serialNumber,item.model))}>+ Νέα</button>
+            {isAvailable && (
+              <button className="action-menu-item" onClick={e=>runMenuAction(e, ()=>handleMoveToRepair(item))}>Σε επισκευή</button>
+            )}
+            {isRepair && (
+              <button className="action-menu-item success" onClick={e=>runMenuAction(e, ()=>handleMarkRepaired(item))}>✓ Επισκευάστηκε</button>
+            )}
+            <button className="action-menu-item" onClick={e=>runMenuAction(e, ()=>alert('Η λειτουργία ανταλλακτικού θα προστεθεί στο επόμενο βήμα.'))}>Ανταλλακτικό</button>
+            <button className="action-menu-item danger" onClick={e=>runMenuAction(e, ()=>handleDeleteItem(item))}>✕ Διαγραφή</button>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Shared content για κάθε tab
   const tabContent = (
@@ -1183,13 +1247,7 @@ ${table}
                       <div className="dt-td dt-muted">{item.date}</div>
                       <div className="dt-td dt-muted" style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
                         <span>{item.user || '—'}</span>
-                        <div style={{display:'flex',gap:'4px'}}>
-                          {normalizeAction(item.action) === 'Εισαγωγή για επισκευή' && (
-                            <button className="btn-repaired" onClick={e=>{e.stopPropagation();handleMarkRepaired(item);}}>✓ Επισκευάστηκε</button>
-                          )}
-                          <button className="btn-quick-action" onClick={e=>{e.stopPropagation();startNewAction(item.serialNumber,item.model);}}>+ Νέα</button>
-                          <button className="btn-delete" onClick={e=>{e.stopPropagation();handleDeleteItem(item);}}>✕ Διαγραφή</button>
-                        </div>
+                        {renderWarehouseActions(item)}
                       </div>
                     </div>
                     {/* Note row με ιστορικό */}
@@ -1307,12 +1365,8 @@ ${table}
                         </button>
                       </div>
                     )}
-                    <div style={{display:'flex',gap:'6px',marginTop:'8px'}}>
-                      {normalizeAction(item.action) === 'Εισαγωγή για επισκευή' && (
-                        <button className="btn-repaired" onClick={e=>{e.stopPropagation();handleMarkRepaired(item);}}>✓ Επισκευάστηκε</button>
-                      )}
-                      <button className="btn-quick-action" onClick={e=>{e.stopPropagation();startNewAction(item.serialNumber,item.model);}}>+ Νέα κίνηση</button>
-                      <button className="btn-delete" onClick={e=>{e.stopPropagation();handleDeleteItem(item);}}>✕ Διαγραφή</button>
+                    <div className="mobile-actions-row">
+                      {renderWarehouseActions(item)}
                     </div>
                   </div>
                 </div>
@@ -1896,6 +1950,64 @@ ${table}
           transition: all 0.2s; flex-shrink: 0; font-family: var(--font);
         }
         .btn-delete:hover { background: rgba(248,113,113,0.15); box-shadow: 0 0 10px rgba(248,113,113,0.2); }
+        .item-actions {
+          position: relative;
+          display: inline-flex;
+          align-items: center;
+          justify-content: flex-end;
+          flex-shrink: 0;
+        }
+        .action-menu-btn {
+          width: 30px; height: 30px;
+          display: inline-flex; align-items: center; justify-content: center;
+          background: var(--glass2); color: var(--t2);
+          border: 1px solid var(--border2); border-radius: var(--r-sm);
+          font-size: 20px; line-height: 1; font-family: var(--font);
+          cursor: pointer; transition: all 0.2s;
+        }
+        .action-menu-btn:hover {
+          border-color: var(--acc);
+          color: var(--acc);
+          background: var(--glow2);
+        }
+        .action-menu {
+          position: absolute;
+          right: 0;
+          top: calc(100% + 6px);
+          z-index: 30;
+          min-width: 168px;
+          padding: 6px;
+          background: rgba(16,16,28,0.98);
+          border: 1px solid var(--border2);
+          border-radius: var(--r);
+          box-shadow: 0 16px 36px rgba(0,0,0,0.38);
+        }
+        .action-menu-item {
+          width: 100%;
+          display: flex; align-items: center;
+          padding: 8px 10px;
+          background: transparent;
+          border: 0;
+          border-radius: var(--r-sm);
+          color: var(--t2);
+          font-size: 12px;
+          font-weight: 700;
+          font-family: var(--font);
+          cursor: pointer;
+          text-align: left;
+          transition: all 0.15s;
+        }
+        .action-menu-item:hover {
+          background: var(--glow2);
+          color: var(--acc);
+        }
+        .action-menu-item.success { color: var(--green); }
+        .action-menu-item.danger { color: var(--red); }
+        .mobile-actions-row {
+          display: flex;
+          justify-content: flex-end;
+          margin-top: 8px;
+        }
         .btn-half {
           padding: 9px; background: var(--glass2); color: var(--t2);
           border: 1px solid var(--border2); border-radius: var(--r);
@@ -1945,7 +2057,7 @@ ${table}
           background: var(--glass);
           backdrop-filter: blur(12px);
           border: 1px solid var(--border);
-          border-radius: var(--r-lg); overflow: hidden;
+          border-radius: var(--r-lg); overflow: visible;
         }
         .dt-head {
           display: grid; grid-template-columns: 2fr 2fr 1.2fr 1fr 1fr;
@@ -2421,6 +2533,10 @@ ${table}
         .light .btn-ghost { background: rgba(255,255,255,0.8); border-color: var(--border2); color: var(--t3); }
         .light .btn-half { background: rgba(255,255,255,0.8); border-color: var(--border2); color: var(--t2); }
         .light .btn-quick-action { background: rgba(255,255,255,0.8); border-color: var(--border2); color: var(--t2); }
+        .light .action-menu-btn { background: rgba(255,255,255,0.85); border-color: var(--border2); color: var(--t2); }
+        .light .action-menu { background: rgba(255,255,255,0.98); border-color: var(--border2); box-shadow: 0 16px 32px rgba(124,58,237,0.14); }
+        .light .action-menu-item { color: var(--t2); }
+        .light .action-menu-item:hover { background: rgba(124,58,237,0.08); color: var(--acc); }
         .light .btn-clear { background: rgba(255,255,255,0.8); border-color: var(--border2); }
         .light .btn-export { background: rgba(255,255,255,0.8); border-color: var(--border2); color: var(--t2); }
         .light .note-input { background: rgba(255,255,255,0.9); border-color: var(--border2); color: var(--t1); }
