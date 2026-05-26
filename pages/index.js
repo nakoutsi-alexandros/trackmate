@@ -176,7 +176,11 @@ export default function Home() {
         body: JSON.stringify({ serialNumber, note: noteInput }),
       });
       // Ενημερώνουμε τοπικά — προσθέτουμε στο array αντί να αντικαθιστούμε
-      const newNote = { note: noteInput, createdAt: 'μόλις τώρα', createdBy: currentUser?.fullName || '' };
+      const newNote = {
+        note: noteInput,
+        createdAt: new Date().toLocaleString('el-GR', { timeZone: 'Europe/Athens' }),
+        createdBy: currentUser?.fullName || '',
+      };
       setWarehouseNotes(prev => ({
         ...prev,
         [serialNumber]: [newNote, ...(prev[serialNumber] || [])],
@@ -1176,7 +1180,7 @@ ${table}
                         <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
                           {itemNote && itemNote.length > 0 ? (
                             <>
-                              <span className="note-text" style={{flex:1}}>📌 {itemNote[0].note}</span>
+                              <span className="note-text" style={{flex:1}}>📌 {itemNote[0].note} <span className="note-inline-meta">· {itemNote[0].createdAt}{itemNote[0].createdBy ? ` · ${itemNote[0].createdBy}` : ''}</span></span>
                               <span className="note-count" onClick={()=>setExpandedNotes(p=>({...p,[item.serialNumber]:!p[item.serialNumber]}))}>
                                 {itemNote.length > 1 ? `${itemNote.length} σημ. ${expandedNotes[item.serialNumber]?'▲':'▼'}` : ''}
                               </span>
@@ -1253,7 +1257,7 @@ ${table}
                         {warehouseNotes[item.serialNumber]?.length > 0 ? (
                           <>
                             <div style={{display:'flex',alignItems:'center',gap:'6px',marginBottom:'4px'}}>
-                              <span className="note-text" style={{flex:1}}>📌 {warehouseNotes[item.serialNumber][0].note}</span>
+                              <span className="note-text" style={{flex:1}}>📌 {warehouseNotes[item.serialNumber][0].note} <span className="note-inline-meta">· {warehouseNotes[item.serialNumber][0].createdAt}{warehouseNotes[item.serialNumber][0].createdBy ? ` · ${warehouseNotes[item.serialNumber][0].createdBy}` : ''}</span></span>
                               {warehouseNotes[item.serialNumber].length > 1 && (
                                 <span className="note-count" onClick={()=>setExpandedNotes(p=>({...p,[item.serialNumber]:!p[item.serialNumber]}))}>
                                   {warehouseNotes[item.serialNumber].length} σημ. {expandedNotes[item.serialNumber]?'▲':'▼'}
@@ -1338,6 +1342,19 @@ ${table}
               </button>
             </div>
           )}
+          {history && history.length > 0 && historySerial && warehouseNotes[history[0]?.serialNumber]?.length > 0 && (
+            <div className="history-notes-card">
+              <div className="wh-section-title">Σημειώσεις μηχανήματος</div>
+              <div className="note-history">
+                {warehouseNotes[history[0]?.serialNumber].map((n, i) => (
+                  <div key={i} className="note-history-item">
+                    <span className="note-history-text">📌 {n.note}</span>
+                    <span className="note-history-meta">{n.createdAt}{n.createdBy ? ` · ${n.createdBy}` : ''}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {history && history.length > 0 && !historySerial && (
             <div className="history-store-header">
               <span className="history-store-count">{history.length} κινήσεις για <strong>{historyStore}</strong></span>
@@ -1364,6 +1381,9 @@ ${table}
                 <div className="h-meta">🏪 {item.store} · 📅 {item.date}{item.user ? ` · 👤 ${item.user}` : ''}</div>
                 {item.problem && <div className="h-notes">🔧 {item.problem}</div>}
                 {item.notes && <div className="h-notes">📝 {item.notes}</div>}
+                {!historySerial && warehouseNotes[item.serialNumber]?.[0] && (
+                  <div className="h-notes">📌 {warehouseNotes[item.serialNumber][0].note} <span className="note-inline-meta">· {warehouseNotes[item.serialNumber][0].createdAt}{warehouseNotes[item.serialNumber][0].createdBy ? ` · ${warehouseNotes[item.serialNumber][0].createdBy}` : ''}</span></div>
+                )}
               </div>
             </div>
           ))}
@@ -2218,11 +2238,14 @@ ${table}
         .note-history-item { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; background: var(--glass); border-radius: var(--r-sm); border-left: 2px solid var(--border2); }
         .note-history-text { font-size: 11px; color: var(--t2); font-weight: 500; }
         .note-history-meta { font-size: 9px; color: var(--t3); font-weight: 600; }
+        .note-inline-meta { color: var(--t3); font-size: 10px; font-weight: 600; }
+        .history-notes-card { background: var(--glass); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 12px 14px; margin-bottom: 14px; }
         .light .note-add-btn { background: rgba(255,255,255,0.8); color: var(--t3); border-color: var(--border2); }
         .light .note-count { color: var(--acc); background: var(--glow2); }
         .light .note-history-item { background: rgba(124,58,237,0.03); border-left-color: var(--border2); }
         .light .note-history-text { color: var(--t3); }
         .light .note-history-meta { color: var(--t4); }
+        .light .history-notes-card { background: rgba(255,255,255,0.9); border-color: var(--border); }
         .note-input-inline { flex: 1; padding: 6px 10px; font-size: 12px; }
         .note-edit { margin-top: 8px; }
         .note-input { width: 100%; padding: 8px 11px; border: 1px solid var(--border2); border-radius: var(--r); font-size: 12px; font-family: var(--font); resize: none; height: 60px; background: var(--glass2); color: var(--t1); transition: border-color 0.2s; }
