@@ -93,6 +93,12 @@ export default function Home() {
   const [itemSearch, setItemSearch] = useState('');
   const [showItemPicker, setShowItemPicker] = useState(false);
   const [manualItemEntry, setManualItemEntry] = useState(false);
+  const [partsList, setPartsList] = useState([]);
+  const [machineParts, setMachineParts] = useState({});
+  const [partModalItem, setPartModalItem] = useState(null);
+  const [partSearch, setPartSearch] = useState('');
+  const [selectedPart, setSelectedPart] = useState(null);
+  const [savingPart, setSavingPart] = useState(false);
   const [action, setAction] = useState('');
   const [existingItem, setExistingItem] = useState(null); // υπάρχον μηχάνημα με ίδιο serial
   const [actionCat, setActionCat] = useState(null);
@@ -166,6 +172,15 @@ export default function Home() {
       const res = await fetch('/api/items');
       const data = await res.json();
       setItemsList(data.items || []);
+    } catch (e) {}
+  };
+
+  const loadParts = async () => {
+    try {
+      const res = await fetch('/api/parts');
+      const data = await res.json();
+      setPartsList(data.parts || []);
+      setMachineParts(data.machineParts || {});
     } catch (e) {}
   };
 
@@ -245,6 +260,7 @@ export default function Home() {
     loadInventory();
     loadNotes();
     loadItems();
+    loadParts();
 
     // Καταχώρηση Service Worker για αυτόματο update
     if ('serviceWorker' in navigator) {
@@ -586,6 +602,53 @@ ${table}
     }
   };
 
+  const openPartModal = (item) => {
+    setPartModalItem(item);
+    setPartSearch('');
+    setSelectedPart(null);
+  };
+
+  const closePartModal = () => {
+    setPartModalItem(null);
+    setPartSearch('');
+    setSelectedPart(null);
+  };
+
+  const handleSavePart = async () => {
+    if (!partModalItem || !selectedPart) return;
+    setSavingPart(true);
+    try {
+      const res = await fetch('/api/parts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          serialNumber: partModalItem.serialNumber,
+          machineModel: partModalItem.model || '',
+          code: selectedPart.code,
+          description: selectedPart.description || '',
+        }),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      const savedPart = data.part || {
+        code: selectedPart.code,
+        description: selectedPart.description || '',
+        createdAt: new Date().toLocaleString('el-GR', { timeZone: 'Europe/Athens' }),
+        createdBy: currentUser?.fullName || '',
+        machineModel: partModalItem.model || '',
+      };
+      setMachineParts(prev => ({
+        ...prev,
+        [partModalItem.serialNumber]: [savedPart, ...(prev[partModalItem.serialNumber] || [])],
+      }));
+      closePartModal();
+    } catch (e) {
+      alert('Σφάλμα αποθήκευσης ανταλλακτικού.');
+    } finally {
+      setSavingPart(false);
+    }
+  };
+
   const handleMoveToRepair = async (item) => {
     if (!confirm(`Να μπει το "${item.model || item.serialNumber}" σε επισκευή;`)) return;
     try {
@@ -711,6 +774,11 @@ ${table}
     const q = itemSearch.trim().toLowerCase();
     if (!q) return true;
     return item.code.toLowerCase().includes(q) || item.description.toLowerCase().includes(q);
+  });
+  const filteredParts = partsList.filter(part => {
+    const q = partSearch.trim().toLowerCase();
+    if (!q) return true;
+    return part.code.toLowerCase().includes(q) || part.description.toLowerCase().includes(q);
   });
 
   const handleSelectItem = (item) => {
@@ -838,7 +906,7 @@ ${table}
             {isRepair && (
               <button className="action-menu-item success" onClick={e=>runMenuAction(e, ()=>handleMarkRepaired(item))}>✓ Επισκευάστηκε</button>
             )}
-            <button className="action-menu-item" onClick={e=>runMenuAction(e, ()=>alert('Η λειτουργία ανταλλακτικού θα προστεθεί στο επόμενο βήμα.'))}>Ανταλλακτικό</button>
+            <button className="action-menu-item" onClick={e=>runMenuAction(e, ()=>openPartModal(item))}>Ανταλλακτικό</button>
             <button className="action-menu-item danger" onClick={e=>runMenuAction(e, ()=>handleDeleteItem(item))}>✕ Διαγραφή</button>
           </div>
         )}
@@ -1195,6 +1263,7 @@ ${table}
               {warehouseVisibleItems.map((item, i) => {
                 const badge = getRepairBadge(item);
                 const itemNote = warehouseNotes[item.serialNumber]; // array ή undefined
+                const itemParts = machineParts[item.serialNumber] || [];
                 return (
                   <div key={i}>
                     <div className="dt-row" onClick={()=>{handleTabClick('history');loadHistory(item.serialNumber);}}>
@@ -1250,6 +1319,17 @@ ${table}
                         {renderWarehouseActions(item)}
                       </div>
                     </div>
+                    {itemParts.length > 0 && (
+                      <div className="dt-part-row" onClick={e=>e.stopPropagation()}>
+                        <span className="part-label">Ανταλλακτικά</span>
+                        {itemParts.slice(0, 3).map((part, idx) => (
+                          <span key={`${part.code}-${idx}`} className="part-chip">
+                            {part.code}{part.description ? ` · ${part.description}` : ''}
+                          </span>
+                        ))}
+                        {itemParts.length > 3 && <span className="part-more">+{itemParts.length - 3}</span>}
+                      </div>
+                    )}
                     {/* Note row με ιστορικό */}
                     <div className="dt-note-row" onClick={e=>e.stopPropagation()}>
                       {editingNote === item.serialNumber ? (
@@ -1297,6 +1377,7 @@ ${table}
           <div className="mobile-only">
             {warehouseVisibleItems.map((item, i) => {
               const badge = getRepairBadge(item);
+              const itemParts = machineParts[item.serialNumber] || [];
               return (
                 <div key={i} className="machine-row" onClick={()=>{handleTabClick('history');loadHistory(item.serialNumber);}}>
                   <div className="machine-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
@@ -1329,6 +1410,16 @@ ${table}
                       <span className="machine-date">📅 {item.date}</span>
                     </div>
                     {badge && <div className={`repair-badge repair-badge-${badge.type}`}>{badge.type==='danger'?'🔴':'🟡'} Σε επισκευή {badge.label}</div>}
+                    {itemParts.length > 0 && (
+                      <div className="machine-parts" onClick={e=>e.stopPropagation()}>
+                        <span className="part-label">Ανταλλακτικά</span>
+                        {itemParts.map((part, idx) => (
+                          <span key={`${part.code}-${idx}`} className="part-chip">
+                            {part.code}{part.description ? ` · ${part.description}` : ''}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     {/* Note section mobile */}
                     {editingNote === item.serialNumber ? (
                       <div className="note-edit" onClick={e=>e.stopPropagation()}>
@@ -1432,6 +1523,19 @@ ${table}
                   <div key={i} className="note-history-item">
                     <span className="note-history-text">📌 {n.note}</span>
                     <span className="note-history-meta">{n.createdAt}{n.createdBy ? ` · ${n.createdBy}` : ''}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {history && history.length > 0 && historySerial && machineParts[history[0]?.serialNumber]?.length > 0 && (
+            <div className="history-notes-card">
+              <div className="wh-section-title">Ανταλλακτικά μηχανήματος</div>
+              <div className="part-history-list">
+                {machineParts[history[0]?.serialNumber].map((part, i) => (
+                  <div key={`${part.code}-${i}`} className="note-history-item">
+                    <span className="note-history-text">{part.code}{part.description ? ` · ${part.description}` : ''}</span>
+                    <span className="note-history-meta">{part.createdAt}{part.createdBy ? ` · ${part.createdBy}` : ''}</span>
                   </div>
                 ))}
               </div>
@@ -1698,6 +1802,48 @@ ${table}
           {tabContent}
         </main>
       </div>
+
+      {partModalItem && (
+        <div className="modal-backdrop" onClick={closePartModal}>
+          <div className="part-modal" onClick={e=>e.stopPropagation()}>
+            <div className="part-modal-head">
+              <div>
+                <div className="part-modal-title">Προσθήκη ανταλλακτικού</div>
+                <div className="part-modal-sub">{partModalItem.model || 'Χωρίς κωδικό'} · {partModalItem.serialNumber}</div>
+              </div>
+              <button className="modal-close" onClick={closePartModal}>×</button>
+            </div>
+            <input
+              className="text-input"
+              value={partSearch}
+              onChange={e=>setPartSearch(e.target.value)}
+              placeholder="Αναζήτηση κωδικού ή περιγραφής..."
+              autoFocus
+            />
+            <div className="part-picker-list">
+              {filteredParts.map(part => (
+                <button
+                  key={`${part.code}-${part.description}`}
+                  className={`part-picker-item ${selectedPart?.code === part.code ? 'active' : ''}`}
+                  onClick={()=>setSelectedPart(part)}
+                >
+                  <span className="part-picker-code">{part.code}</span>
+                  <span className="part-picker-desc">{part.description || 'Χωρίς περιγραφή'}</span>
+                </button>
+              ))}
+              {filteredParts.length === 0 && (
+                <div className="part-empty">Δεν βρέθηκε ανταλλακτικό. Βάλε τους κωδικούς στο tab Parts με στήλες code και description.</div>
+              )}
+            </div>
+            <div className="part-modal-actions">
+              <button className="btn-note-cancel" onClick={closePartModal}>Άκυρο</button>
+              <button className="btn-search" onClick={handleSavePart} disabled={!selectedPart || savingPart}>
+                {savingPart ? 'Αποθήκευση...' : 'Αποθήκευση'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
@@ -2376,10 +2522,92 @@ ${table}
         .note-count { font-size: 10px; color: var(--acc); cursor: pointer; font-weight: 600; padding: 2px 7px; background: var(--glow2); border-radius: 20px; border: 1px solid var(--border2); white-space: nowrap; transition: all 0.15s; flex-shrink: 0; }
         .note-count:hover { background: rgba(167,139,250,0.15); }
         .note-history { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
+        .part-history-list { display: flex; flex-direction: column; gap: 6px; }
         .note-history-item { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; background: var(--glass); border-radius: var(--r-sm); border-left: 2px solid var(--border2); }
         .note-history-text { font-size: 11px; color: var(--t2); font-weight: 500; }
         .note-history-meta { font-size: 9px; color: var(--t3); font-weight: 600; }
         .note-inline-meta { color: var(--t3); font-size: 10px; font-weight: 600; }
+        .dt-part-row {
+          display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+          padding: 7px 14px;
+          background: rgba(96,165,250,0.05);
+          border-bottom: 1px solid var(--border);
+        }
+        .machine-parts {
+          display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+          margin-top: 7px; padding: 7px 8px;
+          border: 1px solid var(--border);
+          border-radius: var(--r-sm);
+          background: rgba(96,165,250,0.05);
+        }
+        .part-label {
+          font-size: 9px; font-weight: 800; color: var(--blue);
+          text-transform: uppercase; letter-spacing: 0.08em;
+        }
+        .part-chip, .part-more {
+          font-size: 10px; color: var(--t2); font-weight: 700;
+          border: 1px solid rgba(96,165,250,0.25);
+          background: rgba(96,165,250,0.08);
+          border-radius: 999px;
+          padding: 3px 8px;
+          max-width: 360px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .modal-backdrop {
+          position: fixed; inset: 0; z-index: 100;
+          display: flex; align-items: center; justify-content: center;
+          padding: 18px;
+          background: rgba(4,4,10,0.68);
+          backdrop-filter: blur(10px);
+        }
+        .part-modal {
+          width: min(560px, 100%);
+          max-height: min(680px, 92vh);
+          display: flex; flex-direction: column; gap: 12px;
+          background: var(--bg3);
+          border: 1px solid var(--border2);
+          border-radius: var(--r-lg);
+          padding: 16px;
+          box-shadow: 0 24px 70px rgba(0,0,0,0.55), 0 0 28px var(--glow2);
+        }
+        .part-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+        .part-modal-title { font-size: 16px; font-weight: 800; color: var(--t1); }
+        .part-modal-sub { margin-top: 3px; font-size: 11px; color: var(--t3); font-weight: 600; }
+        .modal-close {
+          width: 30px; height: 30px; border-radius: var(--r-sm);
+          border: 1px solid var(--border2);
+          background: var(--glass2); color: var(--t2);
+          font-size: 20px; line-height: 1; cursor: pointer;
+        }
+        .part-picker-list {
+          display: flex; flex-direction: column; gap: 6px;
+          max-height: 360px; overflow: auto;
+          border: 1px solid var(--border);
+          border-radius: var(--r);
+          padding: 6px;
+          background: var(--glass);
+        }
+        .part-picker-item {
+          display: flex; flex-direction: column; gap: 3px;
+          width: 100%; text-align: left;
+          padding: 9px 10px;
+          border: 1px solid transparent;
+          border-radius: var(--r-sm);
+          background: transparent;
+          font-family: var(--font);
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+        .part-picker-item:hover, .part-picker-item.active {
+          border-color: var(--border2);
+          background: var(--glow2);
+        }
+        .part-picker-code { font-family: var(--mono); color: var(--t1); font-size: 12px; font-weight: 800; }
+        .part-picker-desc { color: var(--t3); font-size: 11px; font-weight: 600; line-height: 1.4; }
+        .part-empty { padding: 14px; color: var(--t3); font-size: 12px; line-height: 1.5; }
+        .part-modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
         .history-notes-card { background: var(--glass); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 12px 14px; margin-bottom: 14px; }
         .light .note-add-btn { background: rgba(255,255,255,0.8); color: var(--t3); border-color: var(--border2); }
         .light .note-count { color: var(--acc); background: var(--glow2); }
@@ -2387,6 +2615,13 @@ ${table}
         .light .note-history-text { color: var(--t3); }
         .light .note-history-meta { color: var(--t4); }
         .light .history-notes-card { background: rgba(255,255,255,0.9); border-color: var(--border); }
+        .light .dt-part-row, .light .machine-parts { background: rgba(96,165,250,0.06); border-color: var(--border); }
+        .light .part-chip, .light .part-more { background: rgba(96,165,250,0.08); color: var(--t2); }
+        .light .part-modal { background: #fff; border-color: var(--border2); }
+        .light .part-picker-list { background: rgba(124,58,237,0.03); border-color: var(--border); }
+        .light .part-picker-item:hover, .light .part-picker-item.active { background: rgba(124,58,237,0.08); }
+        .light .part-picker-code { color: var(--t1); }
+        .light .part-picker-desc, .light .part-empty { color: var(--t3); }
         .note-input-inline { flex: 1; padding: 6px 10px; font-size: 12px; }
         .note-edit { margin-top: 8px; }
         .note-input { width: 100%; padding: 8px 11px; border: 1px solid var(--border2); border-radius: var(--r); font-size: 12px; font-family: var(--font); resize: none; height: 60px; background: var(--glass2); color: var(--t1); transition: border-color 0.2s; }
