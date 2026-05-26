@@ -1263,10 +1263,10 @@ ${table}
                           <button className="btn-note-cancel" onClick={()=>{setEditingNote(null);setNoteInput('');}}>✕</button>
                         </div>
                       ) : (
-                        <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+                        <div style={{display:'flex',alignItems:'center',gap:'8px',justifyContent:'flex-start',flexWrap:'wrap'}}>
                           {itemNote && itemNote.length > 0 ? (
                             <>
-                              <span className="note-text" style={{flex:1}}>📌 {itemNote[0].note} <span className="note-inline-meta">· {itemNote[0].createdAt}{itemNote[0].createdBy ? ` · ${itemNote[0].createdBy}` : ''}</span></span>
+                              <span className="note-text">📌 {itemNote[0].note} <span className="note-inline-meta">· {itemNote[0].createdAt}{itemNote[0].createdBy ? ` · ${itemNote[0].createdBy}` : ''}</span></span>
                               <span className="note-count" onClick={()=>setExpandedNotes(p=>({...p,[item.serialNumber]:!p[item.serialNumber]}))}>
                                 {itemNote.length > 1 ? `${itemNote.length} σημ. ${expandedNotes[item.serialNumber]?'▲':'▼'}` : ''}
                               </span>
