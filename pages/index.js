@@ -177,7 +177,7 @@ export default function Home() {
 
   const loadParts = async () => {
     try {
-      const res = await fetch('/api/parts');
+      const res = await fetch('/api/parts', { cache: 'no-store' });
       const data = await res.json();
       setPartsList(data.parts || []);
       setMachineParts(data.machineParts || {});
@@ -802,6 +802,20 @@ ${table}
     if (!q) return true;
     return part.code.toLowerCase().includes(q) || part.description.toLowerCase().includes(q);
   });
+  const historyTimeline = history && historySerial
+    ? [
+        ...history.map(item => ({
+          type: 'movement',
+          item,
+          sortTime: parseGreekTimestamp(item.timestamp) || parseItemDate(item.date)?.getTime() || 0,
+        })),
+        ...(machineParts[history[0]?.serialNumber] || []).map(part => ({
+          type: 'part',
+          part,
+          sortTime: parseGreekTimestamp(part.createdAt) || 0,
+        })),
+      ].sort((a, b) => b.sortTime - a.sortTime)
+    : (history || []).map(item => ({ type: 'movement', item, sortTime: parseGreekTimestamp(item.timestamp) || 0 }));
 
   const handleSelectItem = (item) => {
     setModel(item.code);
@@ -877,7 +891,10 @@ ${table}
   const handleTabClick = (t) => {
     setOpenActionMenu(null);
     setTab(t);
-    if (t === 'inventory' || t === 'warehouse') loadInventory();
+    if (t === 'inventory' || t === 'warehouse') {
+      loadInventory();
+      loadParts();
+    }
     if (t === 'settings') loadStores();
     router.push(
       { pathname: router.pathname, query: t === 'scan' ? {} : { tab: t } },
@@ -893,7 +910,10 @@ ${table}
     if (nextTab === tab) return;
 
     setTab(nextTab);
-    if (nextTab === 'inventory' || nextTab === 'warehouse') loadInventory();
+    if (nextTab === 'inventory' || nextTab === 'warehouse') {
+      loadInventory();
+      loadParts();
+    }
     if (nextTab === 'settings') loadStores();
   }, [router.isReady, router.query.tab]);
 
@@ -1552,32 +1572,40 @@ ${table}
               </div>
             </div>
           )}
-          {history && history.length > 0 && historySerial && machineParts[history[0]?.serialNumber]?.length > 0 && (
-            <div className="history-notes-card">
-              <div className="wh-section-title">Ανταλλακτικά μηχανήματος</div>
-              <div className="part-history-list">
-                {machineParts[history[0]?.serialNumber].map((part, i) => (
-                  <div key={`${part.code}-${i}`} className="note-history-item">
-                    <span className="note-history-text part-history-text">
-                      {part.code}{part.description ? ` · ${part.description}` : ''}
-                      <button className="part-remove" onClick={()=>handleDeletePart(history[0]?.serialNumber, part)} title="Αφαίρεση ανταλλακτικού">×</button>
-                    </span>
-                    <span className="note-history-meta">{part.createdAt}{part.createdBy ? ` · ${part.createdBy}` : ''}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
           {history && history.length > 0 && !historySerial && (
             <div className="history-store-header">
               <span className="history-store-count">{history.length} κινήσεις για <strong>{historyStore}</strong></span>
             </div>
           )}
-          {history && history.map((item, i) => (
-            <div key={i} className="history-item">
+          {history && historyTimeline.map((entry, i) => {
+            if (entry.type === 'part') {
+              const part = entry.part;
+              return (
+                <div key={`part-${part.code}-${part.createdAt}-${i}`} className="history-item">
+                  <div className="h-dot-wrap">
+                    <div className="h-dot part-dot" />
+                    {i < historyTimeline.length-1 && <div className="h-line" />}
+                  </div>
+                  <div className="h-card part-history-card">
+                    <div className="h-action-row">
+                      <div className="h-action">Ανταλλακτικό</div>
+                      <span className="status-pill pill-blue">Προστέθηκε</span>
+                    </div>
+                    <div className="h-notes part-history-text">
+                      <span>{part.code}{part.description ? ` · ${part.description}` : ''}</span>
+                      <button className="part-remove" onClick={()=>handleDeletePart(history[0]?.serialNumber, part)} title="Αφαίρεση ανταλλακτικού">×</button>
+                    </div>
+                    <div className="h-meta">🧩 {part.createdAt}{part.createdBy ? ` · 👤 ${part.createdBy}` : ''}</div>
+                  </div>
+                </div>
+              );
+            }
+            const item = entry.item;
+            return (
+            <div key={`movement-${i}`} className="history-item">
               <div className="h-dot-wrap">
                 <div className="h-dot" style={{borderColor:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
-                {i < history.length-1 && <div className="h-line" />}
+                {i < historyTimeline.length-1 && <div className="h-line" />}
               </div>
               <div className="h-card">
                 <div className="h-action-row">
@@ -1599,7 +1627,7 @@ ${table}
                 )}
               </div>
             </div>
-          ))}
+          )})}
         </div>
       )}
 
@@ -2610,6 +2638,14 @@ ${table}
           align-items: center;
           justify-content: space-between;
           gap: 8px;
+        }
+        .part-dot {
+          border-color: var(--blue) !important;
+          background: rgba(96,165,250,0.16);
+        }
+        .part-history-card {
+          border-color: rgba(96,165,250,0.22);
+          background: rgba(96,165,250,0.05);
         }
         .modal-backdrop {
           position: fixed; inset: 0; z-index: 100;

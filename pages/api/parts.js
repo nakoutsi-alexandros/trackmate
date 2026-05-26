@@ -2,9 +2,20 @@ import { getParts, getMachineParts, saveMachinePart, deleteMachinePart } from '.
 import { getUserFromRequest } from '../../lib/auth';
 
 export default async function handler(req, res) {
+  res.setHeader('Cache-Control', 'no-store');
+
   if (req.method === 'GET') {
     try {
-      const [parts, machineParts] = await Promise.all([getParts(), getMachineParts()]);
+      const [parts, machineParts] = await Promise.all([
+        getParts().catch(err => {
+          console.error('getParts list error:', err);
+          return [];
+        }),
+        getMachineParts().catch(err => {
+          console.error('getMachineParts error:', err);
+          return {};
+        }),
+      ]);
       return res.status(200).json({ parts, machineParts });
     } catch (err) {
       console.error('getParts error:', err);
