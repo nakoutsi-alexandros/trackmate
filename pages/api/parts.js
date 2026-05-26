@@ -1,4 +1,4 @@
-import { getParts, getMachineParts, saveMachinePart } from '../../lib/sheets';
+import { getParts, getMachineParts, saveMachinePart, deleteMachinePart } from '../../lib/sheets';
 import { getUserFromRequest } from '../../lib/auth';
 
 export default async function handler(req, res) {
@@ -31,6 +31,20 @@ export default async function handler(req, res) {
     } catch (err) {
       console.error('saveMachinePart error:', err);
       return res.status(500).json({ error: 'Σφάλμα αποθήκευσης ανταλλακτικού' });
+    }
+  }
+
+  if (req.method === 'DELETE') {
+    try {
+      const { serialNumber, code, createdAt } = req.body;
+      if (!serialNumber) return res.status(400).json({ error: 'Serial number υποχρεωτικό' });
+      if (!code) return res.status(400).json({ error: 'Κωδικός ανταλλακτικού υποχρεωτικός' });
+
+      await deleteMachinePart({ serialNumber, code, createdAt });
+      return res.status(200).json({ success: true });
+    } catch (err) {
+      console.error('deleteMachinePart error:', err);
+      return res.status(500).json({ error: 'Σφάλμα διαγραφής ανταλλακτικού' });
     }
   }
 

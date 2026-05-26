@@ -649,6 +649,28 @@ ${table}
     }
   };
 
+  const handleDeletePart = async (serialNumber, part) => {
+    if (!confirm(`Να αφαιρεθεί το ανταλλακτικό "${part.code}" από το μηχάνημα;`)) return;
+    try {
+      const res = await fetch('/api/parts', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          serialNumber,
+          code: part.code,
+          createdAt: part.createdAt || '',
+        }),
+      });
+      if (!res.ok) throw new Error();
+      setMachineParts(prev => ({
+        ...prev,
+        [serialNumber]: (prev[serialNumber] || []).filter(p => !(p.code === part.code && p.createdAt === part.createdAt)),
+      }));
+    } catch (e) {
+      alert('Σφάλμα διαγραφής ανταλλακτικού.');
+    }
+  };
+
   const handleMoveToRepair = async (item) => {
     if (!confirm(`Να μπει το "${item.model || item.serialNumber}" σε επισκευή;`)) return;
     try {
@@ -1325,6 +1347,7 @@ ${table}
                         {itemParts.slice(0, 3).map((part, idx) => (
                           <span key={`${part.code}-${idx}`} className="part-chip">
                             {part.code}{part.description ? ` · ${part.description}` : ''}
+                            <button className="part-remove" onClick={e=>{e.stopPropagation();handleDeletePart(item.serialNumber, part);}} title="Αφαίρεση ανταλλακτικού">×</button>
                           </span>
                         ))}
                         {itemParts.length > 3 && <span className="part-more">+{itemParts.length - 3}</span>}
@@ -1416,6 +1439,7 @@ ${table}
                         {itemParts.map((part, idx) => (
                           <span key={`${part.code}-${idx}`} className="part-chip">
                             {part.code}{part.description ? ` · ${part.description}` : ''}
+                            <button className="part-remove" onClick={e=>{e.stopPropagation();handleDeletePart(item.serialNumber, part);}} title="Αφαίρεση ανταλλακτικού">×</button>
                           </span>
                         ))}
                       </div>
@@ -1534,7 +1558,10 @@ ${table}
               <div className="part-history-list">
                 {machineParts[history[0]?.serialNumber].map((part, i) => (
                   <div key={`${part.code}-${i}`} className="note-history-item">
-                    <span className="note-history-text">{part.code}{part.description ? ` · ${part.description}` : ''}</span>
+                    <span className="note-history-text part-history-text">
+                      {part.code}{part.description ? ` · ${part.description}` : ''}
+                      <button className="part-remove" onClick={()=>handleDeletePart(history[0]?.serialNumber, part)} title="Αφαίρεση ανταλλακτικού">×</button>
+                    </span>
                     <span className="note-history-meta">{part.createdAt}{part.createdBy ? ` · ${part.createdBy}` : ''}</span>
                   </div>
                 ))}
@@ -2551,6 +2578,9 @@ ${table}
           text-transform: uppercase; letter-spacing: 0.08em;
         }
         .part-chip, .part-more {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
           font-size: 10px; color: var(--t2); font-weight: 700;
           border: 1px solid rgba(96,165,250,0.25);
           background: rgba(96,165,250,0.08);
@@ -2560,6 +2590,26 @@ ${table}
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
+        }
+        .part-remove {
+          width: 16px; height: 16px;
+          display: inline-flex; align-items: center; justify-content: center;
+          border: 1px solid rgba(248,113,113,0.28);
+          border-radius: 50%;
+          background: rgba(248,113,113,0.08);
+          color: var(--red);
+          font-size: 12px;
+          line-height: 1;
+          font-weight: 800;
+          cursor: pointer;
+          flex-shrink: 0;
+        }
+        .part-remove:hover { background: rgba(248,113,113,0.18); }
+        .part-history-text {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
         }
         .modal-backdrop {
           position: fixed; inset: 0; z-index: 100;
