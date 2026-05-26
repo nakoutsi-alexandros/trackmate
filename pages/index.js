@@ -1022,15 +1022,22 @@ ${table}
                   <div className="dt-th">Χρήστης</div>
                 </div>
                 {filtered.map((item, i) => (
-                  <div key={i} className="dt-row" onClick={()=>{setTab('history');loadHistory(item.serialNumber);}}>
-                    <div className="dt-td">
-                      <span className="dt-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
-                      <div><div className="dt-model">{item.model || '—'}</div><div className="dt-serial">{item.serialNumber}</div></div>
+                  <div key={i}>
+                    <div className="dt-row" onClick={()=>{setTab('history');loadHistory(item.serialNumber);}}>
+                      <div className="dt-td">
+                        <span className="dt-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
+                        <div><div className="dt-model">{item.model || '—'}</div><div className="dt-serial">{item.serialNumber}</div></div>
+                      </div>
+                      <div className="dt-td dt-muted">{displayStore(item)}</div>
+                      <div className="dt-td"><span className={`status-pill ${STATUS_PILL[normalizeAction(item.action)]?.cls||'pill-gray'}`}>{STATUS_PILL[normalizeAction(item.action)]?.label||normalizeAction(item.action)}</span></div>
+                      <div className="dt-td dt-muted">{item.date}</div>
+                      <div className="dt-td dt-muted">{item.user || '—'}</div>
                     </div>
-                    <div className="dt-td dt-muted">{displayStore(item)}</div>
-                    <div className="dt-td"><span className={`status-pill ${STATUS_PILL[normalizeAction(item.action)]?.cls||'pill-gray'}`}>{STATUS_PILL[normalizeAction(item.action)]?.label||normalizeAction(item.action)}</span></div>
-                    <div className="dt-td dt-muted">{item.date}</div>
-                    <div className="dt-td dt-muted">{item.user || '—'}</div>
+                    {warehouseNotes[item.serialNumber]?.[0] && (
+                      <div className="dt-note-row">
+                        <span className="note-text">📌 {warehouseNotes[item.serialNumber][0].note} <span className="note-inline-meta">· {warehouseNotes[item.serialNumber][0].createdAt}{warehouseNotes[item.serialNumber][0].createdBy ? ` · ${warehouseNotes[item.serialNumber][0].createdBy}` : ''}</span></span>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1073,6 +1080,9 @@ ${table}
                   </div>
                   {item.problem && <div className="machine-problem">🔧 {item.problem}</div>}
                   {item.user && <div className="machine-user">👤 {item.user}</div>}
+                  {warehouseNotes[item.serialNumber]?.[0] && (
+                    <div className="machine-note">📌 {warehouseNotes[item.serialNumber][0].note} <span className="note-inline-meta">· {warehouseNotes[item.serialNumber][0].createdAt}{warehouseNotes[item.serialNumber][0].createdBy ? ` · ${warehouseNotes[item.serialNumber][0].createdBy}` : ''}</span></div>
+                  )}
                 </div>
               </div>
             ))}
@@ -2147,6 +2157,7 @@ ${table}
         .machine-date { font-size: 11px; color: var(--t3); font-weight: 500; }
         .machine-problem { font-size: 11px; color: var(--orange); margin-top: 3px; }
         .machine-user { font-size: 11px; color: var(--green); margin-top: 2px; }
+        .machine-note { font-size: 11px; color: var(--t2); margin-top: 6px; padding: 6px 8px; background: var(--glass); border-left: 2px solid var(--border2); border-radius: var(--r-sm); font-weight: 500; }
 
         /* ── HISTORY ── */
         .history-item { display: flex; gap: 12px; margin-bottom: 12px; }
