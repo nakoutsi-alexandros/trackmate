@@ -65,6 +65,8 @@ const STORE_CHAINS = [
   { id: 'other', label: 'Άλλα' },
 ];
 
+const TAB_IDS = ['scan', 'inventory', 'warehouse', 'history', 'settings'];
+
 export default function Home() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState(null);
@@ -589,7 +591,7 @@ ${table}
     setSerialNumber(serial || '');
     setModel(mdl || '');
     setStep(2);
-    setTab('scan');
+    handleTabClick('scan');
   };
 
   const loadInventory = async () => {
@@ -762,7 +764,23 @@ ${table}
     setTab(t);
     if (t === 'inventory' || t === 'warehouse') loadInventory();
     if (t === 'settings') loadStores();
+    router.push(
+      { pathname: router.pathname, query: t === 'scan' ? {} : { tab: t } },
+      undefined,
+      { shallow: true }
+    );
   };
+
+  useEffect(() => {
+    if (!router.isReady) return;
+    const queryTab = Array.isArray(router.query.tab) ? router.query.tab[0] : router.query.tab;
+    const nextTab = TAB_IDS.includes(queryTab) ? queryTab : 'scan';
+    if (nextTab === tab) return;
+
+    setTab(nextTab);
+    if (nextTab === 'inventory' || nextTab === 'warehouse') loadInventory();
+    if (nextTab === 'settings') loadStores();
+  }, [router.isReady, router.query.tab]);
 
   // Shared content για κάθε tab
   const tabContent = (
@@ -1023,7 +1041,7 @@ ${table}
                 </div>
                 {filtered.map((item, i) => (
                   <div key={i}>
-                    <div className="dt-row" onClick={()=>{setTab('history');loadHistory(item.serialNumber);}}>
+                    <div className="dt-row" onClick={()=>{handleTabClick('history');loadHistory(item.serialNumber);}}>
                       <div className="dt-td">
                         <span className="dt-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
                         <div><div className="dt-model">{item.model || '—'}</div><div className="dt-serial">{item.serialNumber}</div></div>
@@ -1066,7 +1084,7 @@ ${table}
             {loadingInv && <div className="loading">⏳ Φόρτωση...</div>}
             {!loadingInv && filtered.length === 0 && <div className="empty">Δεν βρέθηκαν εγγραφές.<br/>Κάνε ένα scan πρώτα!</div>}
             {filtered.map((item, i) => (
-              <div key={i} className="machine-row" onClick={()=>{setTab('history');loadHistory(item.serialNumber);}}>
+              <div key={i} className="machine-row" onClick={()=>{handleTabClick('history');loadHistory(item.serialNumber);}}>
                 <div className="machine-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
                 <div className="machine-info">
                   <div className="machine-name-row">
@@ -1115,7 +1133,7 @@ ${table}
                 const itemNote = warehouseNotes[item.serialNumber]; // array ή undefined
                 return (
                   <div key={i}>
-                    <div className="dt-row" onClick={()=>{setTab('history');loadHistory(item.serialNumber);}}>
+                    <div className="dt-row" onClick={()=>{handleTabClick('history');loadHistory(item.serialNumber);}}>
                       <div className="dt-td">
                         <span className="dt-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
                         <div>
@@ -1222,7 +1240,7 @@ ${table}
             {warehouseVisibleItems.map((item, i) => {
               const badge = getRepairBadge(item);
               return (
-                <div key={i} className="machine-row" onClick={()=>{setTab('history');loadHistory(item.serialNumber);}}>
+                <div key={i} className="machine-row" onClick={()=>{handleTabClick('history');loadHistory(item.serialNumber);}}>
                   <div className="machine-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
                   <div className="machine-info">
                     <div className="machine-name-row">
@@ -1503,7 +1521,7 @@ ${table}
       {/* ─── DESKTOP LAYOUT ─── */}
       <div className={`desktop-layout${darkMode?'':' light'}`}>
         <aside className="sidebar">
-          <div className="sb-logo" onClick={()=>{setTab('scan');handleReset();}} style={{cursor:'pointer'}}>
+          <div className="sb-logo" onClick={()=>{handleReset();handleTabClick('scan');}} style={{cursor:'pointer'}}>
             <div className="sb-logo-mark">
               <div className="sb-logo-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2v-4M9 21H5a2 2 0 01-2-2v-4m0 0h18"/></svg>
@@ -1578,7 +1596,7 @@ ${table}
       <div className={`mobile-layout${darkMode?'':' light'}`}>
         <header className="mob-header">
           <div className="mob-header-top">
-            <div className="mob-logo" onClick={()=>{setTab('scan');handleReset();}} style={{cursor:'pointer'}}>
+            <div className="mob-logo" onClick={()=>{handleReset();handleTabClick('scan');}} style={{cursor:'pointer'}}>
               <div className="mob-logo-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2v-4M9 21H5a2 2 0 01-2-2v-4m0 0h18"/></svg>
               </div>
