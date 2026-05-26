@@ -1813,13 +1813,19 @@ ${table}
               </div>
               <button className="modal-close" onClick={closePartModal}>×</button>
             </div>
-            <input
-              className="text-input"
-              value={partSearch}
-              onChange={e=>setPartSearch(e.target.value)}
-              placeholder="Αναζήτηση κωδικού ή περιγραφής..."
-              autoFocus
-            />
+            <div className="part-search-wrap">
+              <span className="part-search-icon">🔍</span>
+              <input
+                className="text-input part-search-input"
+                value={partSearch}
+                onChange={e=>setPartSearch(e.target.value)}
+                placeholder="Γράψε κωδικό ή περιγραφή για αναζήτηση..."
+                autoFocus
+              />
+            </div>
+            <div className="part-picker-hint">
+              {filteredParts.length} διαθέσιμα ανταλλακτικά
+            </div>
             <div className="part-picker-list">
               {filteredParts.map(part => (
                 <button
@@ -2575,6 +2581,22 @@ ${table}
         .part-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
         .part-modal-title { font-size: 16px; font-weight: 800; color: var(--t1); }
         .part-modal-sub { margin-top: 3px; font-size: 11px; color: var(--t3); font-weight: 600; }
+        .part-search-wrap { position: relative; }
+        .part-search-icon {
+          position: absolute; left: 12px; top: 50%;
+          transform: translateY(-50%);
+          font-size: 12px; color: var(--t3);
+          pointer-events: none;
+        }
+        .part-search-input { padding-left: 34px; }
+        .part-picker-hint {
+          margin-top: -6px;
+          font-size: 10px;
+          font-weight: 700;
+          color: var(--t3);
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+        }
         .modal-close {
           width: 30px; height: 30px; border-radius: var(--r-sm);
           border: 1px solid var(--border2);
