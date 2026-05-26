@@ -831,7 +831,7 @@ ${table}
         </button>
         {openActionMenu === menuId && (
           <div className="action-menu">
-            <button className="action-menu-item" onClick={e=>runMenuAction(e, ()=>{setEditingNote(item.serialNumber);setNoteInput('');})}>+ Νέα σημείωση</button>
+            <button className="action-menu-item" onClick={e=>runMenuAction(e, ()=>startNewAction(item.serialNumber,item.model))}>+ Νέα</button>
             {isAvailable && (
               <button className="action-menu-item" onClick={e=>runMenuAction(e, ()=>handleMoveToRepair(item))}>Σε επισκευή</button>
             )}
@@ -1274,7 +1274,7 @@ ${table}
                           ) : (
                             <span className="note-empty">+ Σημείωση</span>
                           )}
-                          <button className="note-add-btn" onClick={()=>{setEditingNote(item.serialNumber);setNoteInput('');}}>+ Νέα</button>
+                          <button className="note-add-btn" onClick={()=>{setEditingNote(item.serialNumber);setNoteInput('');}}>+ Νέα σημείωση</button>
                         </div>
                       )}
                       {/* Ιστορικό σημειώσεων */}
