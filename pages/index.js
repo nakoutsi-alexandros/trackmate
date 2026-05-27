@@ -307,6 +307,14 @@ export default function Home() {
     handleImage(e.dataTransfer.files[0]);
   }, [handleImage]);
 
+  const cleanSerial = (value) => String(value || '').replace(/^'/, '').trim().toLowerCase();
+
+  const findExistingSerial = (value) => {
+    const sn = cleanSerial(value);
+    if (!sn) return null;
+    return inventory.find(i => cleanSerial(i.serialNumber) === sn) || null;
+  };
+
   const handleScan = async () => {
     if (!imageBase64) return;
     setScanning(true);
@@ -328,8 +336,10 @@ export default function Home() {
 
       if (!res.ok) throw new Error(data.error || 'Σφάλμα');
 
-      setSerialNumber(data.serialNumber !== 'unknown' ? data.serialNumber : '');
+      const scannedSerial = data.serialNumber !== 'unknown' ? data.serialNumber : '';
+      setSerialNumber(scannedSerial);
       setModel(data.model !== 'unknown' ? data.model : '');
+      setExistingItem(findExistingSerial(scannedSerial));
       setScanError(null);
       setStep(2);
     } catch (e) {
@@ -472,6 +482,12 @@ ${table}
   const handleSubmit = async () => {
     if (!serialNumber) { alert('Βάλε Serial Number!'); return; }
     if (!action) { alert('Επίλεξε τύπο κίνησης!'); return; }
+    const duplicate = findExistingSerial(serialNumber);
+    if (duplicate) {
+      setExistingItem(duplicate);
+      alert('Αυτό το serial υπάρχει ήδη. Δεν επιτρέπεται δεύτερη καταχώρηση με ίδιο serial number.');
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch('/api/log', {
@@ -1095,12 +1111,9 @@ ${table}
               <div className="field-group">
                 <label className="field-label">Serial Number *</label>
                 <input className="text-input" value={serialNumber}
-                  onChange={e=>{ setSerialNumber(e.target.value); setExistingItem(null); }}
+                  onChange={e=>{ const value = e.target.value; setSerialNumber(value); setExistingItem(findExistingSerial(value)); }}
                   onBlur={e=>{
-                    const sn = e.target.value.trim();
-                    if (!sn) return;
-                    const found = inventory.find(i => i.serialNumber.replace(/^'/, '') === sn.replace(/^'/, ''));
-                    setExistingItem(found || null);
+                    setExistingItem(findExistingSerial(e.target.value));
                   }}
                   placeholder="π.χ. A4829301" />
               </div>
@@ -1108,6 +1121,7 @@ ${table}
               {existingItem && (
                 <div className="existing-item-banner">
                   <div className="existing-item-title">⚠️ Αυτό το serial υπάρχει ήδη</div>
+                  <div className="existing-item-note">Δεν επιτρέπεται δεύτερη καταχώρηση με ίδιο serial number.</div>
                   {renderMachineCard(existingItem, { compact: true, showHistoryButton: true })}
                 </div>
               )}
@@ -1232,7 +1246,7 @@ ${table}
                 <label className="field-label">📝 Σημειώσεις</label>
                 <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Οποιαδήποτε επιπλέον πληροφορία..." />
               </div>
-              <button className="btn-primary" onClick={handleSubmit} disabled={submitting}>{submitting ? '⏳ Καταχώριση...' : '✅ Καταχώριση κίνησης'}</button>
+              <button className="btn-primary" onClick={handleSubmit} disabled={submitting || !!existingItem}>{submitting ? '⏳ Καταχώριση...' : existingItem ? '⚠️ Υπάρχει ήδη αυτό το serial' : '✅ Καταχώριση κίνησης'}</button>
               <button className="btn-ghost" onClick={handleReset}>← Πίσω</button>
             </div>
           )}
