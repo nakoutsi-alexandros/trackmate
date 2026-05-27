@@ -602,6 +602,29 @@ ${table}
     }
   };
 
+  const handleQuickSaveNote = async (serialNumber) => {
+    const note = prompt('Νέα σημείωση για το μηχάνημα:');
+    if (!note || !note.trim()) return;
+    try {
+      await fetch('/api/notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serialNumber, note }),
+      });
+      const newNote = {
+        note: note.trim(),
+        createdAt: new Date().toLocaleString('el-GR', { timeZone: 'Europe/Athens' }),
+        createdBy: currentUser?.fullName || '',
+      };
+      setWarehouseNotes(prev => ({
+        ...prev,
+        [serialNumber]: [newNote, ...(prev[serialNumber] || [])],
+      }));
+    } catch (e) {
+      alert('Σφάλμα αποθήκευσης σημείωσης.');
+    }
+  };
+
   const openPartModal = (item) => {
     setPartModalItem(item);
     setPartSearch('');
@@ -956,6 +979,85 @@ ${table}
     );
   };
 
+  const selectActionById = (actionId) => {
+    const cat = ACTION_CATEGORIES.find(c => c.id === actionId);
+    if (!cat) return;
+    setActionCat(cat.id);
+    setAction(cat.value || '');
+  };
+
+  const getSuggestedActions = (item) => {
+    const current = normalizeAction(item?.action || '');
+    if (current === 'Καινούριο Μηχάνημα') return ['send-store', 'send-hq', 'repair-in'];
+    if (current === 'Εισαγωγή για επισκευή') return ['new', 'repair-in'];
+    if (current === 'Αποστολή σε κατάστημα' || current === 'Αποστολή στα κεντρικά') return ['repair-in', 'new'];
+    return ['repair-in', 'send-store'];
+  };
+
+  const renderMachineCard = (item, options = {}) => {
+    if (!item) return null;
+    const serial = item.serialNumber;
+    const itemNotes = warehouseNotes[serial] || [];
+    const itemParts = machineParts[serial] || [];
+    const status = normalizeAction(item.action);
+    const suggested = getSuggestedActions(item)
+      .map(id => ACTION_CATEGORIES.find(c => c.id === id))
+      .filter(Boolean);
+
+    const useAsMovement = (actionId) => {
+      setSerialNumber(serial || '');
+      setModel(item.model || '');
+      selectActionById(actionId);
+      setStep(2);
+      handleTabClick('scan');
+    };
+
+    return (
+      <div className={`machine-card ${options.compact ? 'compact' : ''}`}>
+        <div className="machine-card-head">
+          <div>
+            <div className="machine-card-title">{item.model || 'Άγνωστος κωδικός είδους'}</div>
+            <div className="machine-card-serial">{serial}</div>
+          </div>
+          <span className={`status-pill ${STATUS_PILL[status]?.cls||'pill-gray'}`}>{STATUS_PILL[status]?.label||status}</span>
+        </div>
+        <div className="machine-card-grid">
+          <div><span>Κατάστημα</span><strong>{displayStore(item)}</strong></div>
+          <div><span>Τελευταία κίνηση</span><strong>{item.date || '—'}</strong></div>
+          <div><span>Χρήστης</span><strong>{item.user || '—'}</strong></div>
+          <div><span>Εγγραφές</span><strong>{historySerial && history?.[0]?.serialNumber === serial ? `${history.length} κινήσεις` : '—'}</strong></div>
+        </div>
+        {itemParts.length > 0 && (
+          <div className="machine-card-section">
+            <span className="machine-card-label">Ανταλλακτικά</span>
+            <div className="machine-card-chips">
+              {itemParts.slice(0, 4).map((part, idx) => (
+                <span key={`${part.code}-${idx}`} className="part-chip">{part.code}{part.description ? ` · ${part.description}` : ''}</span>
+              ))}
+              {itemParts.length > 4 && <span className="part-more">+{itemParts.length - 4}</span>}
+            </div>
+          </div>
+        )}
+        {itemNotes.length > 0 && (
+          <div className="machine-card-section">
+            <span className="machine-card-label">Τελευταία σημείωση</span>
+            <div className="machine-card-note">📌 {itemNotes[0].note} <span>{itemNotes[0].createdAt}</span></div>
+          </div>
+        )}
+        <div className="machine-card-actions">
+          {suggested.map(cat => (
+            <button key={cat.id} className="btn-quick-action" onClick={()=>useAsMovement(cat.id)}>{cat.label}</button>
+          ))}
+          <button className="note-add-btn" onClick={()=>handleQuickSaveNote(serial)}>+ Νέα σημείωση</button>
+          <button className="note-add-btn" onClick={()=>openPartModal(item)}>Ανταλλακτικό</button>
+          {options.showHistoryButton && (
+            <button className="btn-quick-action" onClick={()=>{handleTabClick('history');loadHistory(serial);}}>Ιστορικό</button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   // Shared content για κάθε tab
   const tabContent = (
     <>
@@ -1006,17 +1108,7 @@ ${table}
               {existingItem && (
                 <div className="existing-item-banner">
                   <div className="existing-item-title">⚠️ Αυτό το serial υπάρχει ήδη</div>
-                  <div className="existing-item-info">
-                    <span><strong>{existingItem.model || 'Άγνωστος κωδικός είδους'}</strong></span>
-                    <span className={`status-pill ${STATUS_PILL[normalizeAction(existingItem.action)]?.cls||'pill-gray'}`}>
-                      {STATUS_PILL[normalizeAction(existingItem.action)]?.label||normalizeAction(existingItem.action)}
-                    </span>
-                  </div>
-                  <div className="existing-item-meta">
-                    🏪 {displayStore(existingItem)} · 📅 {existingItem.date}
-                    {existingItem.user ? ` · 👤 ${existingItem.user}` : ''}
-                  </div>
-                  <div className="existing-item-note">Συνέχισε μόνο αν θέλεις να καταχωρήσεις νέα κίνηση για αυτό το μηχάνημα.</div>
+                  {renderMachineCard(existingItem, { compact: true, showHistoryButton: true })}
                 </div>
               )}
               <div className="field-group">
@@ -1548,16 +1640,7 @@ ${table}
           {history === null && <div className="empty">Γράψε serial number για να δεις το ιστορικό.</div>}
           {history && history.length === 0 && <div className="empty">Δεν βρέθηκε ιστορικό.</div>}
           {history && history.length > 0 && historySerial && (
-            <div className="history-machine-header">
-              <div className="history-machine-info">
-                <div className="history-machine-model">{history[0]?.model || 'Άγνωστος κωδικός είδους'}</div>
-                <div className="history-machine-serial">{history[0]?.serialNumber}</div>
-                <div className="history-machine-count">{history.length} κινήσεις</div>
-              </div>
-              <button className="btn-quick-action" onClick={()=>startNewAction(history[0]?.serialNumber, history[0]?.model)}>
-                + Νέα κίνηση
-              </button>
-            </div>
+            renderMachineCard(history[0])
           )}
           {history && history.length > 0 && historySerial && warehouseNotes[history[0]?.serialNumber]?.length > 0 && (
             <div className="history-notes-card">
@@ -2432,6 +2515,30 @@ ${table}
         }
 
         /* ── STORE PICKER ── */
+        .machine-card {
+          background: var(--glass);
+          border: 1px solid var(--border2);
+          border-radius: var(--r-lg);
+          padding: 14px;
+          margin-bottom: 14px;
+          box-shadow: 0 0 18px var(--glow2);
+        }
+        .machine-card.compact { margin-top: 10px; margin-bottom: 0; background: rgba(8,8,16,0.24); }
+        .machine-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+        .machine-card-title { font-size: 16px; font-weight: 800; color: var(--t1); }
+        .machine-card-serial { font-family: var(--mono); font-size: 11px; color: var(--t2); margin-top: 3px; font-weight: 700; }
+        .machine-card-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; margin-bottom: 10px; }
+        .machine-card-grid div { border: 1px solid var(--border); border-radius: var(--r); background: var(--glass2); padding: 9px 10px; min-width: 0; }
+        .machine-card-grid span, .machine-card-label { display: block; font-size: 9px; color: var(--t3); font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+        .machine-card-grid strong { display: block; font-size: 12px; color: var(--t1); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .machine-card-section { margin-top: 10px; }
+        .machine-card-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+        .machine-card-note { font-size: 12px; color: var(--t2); line-height: 1.5; }
+        .machine-card-note span { color: var(--t3); font-size: 10px; font-weight: 700; margin-left: 4px; }
+        .machine-card-actions { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 12px; }
+        @media (max-width: 767px) {
+          .machine-card-grid { grid-template-columns: 1fr 1fr; }
+        }
         .store-display { display: flex; align-items: center; min-height: 40px; flex: 1; }
         .store-picker { border: 1px solid var(--border2); border-radius: var(--r-lg); padding: 12px; background: var(--glass2); backdrop-filter: blur(12px); }
         .chain-tabs { display: flex; gap: 5px; overflow-x: auto; padding: 6px 0; scrollbar-width: none; }
@@ -2853,6 +2960,10 @@ ${table}
         .light .history-machine-header { background: rgba(255,255,255,0.95); }
         .light .history-machine-model { color: var(--t1); }
         .light .history-machine-serial { color: #4a4a6a; }
+        .light .machine-card { background: rgba(255,255,255,0.92); border-color: var(--border); box-shadow: 0 8px 24px rgba(124,58,237,0.08); }
+        .light .machine-card.compact { background: rgba(255,255,255,0.72); }
+        .light .machine-card-grid div { background: rgba(255,255,255,0.78); border-color: var(--border); }
+        .light .machine-card-serial { color: #4a4a6a; }
         .light .h-machine-serial { color: #4a4a6a; }
         .light .quick-action-bar { background: rgba(255,255,255,0.9); border-color: var(--border2); }
         .light .quick-serial { color: var(--t1); }
