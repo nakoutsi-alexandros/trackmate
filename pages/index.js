@@ -989,6 +989,7 @@ ${table}
     const menuId = `${item.serialNumber}-${item.model || ''}`;
 
     const runMenuAction = (e, fn) => {
+      e.preventDefault();
       e.stopPropagation();
       setOpenActionMenu(null);
       fn();
@@ -998,7 +999,7 @@ ${table}
       <div className="item-actions" onClick={e=>{e.preventDefault();e.stopPropagation();}}>
         <button
           className="action-menu-btn"
-          onClick={e=>{e.stopPropagation();setOpenActionMenu(openActionMenu === menuId ? null : menuId);}}
+          onClick={e=>{e.preventDefault();e.stopPropagation();setOpenActionMenu(openActionMenu === menuId ? null : menuId);}}
           aria-label="Ενέργειες μηχανήματος"
           title="Ενέργειες"
         >
