@@ -157,6 +157,7 @@ export default function Home() {
   const [editDateValue, setEditDateValue] = useState('');
   const [savingDate, setSavingDate] = useState(false);
   const [openActionMenu, setOpenActionMenu] = useState(null);
+  const [mobileSheet, setMobileSheet] = useState(null);
   const [swipedItem, setSwipedItem] = useState(null);
   const [pullDistance, setPullDistance] = useState(0);
   const [pullRefreshing, setPullRefreshing] = useState(false);
@@ -2010,16 +2011,18 @@ ${table}
                   onTouchStart={handleSwipeTouchStart}
                   onTouchEnd={e=>handleSwipeTouchEnd(e, item.serialNumber)}
                 >
-                  <div className="swipe-actions-bg">
-                    <button className="swipe-action-btn new-action" onClick={e=>{e.stopPropagation();setSwipedItem(null);startNewAction(item.serialNumber,item.model);}}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                      Κίνηση
-                    </button>
-                    <button className="swipe-action-btn new-note" onClick={e=>{e.stopPropagation();setSwipedItem(null);setEditingNote(item.serialNumber);setNoteInput('');}}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                      Σημείωση
-                    </button>
-                  </div>
+                  {isSwiped && (
+                    <div className="swipe-actions-bg">
+                      <button className="swipe-action-btn new-action" onClick={e=>{e.stopPropagation();setSwipedItem(null);startNewAction(item.serialNumber,item.model);}}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Κίνηση
+                      </button>
+                      <button className="swipe-action-btn new-note" onClick={e=>{e.stopPropagation();setSwipedItem(null);setEditingNote(item.serialNumber);setNoteInput('');}}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        Σημείωση
+                      </button>
+                    </div>
+                  )}
                 <a className={`machine-row row-link${openActionMenu === mobMenuId ? ' menu-open' : ''}${isSwiped ? ' swiped' : ''}`} href={historyHref(item.serialNumber)} onClick={e=>{ if(isSwiped){e.preventDefault();setSwipedItem(null);return;} handleHistoryLinkClick(e, item.serialNumber);}}>
                   <div className="machine-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
                   <div className="machine-info">
@@ -2122,7 +2125,7 @@ ${table}
                       </div>
                     )}
                     <div className="mobile-actions-row">
-                      {renderWarehouseActions(item)}
+                      <button className="action-menu-btn" onClick={e=>{e.preventDefault();e.stopPropagation();setMobileSheet(item);setSwipedItem(null);}}>⋯</button>
                     </div>
                   </div>
                 </a>
@@ -2510,6 +2513,52 @@ ${table}
           {tabContent}
         </main>
       </div>
+
+      {mobileSheet && (() => {
+        const sheetAction = normalizeAction(mobileSheet.action);
+        const isRepair = sheetAction === 'Εισαγωγή για επισκευή';
+        const isAvailable = sheetAction === 'Καινούριο Μηχάνημα';
+        const close = () => setMobileSheet(null);
+        return (
+          <div className="mob-sheet-backdrop" onClick={close}>
+            <div className="mob-sheet" onClick={e=>e.stopPropagation()}>
+              <div className="mob-sheet-handle" />
+              <div className="mob-sheet-title">{mobileSheet.model || 'Χωρίς κωδικό'}</div>
+              <div className="mob-sheet-sub">{mobileSheet.serialNumber}</div>
+              <div className="mob-sheet-actions">
+                <button className="mob-sheet-btn" onClick={()=>{close();startNewAction(mobileSheet.serialNumber,mobileSheet.model);}}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  Νέα κίνηση
+                </button>
+                {isAvailable && (
+                  <button className="mob-sheet-btn" onClick={()=>{close();handleMoveToRepair(mobileSheet);}}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+                    Σε επισκευή
+                  </button>
+                )}
+                {isRepair && (
+                  <button className="mob-sheet-btn success" onClick={()=>{close();handleMarkRepaired(mobileSheet);}}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    Επισκευάστηκε
+                  </button>
+                )}
+                <button className="mob-sheet-btn" onClick={()=>{close();openPartModal(mobileSheet);}}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
+                  Ανταλλακτικό
+                </button>
+                <button className="mob-sheet-btn" onClick={()=>{close();openLogLinkModal(mobileSheet);}}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+                  Link logs
+                </button>
+                <button className="mob-sheet-btn danger" onClick={()=>{close();handleDeleteItem(mobileSheet);}}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                  Διαγραφή
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {partModalItem && (
         <div className="modal-backdrop" onClick={closePartModal}>
@@ -3539,6 +3588,41 @@ ${table}
           border-color: rgba(167,139,250,0.22);
           background: rgba(167,139,250,0.05);
         }
+        .mob-sheet-backdrop {
+          position: fixed; inset: 0; z-index: 200;
+          background: rgba(0,0,0,0.5);
+          display: flex; align-items: flex-end;
+          animation: fadeIn 0.15s ease;
+        }
+        .mob-sheet {
+          width: 100%; background: var(--bg3);
+          border-radius: 18px 18px 0 0;
+          padding: 12px 16px 32px;
+          border-top: 1px solid var(--border2);
+          animation: slideUp 0.2s ease;
+        }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .mob-sheet-handle { width: 36px; height: 4px; background: var(--border2); border-radius: 2px; margin: 0 auto 14px; }
+        .mob-sheet-title { color: var(--t1); font-size: 15px; font-weight: 800; }
+        .mob-sheet-sub { color: var(--t3); font-size: 11px; font-weight: 600; margin-bottom: 14px; font-family: var(--mono); }
+        .mob-sheet-actions { display: flex; flex-direction: column; gap: 6px; }
+        .mob-sheet-btn {
+          display: flex; align-items: center; gap: 12px;
+          width: 100%; padding: 13px 14px;
+          background: var(--glass); border: 1px solid var(--border);
+          border-radius: var(--r); color: var(--t1);
+          font-size: 13px; font-weight: 700; font-family: var(--font);
+          cursor: pointer; text-align: left; transition: all 0.15s;
+        }
+        .mob-sheet-btn svg { width: 18px; height: 18px; flex-shrink: 0; color: var(--t3); }
+        .mob-sheet-btn:active { background: var(--glass2); }
+        .mob-sheet-btn.success { color: var(--green); }
+        .mob-sheet-btn.success svg { color: var(--green); }
+        .mob-sheet-btn.danger { color: var(--red); }
+        .mob-sheet-btn.danger svg { color: var(--red); }
+        .light .mob-sheet { background: #fff; border-color: var(--border); }
+        .light .mob-sheet-btn { background: rgba(0,0,0,0.02); border-color: var(--border); }
+
         .modal-backdrop {
           position: fixed; inset: 0; z-index: 100;
           display: flex; align-items: center; justify-content: center;
