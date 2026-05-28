@@ -946,19 +946,41 @@ ${table}
     );
   };
 
+  const historyHref = (serial) => `/?tab=history&serial=${encodeURIComponent(serial || '')}`;
+
+  const openHistoryForSerial = (serial) => {
+    setOpenActionMenu(null);
+    setTab('history');
+    loadHistory(serial);
+    router.push(
+      { pathname: router.pathname, query: { tab: 'history', serial } },
+      undefined,
+      { shallow: true }
+    );
+  };
+
+  const handleHistoryLinkClick = (e, serial) => {
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    openHistoryForSerial(serial);
+  };
+
   useEffect(() => {
     if (!router.isReady) return;
     const queryTab = Array.isArray(router.query.tab) ? router.query.tab[0] : router.query.tab;
+    const querySerial = Array.isArray(router.query.serial) ? router.query.serial[0] : router.query.serial;
     const nextTab = TAB_IDS.includes(queryTab) ? queryTab : 'scan';
-    if (nextTab === tab) return;
 
-    setTab(nextTab);
+    if (nextTab !== tab) setTab(nextTab);
     if (nextTab === 'inventory' || nextTab === 'warehouse') {
       loadInventory();
       loadParts();
     }
+    if (nextTab === 'history' && querySerial && querySerial !== historySerial) {
+      loadHistory(querySerial);
+    }
     if (nextTab === 'settings') loadStores();
-  }, [router.isReady, router.query.tab]);
+  }, [router.isReady, router.query.tab, router.query.serial]);
 
   const renderWarehouseActions = (item) => {
     const action = normalizeAction(item.action);
@@ -973,7 +995,7 @@ ${table}
     };
 
     return (
-      <div className="item-actions" onClick={e=>e.stopPropagation()}>
+      <div className="item-actions" onClick={e=>{e.preventDefault();e.stopPropagation();}}>
         <button
           className="action-menu-btn"
           onClick={e=>{e.stopPropagation();setOpenActionMenu(openActionMenu === menuId ? null : menuId);}}
@@ -1071,7 +1093,7 @@ ${table}
           <button className="note-add-btn" onClick={()=>handleQuickSaveNote(serial)}>+ Νέα σημείωση</button>
           <button className="note-add-btn" onClick={()=>openPartModal(item)}>Ανταλλακτικό</button>
           {options.showHistoryButton && (
-            <button className="btn-quick-action" onClick={()=>{handleTabClick('history');loadHistory(serial);}}>Ιστορικό</button>
+            <a className="btn-quick-action row-link" href={historyHref(serial)} onClick={e=>handleHistoryLinkClick(e, serial)}>Ιστορικό</a>
           )}
         </div>
       </div>
@@ -1325,7 +1347,7 @@ ${table}
                 </div>
                 {filtered.map((item, i) => (
                   <div key={i}>
-                    <div className="dt-row" onClick={()=>{handleTabClick('history');loadHistory(item.serialNumber);}}>
+                    <a className="dt-row row-link" href={historyHref(item.serialNumber)} onClick={e=>handleHistoryLinkClick(e, item.serialNumber)}>
                       <div className="dt-td">
                         <span className="dt-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
                         <div><div className="dt-model">{item.model || '—'}</div><div className="dt-serial">{item.serialNumber}</div></div>
@@ -1334,7 +1356,7 @@ ${table}
                       <div className="dt-td"><span className={`status-pill ${STATUS_PILL[normalizeAction(item.action)]?.cls||'pill-gray'}`}>{STATUS_PILL[normalizeAction(item.action)]?.label||normalizeAction(item.action)}</span></div>
                       <div className="dt-td dt-muted">{item.date}</div>
                       <div className="dt-td dt-muted">{item.user || '—'}</div>
-                    </div>
+                    </a>
                     {warehouseNotes[item.serialNumber]?.[0] && (
                       <div className="dt-note-row">
                         <span className="note-text">📌 {warehouseNotes[item.serialNumber][0].note} <span className="note-inline-meta">· {warehouseNotes[item.serialNumber][0].createdAt}{warehouseNotes[item.serialNumber][0].createdBy ? ` · ${warehouseNotes[item.serialNumber][0].createdBy}` : ''}</span></span>
@@ -1368,7 +1390,7 @@ ${table}
             {loadingInv && <div className="loading">⏳ Φόρτωση...</div>}
             {!loadingInv && filtered.length === 0 && <div className="empty">Δεν βρέθηκαν εγγραφές.<br/>Κάνε ένα scan πρώτα!</div>}
             {filtered.map((item, i) => (
-              <div key={i} className="machine-row" onClick={()=>{handleTabClick('history');loadHistory(item.serialNumber);}}>
+              <a key={i} className="machine-row row-link" href={historyHref(item.serialNumber)} onClick={e=>handleHistoryLinkClick(e, item.serialNumber)}>
                 <div className="machine-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
                 <div className="machine-info">
                   <div className="machine-name-row">
@@ -1386,7 +1408,7 @@ ${table}
                     <div className="machine-note">📌 {warehouseNotes[item.serialNumber][0].note} <span className="note-inline-meta">· {warehouseNotes[item.serialNumber][0].createdAt}{warehouseNotes[item.serialNumber][0].createdBy ? ` · ${warehouseNotes[item.serialNumber][0].createdBy}` : ''}</span></div>
                   )}
                 </div>
-              </div>
+              </a>
             ))}
           </div>
           <button className="btn-ghost" style={{marginTop:'12px'}} onClick={loadInventory}>🔄 Ανανέωση</button>
@@ -1418,7 +1440,7 @@ ${table}
                 const itemParts = machineParts[item.serialNumber] || [];
                 return (
                   <div key={i}>
-                    <div className="dt-row" onClick={()=>{handleTabClick('history');loadHistory(item.serialNumber);}}>
+                    <a className="dt-row row-link" href={historyHref(item.serialNumber)} onClick={e=>handleHistoryLinkClick(e, item.serialNumber)}>
                       <div className="dt-td">
                         <span className="dt-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
                         <div>
@@ -1427,7 +1449,7 @@ ${table}
                         </div>
                         {badge && <span className={`repair-badge repair-badge-${badge.type}`}>{badge.type==='danger'?'🔴':'🟡'} {badge.label}</span>}
                       </div>
-                      <div className="dt-td" onClick={e=>e.stopPropagation()}>
+                      <div className="dt-td" onClick={e=>{e.preventDefault();e.stopPropagation();}}>
                         {editingStore === item.serialNumber ? (
                           <div className="store-edit-picker">
                             <input className="text-input" style={{fontSize:'11px',padding:'4px 8px'}}
@@ -1470,7 +1492,7 @@ ${table}
                         <span>{item.user || '—'}</span>
                         {renderWarehouseActions(item)}
                       </div>
-                    </div>
+                    </a>
                     {itemParts.length > 0 && (
                       <div className="dt-part-row" onClick={e=>e.stopPropagation()}>
                         <span className="part-label">Ανταλλακτικά</span>
@@ -1532,7 +1554,7 @@ ${table}
               const badge = getRepairBadge(item);
               const itemParts = machineParts[item.serialNumber] || [];
               return (
-                <div key={i} className="machine-row" onClick={()=>{handleTabClick('history');loadHistory(item.serialNumber);}}>
+                <a key={i} className="machine-row row-link" href={historyHref(item.serialNumber)} onClick={e=>handleHistoryLinkClick(e, item.serialNumber)}>
                   <div className="machine-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
                   <div className="machine-info">
                     <div className="machine-name-row">
@@ -1540,7 +1562,7 @@ ${table}
                       <span className={`status-pill ${STATUS_PILL[normalizeAction(item.action)]?.cls||'pill-gray'}`}>{STATUS_PILL[normalizeAction(item.action)]?.label||normalizeAction(item.action)}</span>
                     </div>
                     <div className="machine-serial">{item.serialNumber}</div>
-                    <div className="machine-bottom" onClick={e=>e.stopPropagation()}>
+                    <div className="machine-bottom" onClick={e=>{e.preventDefault();e.stopPropagation();}}>
                       {editingStore === item.serialNumber ? (
                         <div style={{width:'100%'}}>
                           <input className="text-input" style={{fontSize:'11px',padding:'4px 8px',marginBottom:'4px'}}
@@ -1564,7 +1586,7 @@ ${table}
                     </div>
                     {badge && <div className={`repair-badge repair-badge-${badge.type}`}>{badge.type==='danger'?'🔴':'🟡'} Σε επισκευή {badge.label}</div>}
                     {itemParts.length > 0 && (
-                      <div className="machine-parts" onClick={e=>e.stopPropagation()}>
+                      <div className="machine-parts" onClick={e=>{e.preventDefault();e.stopPropagation();}}>
                         <span className="part-label">Ανταλλακτικά</span>
                         {itemParts.map((part, idx) => (
                           <span key={`${part.code}-${idx}`} className="part-chip">
@@ -1576,7 +1598,7 @@ ${table}
                     )}
                     {/* Note section mobile */}
                     {editingNote === item.serialNumber ? (
-                      <div className="note-edit" onClick={e=>e.stopPropagation()}>
+                      <div className="note-edit" onClick={e=>{e.preventDefault();e.stopPropagation();}}>
                         <textarea className="note-input" value={noteInput} onChange={e=>setNoteInput(e.target.value)} placeholder="Γράψε νέα σημείωση..." autoFocus />
                         <div style={{display:'flex',gap:'6px',marginTop:'6px'}}>
                           <button className="btn-quick-action" onClick={()=>handleSaveNote(item.serialNumber)} disabled={savingNote}>{savingNote?'...':'💾 Αποθήκευση'}</button>
@@ -1584,7 +1606,7 @@ ${table}
                         </div>
                       </div>
                     ) : (
-                      <div className="note-display" onClick={e=>e.stopPropagation()}>
+                      <div className="note-display" onClick={e=>{e.preventDefault();e.stopPropagation();}}>
                         {warehouseNotes[item.serialNumber]?.length > 0 ? (
                           <>
                             <div style={{display:'flex',alignItems:'center',gap:'6px',marginBottom:'4px'}}>
@@ -1614,7 +1636,7 @@ ${table}
                       {renderWarehouseActions(item)}
                     </div>
                   </div>
-                </div>
+                </a>
               );
             })}
           </div>
@@ -2384,6 +2406,10 @@ ${table}
         .dt-row {
           display: grid; grid-template-columns: 2fr 2fr 1.2fr 1fr 1fr;
           border-bottom: 1px solid rgba(167,139,250,0.05); cursor: pointer; transition: background 0.15s;
+        }
+        .row-link {
+          color: inherit;
+          text-decoration: none;
         }
         .dt-row:last-child { border-bottom: none; }
         .dt-row:hover { background: rgba(167,139,250,0.04); }
