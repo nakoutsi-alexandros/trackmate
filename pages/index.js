@@ -1958,8 +1958,9 @@ ${table}
               const badge = getRepairBadge(item);
               const itemParts = machineParts[item.serialNumber] || [];
               const itemLogLinks = machineLogLinks[item.serialNumber] || [];
+              const mobMenuId = `${item.serialNumber}-${item.model || ''}`;
               return (
-                <a key={i} className="machine-row row-link" href={historyHref(item.serialNumber)} onClick={e=>handleHistoryLinkClick(e, item.serialNumber)}>
+                <a key={i} className={`machine-row row-link${openActionMenu === mobMenuId ? ' menu-open' : ''}`} href={historyHref(item.serialNumber)} onClick={e=>handleHistoryLinkClick(e, item.serialNumber)}>
                   <div className="machine-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
                   <div className="machine-info">
                     <div className="machine-name-row">
@@ -3202,8 +3203,10 @@ ${table}
           padding: 12px 14px; margin-bottom: 8px;
           display: flex; align-items: flex-start; gap: 10px;
           cursor: pointer; transition: all 0.2s;
+          position: relative; z-index: 0;
         }
         .machine-row:hover { border-color: var(--border2); background: rgba(167,139,250,0.04); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+        .machine-row.menu-open { z-index: 50; }
         .machine-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
         .machine-info { flex: 1; min-width: 0; }
         .machine-name-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 3px; }
