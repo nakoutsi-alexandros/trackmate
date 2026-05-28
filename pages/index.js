@@ -143,6 +143,7 @@ export default function Home() {
   const [storeDetailsDraft, setStoreDetailsDraft] = useState({ name: '', phone: '', address: '', vat: '' });
   const [savingStoreDetails, setSavingStoreDetails] = useState(false);
   const [storeDetailsMsg, setStoreDetailsMsg] = useState(null);
+  const [settingsStoreSearch, setSettingsStoreSearch] = useState('');
   const [warehouseNotes, setWarehouseNotes] = useState({});
   const [editingNote, setEditingNote] = useState(null);
   const [noteInput, setNoteInput] = useState('');
@@ -1008,6 +1009,12 @@ ${table}
   const storeRows = storeDetailsList.length
     ? storeDetailsList
     : storesList.map(name => ({ name, phone: '', address: '', vat: '' }));
+  const filteredStoreRows = storeRows.filter(store => {
+    const q = settingsStoreSearch.trim().toLowerCase();
+    if (!q) return true;
+    return [store.name, store.phone, store.address, store.vat]
+      .some(value => String(value || '').toLowerCase().includes(q));
+  });
   const filteredItems = itemsList.filter(item => {
     const q = itemSearch.trim().toLowerCase();
     if (!q) return true;
@@ -2101,10 +2108,19 @@ ${table}
             <button className="btn-primary" onClick={handleAddStore} disabled={addingStore||!newStoreName.trim()}>{addingStore?'⏳ Προσθήκη...':'➕ Προσθήκη καταστήματος'}</button>
           </div>
           <div className="card">
-            <div className="section-label">Λίστα καταστημάτων ({storesList.length})</div>
+            <div className="section-label">Λίστα καταστημάτων ({filteredStoreRows.length}/{storesList.length})</div>
+            <div className="settings-store-search">
+              <input
+                className="text-input"
+                value={settingsStoreSearch}
+                onChange={e=>setSettingsStoreSearch(e.target.value)}
+                placeholder="🔍 Αναζήτηση με όνομα, τηλέφωνο, ΑΦΜ ή διεύθυνση..."
+              />
+              {settingsStoreSearch && <button className="btn-clear" onClick={()=>setSettingsStoreSearch('')}>✕</button>}
+            </div>
             <div className="settings-store-layout">
               <div className="settings-store-list">
-                {storeRows.map((store,i) => (
+                {filteredStoreRows.map((store,i) => (
                   <button
                     key={`${store.name}-${i}`}
                     className={`settings-store-item ${selectedStoreDetails?.name===store.name?'active':''}`}
@@ -2113,6 +2129,9 @@ ${table}
                     {store.name}
                   </button>
                 ))}
+                {filteredStoreRows.length === 0 && (
+                  <div className="settings-store-empty">Δεν βρέθηκε κατάστημα.</div>
+                )}
               </div>
               {renderStoreDetailsEditor()}
             </div>
@@ -3286,11 +3305,13 @@ ${table}
         .divider-or { text-align: center; color: var(--t4); font-size: 11px; margin: 8px 0; position: relative; }
         .divider-or::before, .divider-or::after { content: ''; position: absolute; top: 50%; width: 44%; height: 1px; background: var(--border2); }
         .divider-or::before { left: 0; } .divider-or::after { right: 0; }
+        .settings-store-search { display: flex; align-items: center; gap: 8px; margin: 8px 0 10px; }
         .settings-store-layout { display: grid; grid-template-columns: minmax(220px, 0.8fr) minmax(280px, 1.2fr); gap: 12px; margin-top: 8px; align-items: start; }
         .settings-store-list { max-height: 300px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--r); background: var(--glass); }
         .settings-store-item { width: 100%; padding: 10px 12px; font-size: 12px; color: var(--t3); border: none; border-bottom: 1px solid var(--border); font-weight: 600; background: transparent; font-family: var(--font); text-align: left; cursor: pointer; transition: all 0.15s; }
         .settings-store-item:last-child { border-bottom: none; }
         .settings-store-item:hover, .settings-store-item.active { color: var(--t1); background: var(--glow2); }
+        .settings-store-empty { padding: 14px 12px; color: var(--t3); font-size: 12px; font-weight: 600; text-align: center; }
         .store-detail-card { border: 1px solid var(--border2); border-radius: var(--r-lg); background: var(--glass2); padding: 14px; box-shadow: 0 0 18px var(--glow2); }
         .store-detail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
         .store-detail-title { font-size: 15px; font-weight: 800; color: var(--t1); }
