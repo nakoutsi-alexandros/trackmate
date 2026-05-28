@@ -65,7 +65,7 @@ const STORE_CHAINS = [
   { id: 'other', label: 'Άλλα' },
 ];
 
-const TAB_IDS = ['scan', 'inventory', 'warehouse', 'history', 'settings'];
+const TAB_IDS = ['home', 'scan', 'inventory', 'warehouse', 'history', 'settings'];
 
 export default function Home() {
   const router = useRouter();
@@ -79,7 +79,7 @@ export default function Home() {
       return next;
     });
   };
-  const [tab, setTab] = useState('scan');
+  const [tab, setTab] = useState('home');
   const [step, setStep] = useState(1);
   const [imagePreview, setImagePreview] = useState(null);
   const [imageBase64, setImageBase64] = useState(null);
@@ -999,16 +999,34 @@ ${table}
   const filtered = sortItems(applyDateFilter(filterAction === 'Όλα' ? inventory : inventory.filter(i => normalizeAction(i.action) === filterAction)));
   const warehouseItems = sortItems(inventory.filter(i => ['Καινούριο Μηχάνημα', 'Εισαγωγή για επισκευή'].includes(normalizeAction(i.action))));
   const shippedItems = sortItems(inventory.filter(i => ['Αποστολή σε κατάστημα','Αποστολή στα κεντρικά'].includes(normalizeAction(i.action))));
+  const availableItems = warehouseItems.filter(i => normalizeAction(i.action) === 'Καινούριο Μηχάνημα');
+  const repairItems = warehouseItems.filter(i => normalizeAction(i.action) === 'Εισαγωγή για επισκευή');
+  const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  const weekStart = new Date(todayStart); weekStart.setDate(weekStart.getDate() - 6);
+  const weekMovements = inventory.filter(item => {
+    const time = parseGreekTimestamp(item.timestamp) || parseItemDate(item.date)?.getTime() || 0;
+    return time >= weekStart.getTime();
+  });
+  const attentionRepairItems = repairItems.filter(item => {
+    const d = parseItemDate(item.date);
+    if (!d) return false;
+    d.setHours(0,0,0,0);
+    return (todayStart - d) > 7 * 86400000;
+  });
   const warehouseVisibleItems = warehouseFilter === 'new'
-    ? warehouseItems.filter(i => normalizeAction(i.action) === 'Καινούριο Μηχάνημα')
+    ? availableItems
     : warehouseFilter === 'repair'
-      ? warehouseItems.filter(i => normalizeAction(i.action) === 'Εισαγωγή για επισκευή')
+      ? repairItems
       : warehouseFilter === 'shipped'
         ? shippedItems
         : warehouseItems;
   const storeRows = storeDetailsList.length
     ? storeDetailsList
     : storesList.map(name => ({ name, phone: '', address: '', vat: '' }));
+  const missingNoteItems = warehouseItems.filter(item => !(warehouseNotes[item.serialNumber] || []).length);
+  const incompleteStoreRows = storeRows.filter(store => !store.phone || !store.address || !store.vat);
+  const attentionCount = attentionRepairItems.length + missingNoteItems.length + incompleteStoreRows.length;
+  const recentMovements = sortItems(inventory).slice(0, 5);
   const filteredStoreRows = storeRows.filter(store => {
     const q = settingsStoreSearch.trim().toLowerCase();
     if (!q) return true;
@@ -1109,6 +1127,7 @@ ${table}
   const FILTERS = ['Όλα','Καινούριο Μηχάνημα','Εισαγωγή για επισκευή','Αποστολή σε κατάστημα','Αποστολή στα κεντρικά'];
 
   const NAV_ITEMS = [
+    { id: 'home',      label: 'Αρχική',     icon: '⌂' },
     { id: 'scan',      label: 'Scan',       icon: '⊕' },
     { id: 'inventory', label: 'Κινήσεις',   icon: '▦' },
     { id: 'warehouse', label: 'Αποθήκη',    icon: '□' },
@@ -1119,14 +1138,14 @@ ${table}
   const handleTabClick = (t) => {
     setOpenActionMenu(null);
     setTab(t);
-    if (t === 'inventory' || t === 'warehouse') {
+    if (t === 'home' || t === 'inventory' || t === 'warehouse') {
       loadInventory();
       loadParts();
       loadLogLinks();
     }
     if (t === 'settings') loadStores();
     router.push(
-      { pathname: router.pathname, query: t === 'scan' ? {} : { tab: t } },
+      { pathname: router.pathname, query: t === 'home' ? {} : { tab: t } },
       undefined,
       { shallow: true }
     );
@@ -1151,14 +1170,19 @@ ${table}
     openHistoryForSerial(serial);
   };
 
+  const openWarehouseFilter = (filter) => {
+    setWarehouseFilter(filter);
+    handleTabClick('warehouse');
+  };
+
   useEffect(() => {
     if (!router.isReady) return;
     const queryTab = Array.isArray(router.query.tab) ? router.query.tab[0] : router.query.tab;
     const querySerial = Array.isArray(router.query.serial) ? router.query.serial[0] : router.query.serial;
-    const nextTab = TAB_IDS.includes(queryTab) ? queryTab : 'scan';
+    const nextTab = TAB_IDS.includes(queryTab) ? queryTab : 'home';
 
     if (nextTab !== tab) setTab(nextTab);
-    if (nextTab === 'inventory' || nextTab === 'warehouse') {
+    if (nextTab === 'home' || nextTab === 'inventory' || nextTab === 'warehouse') {
       loadInventory();
       loadParts();
       loadLogLinks();
@@ -1339,6 +1363,122 @@ ${table}
   // Shared content για κάθε tab
   const tabContent = (
     <>
+      {tab === 'home' && (
+        <div className="fade-in dashboard">
+          <div className="dashboard-greeting">
+            <div>
+              <div className="dashboard-kicker">{new Date().toLocaleDateString('el-GR', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
+              <div className="greeting-name">Γεια σου, {currentUser?.fullName || currentUser?.username || 'χρήστη'}</div>
+            </div>
+            <div className="quick-actions">
+              <button className="quick-action-btn" onClick={()=>handleTabClick('scan')}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6.5 6.5h.01M17.5 6.5h.01M6.5 17.5h.01M17.5 17.5h.01M3 7V5a2 2 0 012-2h2M3 17v2a2 2 0 002 2h2m10-16h2a2 2 0 012 2v2m0 10v2a2 2 0 01-2 2h-2M12 12h.01"/></svg>
+                Scan
+              </button>
+              <button className="quick-action-btn" onClick={()=>openWarehouseFilter('all')}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+                Αποθήκη
+              </button>
+              <button className="quick-action-btn" onClick={()=>handleTabClick('history')}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                Ιστορικό
+              </button>
+            </div>
+          </div>
+
+          <div className="dashboard-stat-grid">
+            <button className="dash-stat" onClick={()=>openWarehouseFilter('all')}>
+              <span>Σύνολο αποθήκης</span>
+              <strong>{warehouseItems.length}</strong>
+              <small>μηχανήματα μέσα</small>
+            </button>
+            <button className="dash-stat" onClick={()=>openWarehouseFilter('new')}>
+              <span>Διαθέσιμα</span>
+              <strong>{availableItems.length}</strong>
+              <small>έτοιμα για αποστολή</small>
+            </button>
+            <button className="dash-stat warn" onClick={()=>openWarehouseFilter('repair')}>
+              <span>Σε επισκευή</span>
+              <strong>{repairItems.length}</strong>
+              <small>{attentionRepairItems.length} πάνω από 7 ημέρες</small>
+            </button>
+            <button className="dash-stat" onClick={()=>openWarehouseFilter('shipped')}>
+              <span>Απεσταλμένα</span>
+              <strong>{shippedItems.length}</strong>
+              <small>τελευταία κατάσταση έξοδος</small>
+            </button>
+          </div>
+
+          <div className="dashboard-grid">
+            <section className="dashboard-panel">
+              <div className="dashboard-panel-head">
+                <div>
+                  <div className="panel-title">Κινήσεις εβδομάδας</div>
+                  <div className="panel-sub">{weekMovements.length} καταχωρήσεις τις τελευταίες 7 ημέρες</div>
+                </div>
+                <button className="note-add-btn" onClick={()=>handleTabClick('inventory')}>Όλες</button>
+              </div>
+              <div className="movement-breakdown">
+                {ACTION_CATEGORIES.map(cat => {
+                  const count = weekMovements.filter(item => normalizeAction(item.action) === cat.value).length;
+                  return (
+                    <div key={cat.id} className="movement-breakdown-item">
+                      <span>{cat.label}</span>
+                      <strong>{count}</strong>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className={`dashboard-panel attention-panel${attentionCount > 0 ? ' attention-panel--active' : ''}`}>
+              <div className="dashboard-panel-head">
+                <div>
+                  <div className="panel-title">Θέλουν προσοχή {attentionCount > 0 && <span className="attention-badge">{attentionCount}</span>}</div>
+                  <div className="panel-sub">Σημεία που αξίζει να δεις πρώτα</div>
+                </div>
+              </div>
+              <button className="attention-row" onClick={()=>openWarehouseFilter('repair')}>
+                <span>Σε επισκευή πάνω από 7 ημέρες</span>
+                <strong style={attentionRepairItems.length > 0 ? {color:'var(--orange)'} : {}}>{attentionRepairItems.length}</strong>
+              </button>
+              <button className="attention-row" onClick={()=>openWarehouseFilter('all')}>
+                <span>Μηχανήματα χωρίς σημείωση</span>
+                <strong style={missingNoteItems.length > 0 ? {color:'var(--orange)'} : {}}>{missingNoteItems.length}</strong>
+              </button>
+              <button className="attention-row" onClick={()=>handleTabClick('settings')}>
+                <span>Καταστήματα με ελλιπή στοιχεία</span>
+                <strong style={incompleteStoreRows.length > 0 ? {color:'var(--orange)'} : {}}>{incompleteStoreRows.length}</strong>
+              </button>
+            </section>
+          </div>
+
+          <section className="dashboard-panel">
+            <div className="dashboard-panel-head">
+              <div>
+                <div className="panel-title">Τελευταίες κινήσεις</div>
+                <div className="panel-sub">Τα 5 πιο πρόσφατα events</div>
+              </div>
+              <button className="note-add-btn" onClick={()=>handleTabClick('inventory')}>Άνοιγμα κινήσεων</button>
+            </div>
+            <div className="recent-list">
+              {recentMovements.map((item, i) => (
+                <a key={`${item.serialNumber}-${item.timestamp}-${i}`} className="recent-row row-link" href={historyHref(item.serialNumber)} onClick={e=>handleHistoryLinkClick(e, item.serialNumber)}>
+                  <span className="recent-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
+                  <div>
+                    <strong>{item.model || 'Χωρίς κωδικό'}</strong>
+                    <small>{item.serialNumber || '—'} · {displayStore(item)}</small>
+                  </div>
+                  <span className={`status-pill ${STATUS_PILL[normalizeAction(item.action)]?.cls||'pill-gray'}`}>{STATUS_PILL[normalizeAction(item.action)]?.label||normalizeAction(item.action)}</span>
+                  <em>{item.date || '—'}</em>
+                </a>
+              ))}
+              {recentMovements.length === 0 && <div className="empty">Δεν υπάρχουν κινήσεις ακόμα.</div>}
+            </div>
+          </section>
+        </div>
+      )}
+
       {tab === 'scan' && (
         <div className="fade-in">
           {step===1 && (
@@ -2159,7 +2299,7 @@ ${table}
       {/* ─── DESKTOP LAYOUT ─── */}
       <div className={`desktop-layout${darkMode?'':' light'}`}>
         <aside className="sidebar">
-          <div className="sb-logo" onClick={()=>{handleReset();handleTabClick('scan');}} style={{cursor:'pointer'}}>
+          <div className="sb-logo" onClick={()=>handleTabClick('home')} style={{cursor:'pointer'}}>
             <div className="sb-logo-mark">
               <div className="sb-logo-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2v-4M9 21H5a2 2 0 01-2-2v-4m0 0h18"/></svg>
@@ -2169,6 +2309,10 @@ ${table}
           </div>
           <nav className="sb-nav">
             <div className="sb-section">Κύριο μενού</div>
+            <button className={`sb-item ${tab==='home'?'active':''}`} onClick={()=>handleTabClick('home')}>
+              <span className="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg></span>
+              Αρχική
+            </button>
             <button className={`sb-item ${tab==='scan'?'active':''}`} onClick={()=>handleTabClick('scan')}>
               <span className="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6.5 6.5h.01M17.5 6.5h.01M6.5 17.5h.01M17.5 17.5h.01M3 7V5a2 2 0 012-2h2M3 17v2a2 2 0 002 2h2m10-16h2a2 2 0 012 2v2m0 10v2a2 2 0 01-2 2h-2M12 12h.01"/></svg></span>
               Scan
@@ -2210,7 +2354,7 @@ ${table}
         <div className="desktop-main">
           <div className="desktop-header">
             <div className="desktop-title">
-              {tab==='scan'?'Scan':tab==='inventory'?'Κινήσεις':tab==='warehouse'?'Αποθήκη':tab==='history'?'Ιστορικό':'Ρυθμίσεις'}
+              {tab==='home'?'Αρχική':tab==='scan'?'Scan':tab==='inventory'?'Κινήσεις':tab==='warehouse'?'Αποθήκη':tab==='history'?'Ιστορικό':'Ρυθμίσεις'}
             </div>
             {(tab==='inventory' || tab==='warehouse') && (
               <div className="desktop-header-actions">
@@ -2234,7 +2378,7 @@ ${table}
       <div className={`mobile-layout${darkMode?'':' light'}`}>
         <header className="mob-header">
           <div className="mob-header-top">
-            <div className="mob-logo" onClick={()=>{handleReset();handleTabClick('scan');}} style={{cursor:'pointer'}}>
+            <div className="mob-logo" onClick={()=>handleTabClick('home')} style={{cursor:'pointer'}}>
               <div className="mob-logo-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2v-4M9 21H5a2 2 0 01-2-2v-4m0 0h18"/></svg>
               </div>
@@ -2256,6 +2400,10 @@ ${table}
             )}
           </div>
           <nav className="mob-nav">
+            <button className={`mob-nav-btn ${tab==='home'?'active':''}`} onClick={()=>handleTabClick('home')}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg>
+              <span>Αρχική</span>
+            </button>
             <button className={`mob-nav-btn ${tab==='scan'?'active':''}`} onClick={()=>handleTabClick('scan')}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6.5 6.5h.01M17.5 6.5h.01M6.5 17.5h.01M17.5 17.5h.01M3 7V5a2 2 0 012-2h2M3 17v2a2 2 0 002 2h2m10-16h2a2 2 0 012 2v2m0 10v2a2 2 0 01-2 2h-2M12 12h.01"/></svg>
               <span>Scan</span>
@@ -2719,6 +2867,88 @@ ${table}
         .stat-val { font-size: 28px; font-weight: 800; line-height: 1; color: var(--t1); }
         .stat-sub { font-size: 10px; color: var(--t3); margin-top: 4px; font-weight: 600; }
 
+        .dashboard { display: flex; flex-direction: column; gap: 14px; }
+        .dashboard-greeting {
+          display: flex; align-items: center; justify-content: space-between; gap: 16px;
+          padding: 14px 18px;
+          border: 1px solid var(--border2);
+          border-radius: var(--r-lg);
+          background: linear-gradient(135deg, var(--glass2), rgba(167,139,250,0.06));
+          box-shadow: 0 0 26px var(--glow2);
+        }
+        .dashboard-kicker { color: var(--acc); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; }
+        .greeting-name { color: var(--t1); font-size: 20px; font-weight: 800; margin-top: 3px; }
+        .quick-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+        .quick-action-btn {
+          display: flex; align-items: center; gap: 6px;
+          padding: 8px 14px;
+          border: 1px solid var(--border2); border-radius: var(--r);
+          background: var(--glass2); color: var(--t2);
+          font-family: var(--font); font-size: 12px; font-weight: 700;
+          cursor: pointer; transition: all 0.16s; white-space: nowrap;
+        }
+        .quick-action-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+        .quick-action-btn:hover { border-color: var(--acc); color: var(--t1); background: var(--glass); }
+        .dashboard-stat-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+        .dash-stat {
+          min-height: 116px;
+          display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between;
+          padding: 14px;
+          border: 1px solid var(--border);
+          border-radius: var(--r-lg);
+          background: var(--glass);
+          color: inherit;
+          font-family: var(--font);
+          text-align: left;
+          cursor: pointer;
+          transition: all 0.16s;
+        }
+        .dash-stat:hover { border-color: var(--border2); transform: translateY(-2px); background: var(--glass2); }
+        .dash-stat span { color: var(--t3); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; }
+        .dash-stat strong { color: var(--t1); font-size: 34px; line-height: 1; font-weight: 800; }
+        .dash-stat small { color: var(--t3); font-size: 11px; font-weight: 600; }
+        .dash-stat.warn strong { color: var(--orange); }
+        .dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr); gap: 12px; }
+        .dashboard-panel { border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--glass); padding: 14px; }
+        .dashboard-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+        .panel-title { color: var(--t1); font-size: 14px; font-weight: 800; }
+        .panel-sub { color: var(--t3); font-size: 11px; font-weight: 600; margin-top: 2px; }
+        .movement-breakdown { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+        .movement-breakdown-item, .attention-row {
+          display: flex; align-items: center; justify-content: space-between; gap: 10px;
+          padding: 10px 11px;
+          border: 1px solid var(--border);
+          border-radius: var(--r);
+          background: var(--glass2);
+        }
+        .movement-breakdown-item span, .attention-row span { color: var(--t2); font-size: 12px; font-weight: 700; line-height: 1.35; }
+        .movement-breakdown-item strong, .attention-row strong { color: var(--t1); font-size: 18px; font-weight: 800; }
+        .attention-panel { display: flex; flex-direction: column; gap: 8px; }
+        .attention-panel--active { border-color: var(--orange); box-shadow: 0 0 0 1px var(--orange), 0 0 18px rgba(255,165,0,0.08); }
+        .attention-panel--active .panel-title { color: var(--orange); }
+        .attention-badge {
+          display: inline-flex; align-items: center; justify-content: center;
+          margin-left: 7px; padding: 1px 7px;
+          background: var(--orange); color: #fff;
+          border-radius: 20px; font-size: 10px; font-weight: 800;
+        }
+        .attention-row { width: 100%; color: inherit; font-family: var(--font); cursor: pointer; text-align: left; }
+        .attention-row:hover { border-color: var(--orange); background: var(--obg); }
+        .recent-list { display: flex; flex-direction: column; gap: 7px; }
+        .recent-row {
+          display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 10px;
+          padding: 10px 11px;
+          border: 1px solid var(--border);
+          border-radius: var(--r);
+          background: var(--glass2);
+          text-decoration: none;
+        }
+        .recent-row:hover { border-color: var(--border2); }
+        .recent-dot { width: 9px; height: 9px; border-radius: 50%; }
+        .recent-row strong { display: block; color: var(--t1); font-size: 12px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .recent-row small { display: block; color: var(--t3); font-size: 10px; font-weight: 600; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .recent-row em { color: var(--t3); font-size: 11px; font-style: normal; font-weight: 600; }
+
         /* ══════════════════════════
            TABLE
         ══════════════════════════ */
@@ -2793,9 +3023,9 @@ ${table}
         }
         .btn-logout:hover { border-color: var(--red); color: var(--red); }
         .mob-dark-btn { background: none; border: none; cursor: pointer; color: var(--t4); padding: 3px; display: flex; align-items: center; }
-        .mob-nav { display: flex; padding: 0 10px 10px; gap: 2px; }
+        .mob-nav { display: flex; padding: 0 10px 10px; gap: 2px; overflow-x: auto; }
         .mob-nav-btn {
-          flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+          flex: 1 0 58px; display: flex; flex-direction: column; align-items: center; gap: 4px;
           padding: 7px 4px; border-radius: var(--r-sm); border: none;
           background: transparent; font-size: 9px; font-family: var(--font);
           cursor: pointer; color: var(--t4); transition: all 0.2s; font-weight: 700;
@@ -3475,6 +3705,8 @@ ${table}
         .light .field-label { color: var(--t3); }
         .light .loading { color: var(--t3); }
         .light .empty { color: var(--t3); }
+        .light .dashboard-greeting, .light .dashboard-panel, .light .dash-stat, .light .recent-row, .light .movement-breakdown-item, .light .attention-row { background: rgba(255,255,255,0.9); border-color: var(--border); }
+        .light .quick-action-btn { background: rgba(255,255,255,0.7); border-color: var(--border); }
         .light .success-title { color: var(--t1); }
         .light .mob-header { background: rgba(255,255,255,0.97); border-bottom-color: var(--border); }
         .light .mob-logo span:first-of-type { color: var(--t1); }
@@ -3494,6 +3726,14 @@ ${table}
           .inv-stats { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
           .stat-card { padding: 12px; }
           .stat-val { font-size: 24px; }
+          .dashboard-greeting { flex-direction: column; align-items: flex-start; gap: 10px; padding: 12px 14px; }
+          .quick-actions { width: 100%; }
+          .quick-action-btn { flex: 1; justify-content: center; }
+          .dashboard-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          .dashboard-grid, .movement-breakdown { grid-template-columns: 1fr; }
+          .dash-stat { min-height: 96px; }
+          .recent-row { grid-template-columns: auto minmax(0, 1fr) auto; }
+          .recent-row em { grid-column: 2 / -1; }
           .settings-store-layout { grid-template-columns: 1fr; }
           .settings-store-list { max-height: 220px; }
           .store-detail-grid { grid-template-columns: 1fr; }

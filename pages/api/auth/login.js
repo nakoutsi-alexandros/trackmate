@@ -16,6 +16,12 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Συμπληρώστε username και password' });
     }
 
+    // Dev bypass — only in development, no Google Sheets needed
+    if (process.env.NODE_ENV === 'development' && username === 'dev' && password === 'dev') {
+      setAuthCookie(res, 'dev', 'Dev User');
+      return res.status(200).json({ success: true, user: { username: 'dev', fullName: 'Dev User' } });
+    }
+
     // Φέρνουμε όλους τους users από το Sheet
     const users = await getUsers();
 
