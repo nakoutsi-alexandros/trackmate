@@ -2261,15 +2261,19 @@ ${table}
             </div>
             <div className="settings-store-layout">
               <div className="settings-store-list">
-                {filteredStoreRows.map((store,i) => (
-                  <button
-                    key={`${store.name}-${i}`}
-                    className={`settings-store-item ${selectedStoreDetails?.name===store.name?'active':''}`}
-                    onClick={()=>openStoreDetails(store)}
-                  >
-                    {store.name}
-                  </button>
-                ))}
+                {filteredStoreRows.map((store,i) => {
+                  const isIncomplete = !store.phone || !store.address || !store.vat;
+                  return (
+                    <button
+                      key={`${store.name}-${i}`}
+                      className={`settings-store-item ${selectedStoreDetails?.name===store.name?'active':''} ${isIncomplete?'incomplete':''}`}
+                      onClick={()=>openStoreDetails(store)}
+                    >
+                      {isIncomplete && <span className="store-incomplete-dot" title="Ελλιπή στοιχεία" />}
+                      {store.name}
+                    </button>
+                  );
+                })}
                 {filteredStoreRows.length === 0 && (
                   <div className="settings-store-empty">Δεν βρέθηκε κατάστημα.</div>
                 )}
@@ -3541,9 +3545,12 @@ ${table}
         .settings-store-search { display: flex; align-items: center; gap: 8px; margin: 8px 0 10px; }
         .settings-store-layout { display: grid; grid-template-columns: minmax(220px, 0.8fr) minmax(280px, 1.2fr); gap: 12px; margin-top: 8px; align-items: start; }
         .settings-store-list { max-height: 300px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--r); background: var(--glass); }
-        .settings-store-item { width: 100%; padding: 10px 12px; font-size: 12px; color: var(--t3); border: none; border-bottom: 1px solid var(--border); font-weight: 600; background: transparent; font-family: var(--font); text-align: left; cursor: pointer; transition: all 0.15s; }
+        .settings-store-item { width: 100%; padding: 10px 12px; font-size: 12px; color: var(--t3); border: none; border-bottom: 1px solid var(--border); font-weight: 600; background: transparent; font-family: var(--font); text-align: left; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 7px; }
         .settings-store-item:last-child { border-bottom: none; }
         .settings-store-item:hover, .settings-store-item.active { color: var(--t1); background: var(--glow2); }
+        .settings-store-item.incomplete { color: var(--orange); }
+        .settings-store-item.incomplete.active { color: var(--orange); }
+        .store-incomplete-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--orange); flex-shrink: 0; }
         .settings-store-empty { padding: 14px 12px; color: var(--t3); font-size: 12px; font-weight: 600; text-align: center; }
         .store-detail-card { border: 1px solid var(--border2); border-radius: var(--r-lg); background: var(--glass2); padding: 14px; box-shadow: 0 0 18px var(--glow2); }
         .store-detail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
