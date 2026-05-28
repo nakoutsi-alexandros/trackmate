@@ -1220,7 +1220,9 @@ ${table}
     if (!el) return;
     const dx = e.changedTouches[0].clientX - d.x;
     if (d.horiz === null || !d.horiz) {
-      // tap — close if open
+      // Αν το tap είναι πάνω σε action button, αφήνουμε το onClick να τρέξει κανονικά
+      if (e.target.closest('.swipe-actions-bg')) return;
+      // Tap στο card body — κλείσε αν είναι ανοιχτό
       if (swipedItem === d.serial) {
         el.style.transition = 'transform 0.25s ease';
         el.style.transform = 'translateX(0px)';
@@ -3415,7 +3417,7 @@ ${table}
           border: 1px solid var(--border); border-radius: var(--r-lg);
           padding: 12px 14px; margin-bottom: 0;
           display: flex; align-items: flex-start; gap: 10px;
-          cursor: pointer; transition: border-color 0.2s, background 0.2s;
+          cursor: pointer; transition: transform 0.25s ease, border-color 0.2s, background 0.2s;
           position: relative; z-index: 0;
         }
         .machine-row:hover { border-color: var(--border2); background: rgba(167,139,250,0.04); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
