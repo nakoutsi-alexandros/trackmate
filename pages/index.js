@@ -157,8 +157,15 @@ export default function Home() {
   const [editDateValue, setEditDateValue] = useState('');
   const [savingDate, setSavingDate] = useState(false);
   const [openActionMenu, setOpenActionMenu] = useState(null);
+  const [swipedItem, setSwipedItem] = useState(null);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [pullRefreshing, setPullRefreshing] = useState(false);
   const fileRef = useRef();
   const cameraRef = useRef();
+  const mobMainRef = useRef(null);
+  const swipeTouchStartX = useRef(0);
+  const swipeTouchStartY = useRef(0);
+  const pullTouchStartY = useRef(0);
 
   // Φόρτωση καταστημάτων από Sheet
   const loadStores = async () => {
@@ -1175,6 +1182,44 @@ ${table}
     handleTabClick('warehouse');
   };
 
+  // ── Swipe actions ──
+  const handleSwipeTouchStart = (e) => {
+    swipeTouchStartX.current = e.touches[0].clientX;
+    swipeTouchStartY.current = e.touches[0].clientY;
+  };
+  const handleSwipeTouchEnd = (e, serialNumber) => {
+    const dx = e.changedTouches[0].clientX - swipeTouchStartX.current;
+    const dy = e.changedTouches[0].clientY - swipeTouchStartY.current;
+    if (Math.abs(dy) > Math.abs(dx) + 10) return; // vertical scroll — ignore
+    if (dx < -60) { setSwipedItem(serialNumber); setOpenActionMenu(null); }
+    else if (dx > 30) { setSwipedItem(null); }
+  };
+
+  // ── Pull-to-refresh ──
+  const handlePullTouchStart = (e) => {
+    if (mobMainRef.current?.scrollTop === 0) {
+      pullTouchStartY.current = e.touches[0].clientY;
+    } else {
+      pullTouchStartY.current = null;
+    }
+  };
+  const handlePullTouchMove = (e) => {
+    if (pullTouchStartY.current == null) return;
+    const dy = e.touches[0].clientY - pullTouchStartY.current;
+    if (dy > 0) setPullDistance(Math.min(dy, 80));
+  };
+  const handlePullTouchEnd = async () => {
+    if (pullDistance > 60) {
+      setPullRefreshing(true);
+      setPullDistance(0);
+      await Promise.all([loadInventory(), loadParts(), loadLogLinks()]);
+      setPullRefreshing(false);
+    } else {
+      setPullDistance(0);
+    }
+    pullTouchStartY.current = null;
+  };
+
   useEffect(() => {
     if (!router.isReady) return;
     const queryTab = Array.isArray(router.query.tab) ? router.query.tab[0] : router.query.tab;
@@ -1959,8 +2004,23 @@ ${table}
               const itemParts = machineParts[item.serialNumber] || [];
               const itemLogLinks = machineLogLinks[item.serialNumber] || [];
               const mobMenuId = `${item.serialNumber}-${item.model || ''}`;
+              const isSwiped = swipedItem === item.serialNumber;
               return (
-                <a key={i} className={`machine-row row-link${openActionMenu === mobMenuId ? ' menu-open' : ''}`} href={historyHref(item.serialNumber)} onClick={e=>handleHistoryLinkClick(e, item.serialNumber)}>
+                <div key={i} className="swipe-container"
+                  onTouchStart={handleSwipeTouchStart}
+                  onTouchEnd={e=>handleSwipeTouchEnd(e, item.serialNumber)}
+                >
+                  <div className="swipe-actions-bg">
+                    <button className="swipe-action-btn new-action" onClick={e=>{e.stopPropagation();setSwipedItem(null);startNewAction(item.serialNumber,item.model);}}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                      Κίνηση
+                    </button>
+                    <button className="swipe-action-btn new-note" onClick={e=>{e.stopPropagation();setSwipedItem(null);setEditingNote(item.serialNumber);setNoteInput('');}}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      Σημείωση
+                    </button>
+                  </div>
+                <a className={`machine-row row-link${openActionMenu === mobMenuId ? ' menu-open' : ''}${isSwiped ? ' swiped' : ''}`} href={historyHref(item.serialNumber)} onClick={e=>{ if(isSwiped){e.preventDefault();setSwipedItem(null);return;} handleHistoryLinkClick(e, item.serialNumber);}}>
                   <div className="machine-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
                   <div className="machine-info">
                     <div className="machine-name-row">
@@ -2066,6 +2126,7 @@ ${table}
                     </div>
                   </div>
                 </a>
+                </div>
               );
             })}
           </div>
@@ -2431,7 +2492,21 @@ ${table}
             </button>
           </nav>
         </header>
-        <main className="mob-main">
+        <main
+          className="mob-main"
+          ref={mobMainRef}
+          onTouchStart={handlePullTouchStart}
+          onTouchMove={handlePullTouchMove}
+          onTouchEnd={handlePullTouchEnd}
+        >
+          <div className="pull-indicator" style={{height: pullRefreshing ? 44 : pullDistance * 0.5, overflow:'hidden'}}>
+            <div className="pull-inner">
+              {pullRefreshing
+                ? <span className="pull-spinner" />
+                : <span className="pull-arrow" style={{opacity: pullDistance > 15 ? 1 : 0, transform:`rotate(${pullDistance > 60 ? 180 : pullDistance * 2.5}deg)`}}>↓</span>
+              }
+            </div>
+          </div>
           {tabContent}
         </main>
       </div>
@@ -3201,16 +3276,38 @@ ${table}
         .custom-date-row .field-label { margin: 0; white-space: nowrap; }
 
         /* ── MACHINE CARDS ── */
+        .swipe-container { position: relative; margin-bottom: 8px; border-radius: var(--r-lg); overflow: hidden; }
+        .swipe-actions-bg {
+          position: absolute; right: 0; top: 0; bottom: 0; width: 130px;
+          display: flex; border-radius: 0 var(--r-lg) var(--r-lg) 0;
+          overflow: hidden;
+        }
+        .swipe-action-btn {
+          flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+          gap: 4px; border: none; cursor: pointer;
+          font-size: 10px; font-weight: 800; font-family: var(--font);
+        }
+        .swipe-action-btn svg { width: 17px; height: 17px; }
+        .swipe-action-btn.new-action { background: var(--acc); color: #fff; }
+        .swipe-action-btn.new-note { background: #1D9E75; color: #fff; }
         .machine-row {
           background: var(--glass); backdrop-filter: blur(10px);
           border: 1px solid var(--border); border-radius: var(--r-lg);
-          padding: 12px 14px; margin-bottom: 8px;
+          padding: 12px 14px; margin-bottom: 0;
           display: flex; align-items: flex-start; gap: 10px;
-          cursor: pointer; transition: all 0.2s;
+          cursor: pointer; transition: transform 0.22s ease, border-color 0.2s, background 0.2s;
           position: relative; z-index: 0;
         }
         .machine-row:hover { border-color: var(--border2); background: rgba(167,139,250,0.04); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
         .machine-row.menu-open { z-index: 50; }
+        .machine-row.swiped { transform: translateX(-130px); border-radius: var(--r-lg) 0 0 var(--r-lg); }
+        .pull-inner { height: 44px; display: flex; align-items: center; justify-content: center; }
+        .pull-spinner {
+          width: 20px; height: 20px; border-radius: 50%;
+          border: 2px solid var(--border2); border-top-color: var(--acc);
+          animation: spin 0.7s linear infinite; display: inline-block;
+        }
+        .pull-arrow { font-size: 20px; color: var(--acc); display: inline-block; transition: transform 0.15s, opacity 0.15s; }
         .machine-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
         .machine-info { flex: 1; min-width: 0; }
         .machine-name-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 3px; }
@@ -3572,6 +3669,7 @@ ${table}
            ANIMATIONS
         ══════════════════════════ */
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes glowPulse { 0%,100% { box-shadow: 0 0 16px var(--glow); } 50% { box-shadow: 0 0 32px var(--glow), 0 0 48px rgba(124,58,237,0.15); } }
         @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
         .fade-in { animation: fadeIn 0.22s cubic-bezier(0.4,0,0.2,1); }
