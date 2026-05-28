@@ -149,6 +149,9 @@ export default function Home() {
   const [editStoreSearch, setEditStoreSearch] = useState('');
   const [editStoreChain, setEditStoreChain] = useState('all');
   const [savingStore, setSavingStore] = useState(false);
+  const [editingDate, setEditingDate] = useState(null);
+  const [editDateValue, setEditDateValue] = useState('');
+  const [savingDate, setSavingDate] = useState(false);
   const [openActionMenu, setOpenActionMenu] = useState(null);
   const fileRef = useRef();
   const cameraRef = useRef();
@@ -550,6 +553,44 @@ ${table}
       alert('Σφάλμα ενημέρωσης καταστήματος.');
     } finally {
       setSavingStore(false);
+    }
+  };
+
+  const toDateInputValue = (value) => {
+    if (!value) return new Date().toISOString().split('T')[0];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+    const match = String(value).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (!match) return new Date().toISOString().split('T')[0];
+    const [, day, month, year] = match;
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  };
+
+  const startEditingDate = (item) => {
+    setEditingDate(item.serialNumber);
+    setEditDateValue(toDateInputValue(item.date));
+  };
+
+  const cancelEditingDate = () => {
+    setEditingDate(null);
+    setEditDateValue('');
+  };
+
+  const handleUpdateDate = async (serialNumber, newDate = editDateValue) => {
+    if (!newDate) return;
+    setSavingDate(true);
+    try {
+      const res = await fetch('/api/warehouse', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serialNumber, newDate }),
+      });
+      if (!res.ok) throw new Error();
+      cancelEditingDate();
+      loadInventory();
+    } catch (e) {
+      alert('Σφάλμα ενημέρωσης ημερομηνίας.');
+    } finally {
+      setSavingDate(false);
     }
   };
 
@@ -1568,7 +1609,25 @@ ${table}
                         )}
                       </div>
                       <div className="dt-td"><span className={`status-pill ${STATUS_PILL[normalizeAction(item.action)]?.cls||'pill-gray'}`}>{STATUS_PILL[normalizeAction(item.action)]?.label||normalizeAction(item.action)}</span></div>
-                      <div className="dt-td dt-muted">{item.date}</div>
+                      <div className="dt-td dt-muted" onClick={e=>{e.preventDefault();e.stopPropagation();}}>
+                        {editingDate === item.serialNumber ? (
+                          <div className="date-edit-picker">
+                            <input
+                              className="text-input date-edit-input"
+                              type="date"
+                              value={editDateValue}
+                              onChange={e=>setEditDateValue(e.target.value)}
+                              autoFocus
+                            />
+                            <button className="date-save-btn" onClick={()=>handleUpdateDate(item.serialNumber)} disabled={savingDate}>✓</button>
+                            <button className="date-cancel-btn" onClick={cancelEditingDate}>×</button>
+                          </div>
+                        ) : (
+                          <span className="date-edit-display" onClick={()=>startEditingDate(item)} title="Κλικ για αλλαγή ημερομηνίας">
+                            {item.date || '—'} ✏️
+                          </span>
+                        )}
+                      </div>
                       <div className="dt-td dt-muted" style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
                         <span>{item.user || '—'}</span>
                         {renderWarehouseActions(item)}
@@ -1673,7 +1732,21 @@ ${table}
                           🏪 {displayStore(item)} ✏️
                         </span>
                       )}
-                      <span className="machine-date">📅 {item.date}</span>
+                      {editingDate === item.serialNumber ? (
+                        <span className="mobile-date-edit">
+                          <input
+                            className="text-input date-edit-input"
+                            type="date"
+                            value={editDateValue}
+                            onChange={e=>setEditDateValue(e.target.value)}
+                            autoFocus
+                          />
+                          <button className="date-save-btn" onClick={()=>handleUpdateDate(item.serialNumber)} disabled={savingDate}>✓</button>
+                          <button className="date-cancel-btn" onClick={cancelEditingDate}>×</button>
+                        </span>
+                      ) : (
+                        <span className="machine-date" onClick={()=>startEditingDate(item)} style={{cursor:'pointer'}}>📅 {item.date} ✏️</span>
+                      )}
                     </div>
                     {badge && <div className={`repair-badge repair-badge-${badge.type}`}>{badge.type==='danger'?'🔴':'🟡'} Σε επισκευή {badge.label}</div>}
                     {itemParts.length > 0 && (
@@ -2801,6 +2874,44 @@ ${table}
         .machine-bottom { display: flex; gap: 10px; margin-top: 5px; flex-wrap: wrap; }
         .machine-store { font-size: 11px; color: var(--t3); font-weight: 500; }
         .machine-date { font-size: 11px; color: var(--t3); font-weight: 500; }
+        .date-edit-display {
+          cursor: pointer;
+          color: var(--t3);
+          font-size: 11px;
+          font-weight: 700;
+        }
+        .date-edit-display:hover { color: var(--acc); }
+        .date-edit-picker, .mobile-date-edit {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          max-width: 100%;
+        }
+        .date-edit-input {
+          width: 128px;
+          min-width: 128px;
+          padding: 5px 7px;
+          font-size: 12px;
+        }
+        .date-save-btn, .date-cancel-btn {
+          width: 25px;
+          height: 25px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: var(--r-sm);
+          border: 1px solid var(--border2);
+          background: var(--glass2);
+          color: var(--t2);
+          font-size: 13px;
+          font-weight: 900;
+          cursor: pointer;
+          flex-shrink: 0;
+        }
+        .date-save-btn { color: var(--green); border-color: rgba(52,211,153,0.28); }
+        .date-cancel-btn { color: var(--red); border-color: rgba(248,113,113,0.28); }
+        .date-save-btn:hover { background: rgba(52,211,153,0.12); }
+        .date-cancel-btn:hover { background: rgba(248,113,113,0.12); }
         .machine-problem { font-size: 11px; color: var(--orange); margin-top: 3px; }
         .machine-user { font-size: 11px; color: var(--green); margin-top: 2px; }
         .machine-note { font-size: 11px; color: var(--t2); margin-top: 6px; padding: 6px 8px; background: var(--glass); border-left: 2px solid var(--border2); border-radius: var(--r-sm); font-weight: 500; }
@@ -3195,6 +3306,9 @@ ${table}
         .light .machine-serial { color: #4a4a6a; }
         .light .machine-store { color: var(--t3); }
         .light .machine-date { color: var(--t3); }
+        .light .date-edit-display { color: var(--t3); }
+        .light .date-edit-display:hover { color: var(--acc); }
+        .light .date-save-btn, .light .date-cancel-btn { background: rgba(255,255,255,0.86); }
         .light .h-card { background: rgba(255,255,255,0.9); border-color: var(--border); }
         .light .h-action { color: var(--t1); }
         .light .h-meta { color: var(--t3); }

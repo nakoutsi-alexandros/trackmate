@@ -1,8 +1,4 @@
-// pages/api/warehouse.js
-// PATCH → ενημερώνει το κατάστημα ενός μηχανήματος
-// DELETE → "διαγράφει" μηχάνημα (προσθέτει κίνηση Διαγράφηκε)
-
-import { updateStore, deleteItem } from '../../lib/sheets';
+import { updateStore, updateItemDate, deleteItem } from '../../lib/sheets';
 import { getUserFromRequest } from '../../lib/auth';
 
 export default async function handler(req, res) {
@@ -11,15 +7,16 @@ export default async function handler(req, res) {
 
   if (req.method === 'PATCH') {
     try {
-      const { serialNumber, newStore } = req.body;
-      if (!serialNumber || !newStore) {
-        return res.status(400).json({ error: 'Serial number και κατάστημα υποχρεωτικά' });
+      const { serialNumber, newStore, newDate } = req.body;
+      if (!serialNumber || (!newStore && !newDate)) {
+        return res.status(400).json({ error: 'Serial number και πεδίο ενημέρωσης υποχρεωτικά' });
       }
-      await updateStore(serialNumber, newStore);
+      if (newStore) await updateStore(serialNumber, newStore);
+      if (newDate) await updateItemDate(serialNumber, newDate);
       return res.status(200).json({ success: true });
     } catch (err) {
-      console.error('updateStore error:', err);
-      return res.status(500).json({ error: 'Σφάλμα ενημέρωσης καταστήματος' });
+      console.error('updateWarehouse error:', err);
+      return res.status(500).json({ error: 'Σφάλμα ενημέρωσης αποθήκης' });
     }
   }
 
