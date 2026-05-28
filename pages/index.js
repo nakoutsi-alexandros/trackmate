@@ -99,6 +99,10 @@ export default function Home() {
   const [partSearch, setPartSearch] = useState('');
   const [selectedPart, setSelectedPart] = useState(null);
   const [savingPart, setSavingPart] = useState(false);
+  const [machineLogLinks, setMachineLogLinks] = useState({});
+  const [logLinkModalItem, setLogLinkModalItem] = useState(null);
+  const [logLinkInput, setLogLinkInput] = useState('');
+  const [savingLogLink, setSavingLogLink] = useState(false);
   const [action, setAction] = useState('');
   const [existingItem, setExistingItem] = useState(null); // υπάρχον μηχάνημα με ίδιο serial
   const [actionCat, setActionCat] = useState(null);
@@ -184,6 +188,14 @@ export default function Home() {
     } catch (e) {}
   };
 
+  const loadLogLinks = async () => {
+    try {
+      const res = await fetch('/api/log-links', { cache: 'no-store' });
+      const data = await res.json();
+      setMachineLogLinks(data.links || {});
+    } catch (e) {}
+  };
+
   const handleSaveNote = async (serialNumber) => {
     if (!noteInput.trim()) return;
     setSavingNote(true);
@@ -261,6 +273,7 @@ export default function Home() {
     loadNotes();
     loadItems();
     loadParts();
+    loadLogLinks();
 
     // Καταχώρηση Service Worker για αυτόματο update
     if ('serviceWorker' in navigator) {
@@ -657,6 +670,54 @@ ${table}
     setSelectedPart(null);
   };
 
+  const openLogLinkModal = (item) => {
+    setLogLinkModalItem(item);
+    setLogLinkInput(machineLogLinks[item.serialNumber]?.[0]?.url || '');
+  };
+
+  const closeLogLinkModal = () => {
+    setLogLinkModalItem(null);
+    setLogLinkInput('');
+  };
+
+  const openLogLink = (url) => {
+    if (!url) return;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleSaveLogLink = async () => {
+    if (!logLinkModalItem || !logLinkInput.trim()) return;
+    setSavingLogLink(true);
+    try {
+      const res = await fetch('/api/log-links', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          serialNumber: logLinkModalItem.serialNumber,
+          machineModel: logLinkModalItem.model || '',
+          url: logLinkInput,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      const savedLink = data.link || {
+        url: logLinkInput,
+        createdAt: new Date().toLocaleString('el-GR', { timeZone: 'Europe/Athens' }),
+        createdBy: currentUser?.fullName || '',
+        machineModel: logLinkModalItem.model || '',
+      };
+      setMachineLogLinks(prev => ({
+        ...prev,
+        [logLinkModalItem.serialNumber]: [savedLink, ...(prev[logLinkModalItem.serialNumber] || [])],
+      }));
+      closeLogLinkModal();
+    } catch (e) {
+      alert('Σφάλμα αποθήκευσης link logs.');
+    } finally {
+      setSavingLogLink(false);
+    }
+  };
+
   const handleSavePart = async () => {
     if (!partModalItem || !selectedPart) return;
     setSavingPart(true);
@@ -857,6 +918,11 @@ ${table}
           part,
           sortTime: parseGreekTimestamp(part.createdAt) || 0,
         })),
+        ...(machineLogLinks[history[0]?.serialNumber] || []).map(link => ({
+          type: 'logLink',
+          link,
+          sortTime: parseGreekTimestamp(link.createdAt) || 0,
+        })),
       ].sort((a, b) => b.sortTime - a.sortTime)
     : (history || []).map(item => ({ type: 'movement', item, sortTime: parseGreekTimestamp(item.timestamp) || 0 }));
 
@@ -937,6 +1003,7 @@ ${table}
     if (t === 'inventory' || t === 'warehouse') {
       loadInventory();
       loadParts();
+      loadLogLinks();
     }
     if (t === 'settings') loadStores();
     router.push(
@@ -975,6 +1042,7 @@ ${table}
     if (nextTab === 'inventory' || nextTab === 'warehouse') {
       loadInventory();
       loadParts();
+      loadLogLinks();
     }
     if (nextTab === 'history' && querySerial && querySerial !== historySerial) {
       loadHistory(querySerial);
@@ -1015,6 +1083,7 @@ ${table}
               <button className="action-menu-item success" onClick={e=>runMenuAction(e, ()=>handleMarkRepaired(item))}>✓ Επισκευάστηκε</button>
             )}
             <button className="action-menu-item" onClick={e=>runMenuAction(e, ()=>openPartModal(item))}>Ανταλλακτικό</button>
+            <button className="action-menu-item" onClick={e=>runMenuAction(e, ()=>openLogLinkModal(item))}>Link logs</button>
             <button className="action-menu-item danger" onClick={e=>runMenuAction(e, ()=>handleDeleteItem(item))}>✕ Διαγραφή</button>
           </div>
         )}
@@ -1042,6 +1111,7 @@ ${table}
     const serial = item.serialNumber;
     const itemNotes = warehouseNotes[serial] || [];
     const itemParts = machineParts[serial] || [];
+    const itemLogLinks = machineLogLinks[serial] || [];
     const status = normalizeAction(item.action);
     const suggested = getSuggestedActions(item)
       .map(id => ACTION_CATEGORIES.find(c => c.id === id))
@@ -1087,12 +1157,21 @@ ${table}
             <div className="machine-card-note">📌 {itemNotes[0].note} <span>{itemNotes[0].createdAt}</span></div>
           </div>
         )}
+        {itemLogLinks.length > 0 && (
+          <div className="machine-card-section">
+            <span className="machine-card-label">Logs</span>
+            <a className="log-link" href={itemLogLinks[0].url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}>
+              Άνοιγμα logs
+            </a>
+          </div>
+        )}
         <div className="machine-card-actions">
           {suggested.map(cat => (
             <button key={cat.id} className="btn-quick-action" onClick={()=>useAsMovement(cat.id)}>{cat.label}</button>
           ))}
           <button className="note-add-btn" onClick={()=>handleQuickSaveNote(serial)}>+ Νέα σημείωση</button>
           <button className="note-add-btn" onClick={()=>openPartModal(item)}>Ανταλλακτικό</button>
+          <button className="note-add-btn" onClick={()=>openLogLinkModal(item)}>Link logs</button>
           {options.showHistoryButton && (
             <a className="btn-quick-action row-link" href={historyHref(serial)} onClick={e=>handleHistoryLinkClick(e, serial)}>Ιστορικό</a>
           )}
@@ -1439,6 +1518,7 @@ ${table}
                 const badge = getRepairBadge(item);
                 const itemNote = warehouseNotes[item.serialNumber]; // array ή undefined
                 const itemParts = machineParts[item.serialNumber] || [];
+                const itemLogLinks = machineLogLinks[item.serialNumber] || [];
                 return (
                   <div key={i}>
                     <a className="dt-row row-link" href={historyHref(item.serialNumber)} onClick={e=>handleHistoryLinkClick(e, item.serialNumber)}>
@@ -1506,6 +1586,15 @@ ${table}
                         {itemParts.length > 3 && <span className="part-more">+{itemParts.length - 3}</span>}
                       </div>
                     )}
+                    {itemLogLinks[0] && (
+                      <div className="dt-part-row log-row" onClick={e=>e.stopPropagation()}>
+                        <span className="part-label">Logs</span>
+                        <a className="log-link" href={itemLogLinks[0].url} target="_blank" rel="noreferrer">
+                          Άνοιγμα logs
+                        </a>
+                        <span className="note-inline-meta">· {itemLogLinks[0].createdAt}</span>
+                      </div>
+                    )}
                     {/* Note row με ιστορικό */}
                     <div className="dt-note-row" onClick={e=>e.stopPropagation()}>
                       {editingNote === item.serialNumber ? (
@@ -1554,6 +1643,7 @@ ${table}
             {warehouseVisibleItems.map((item, i) => {
               const badge = getRepairBadge(item);
               const itemParts = machineParts[item.serialNumber] || [];
+              const itemLogLinks = machineLogLinks[item.serialNumber] || [];
               return (
                 <a key={i} className="machine-row row-link" href={historyHref(item.serialNumber)} onClick={e=>handleHistoryLinkClick(e, item.serialNumber)}>
                   <div className="machine-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
@@ -1595,6 +1685,15 @@ ${table}
                             <button className="part-remove" onClick={e=>{e.stopPropagation();handleDeletePart(item.serialNumber, part);}} title="Αφαίρεση ανταλλακτικού">×</button>
                           </span>
                         ))}
+                      </div>
+                    )}
+                    {itemLogLinks[0] && (
+                      <div className="machine-parts log-row" onClick={e=>{e.preventDefault();e.stopPropagation();}}>
+                        <span className="part-label">Logs</span>
+                        <button className="log-link" onClick={()=>openLogLink(itemLogLinks[0].url)}>
+                          Άνοιγμα logs
+                        </button>
+                        <span className="note-inline-meta">· {itemLogLinks[0].createdAt}</span>
                       </div>
                     )}
                     {/* Note section mobile */}
@@ -1720,6 +1819,27 @@ ${table}
                       <button className="part-remove" onClick={()=>handleDeletePart(history[0]?.serialNumber, part)} title="Αφαίρεση ανταλλακτικού">×</button>
                     </div>
                     <div className="h-meta">🧩 {part.createdAt}{part.createdBy ? ` · 👤 ${part.createdBy}` : ''}</div>
+                  </div>
+                </div>
+              );
+            }
+            if (entry.type === 'logLink') {
+              const link = entry.link;
+              return (
+                <div key={`log-${link.url}-${link.createdAt}-${i}`} className="history-item">
+                  <div className="h-dot-wrap">
+                    <div className="h-dot log-dot" />
+                    {i < historyTimeline.length-1 && <div className="h-line" />}
+                  </div>
+                  <div className="h-card log-history-card">
+                    <div className="h-action-row">
+                      <div className="h-action">Link logs</div>
+                      <span className="status-pill pill-purple">Logs</span>
+                    </div>
+                    <div className="h-notes">
+                      <a className="log-link" href={link.url} target="_blank" rel="noreferrer">Άνοιγμα logs</a>
+                    </div>
+                    <div className="h-meta">🔗 {link.createdAt}{link.createdBy ? ` · 👤 ${link.createdBy}` : ''}</div>
                   </div>
                 </div>
               );
@@ -2024,6 +2144,34 @@ ${table}
               <button className="btn-note-cancel" onClick={closePartModal}>Άκυρο</button>
               <button className="btn-search" onClick={handleSavePart} disabled={!selectedPart || savingPart}>
                 {savingPart ? 'Αποθήκευση...' : 'Αποθήκευση'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {logLinkModalItem && (
+        <div className="modal-backdrop" onClick={closeLogLinkModal}>
+          <div className="part-modal" onClick={e=>e.stopPropagation()}>
+            <div className="part-modal-head">
+              <div>
+                <div className="part-modal-title">Link logs</div>
+                <div className="part-modal-sub">{logLinkModalItem.model || 'Χωρίς κωδικό'} · {logLinkModalItem.serialNumber}</div>
+              </div>
+              <button className="modal-close" onClick={closeLogLinkModal}>×</button>
+            </div>
+            <input
+              className="text-input"
+              value={logLinkInput}
+              onChange={e=>setLogLinkInput(e.target.value)}
+              placeholder="https://..."
+              autoFocus
+            />
+            <div className="part-picker-hint">Βάλε εδώ το link από τα logs του συγκεκριμένου μηχανήματος</div>
+            <div className="part-modal-actions">
+              <button className="btn-note-cancel" onClick={closeLogLinkModal}>Άκυρο</button>
+              <button className="btn-search" onClick={handleSaveLogLink} disabled={!logLinkInput.trim() || savingLogLink}>
+                {savingLogLink ? 'Αποθήκευση...' : 'Αποθήκευση'}
               </button>
             </div>
           </div>
@@ -2808,6 +2956,36 @@ ${table}
           border-color: rgba(96,165,250,0.22);
           background: rgba(96,165,250,0.05);
         }
+        .log-row { background: rgba(167,139,250,0.05); }
+        .log-link {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          width: fit-content;
+          border: 1px solid var(--border2);
+          border-radius: 999px;
+          background: var(--glow2);
+          color: var(--acc);
+          padding: 4px 9px;
+          font-family: var(--font);
+          font-size: 11px;
+          font-weight: 800;
+          line-height: 1.2;
+          text-decoration: none;
+          cursor: pointer;
+        }
+        .log-link:hover {
+          border-color: var(--acc);
+          background: rgba(167,139,250,0.12);
+        }
+        .log-dot {
+          border-color: var(--acc) !important;
+          background: rgba(167,139,250,0.16);
+        }
+        .log-history-card {
+          border-color: rgba(167,139,250,0.22);
+          background: rgba(167,139,250,0.05);
+        }
         .modal-backdrop {
           position: fixed; inset: 0; z-index: 100;
           display: flex; align-items: center; justify-content: center;
@@ -2886,6 +3064,9 @@ ${table}
         .light .history-notes-card { background: rgba(255,255,255,0.9); border-color: var(--border); }
         .light .dt-part-row, .light .machine-parts { background: rgba(96,165,250,0.06); border-color: var(--border); }
         .light .part-chip, .light .part-more { background: rgba(96,165,250,0.08); color: var(--t2); }
+        .light .log-row { background: rgba(124,58,237,0.05); }
+        .light .log-link { background: rgba(124,58,237,0.08); }
+        .light .log-history-card { background: rgba(124,58,237,0.05); }
         .light .part-modal { background: #fff; border-color: var(--border2); }
         .light .part-picker-list { background: rgba(124,58,237,0.03); border-color: var(--border); }
         .light .part-picker-item:hover, .light .part-picker-item.active { background: rgba(124,58,237,0.08); }
