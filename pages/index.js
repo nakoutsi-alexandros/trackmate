@@ -140,6 +140,9 @@ export default function Home() {
   const [newStoreVat, setNewStoreVat] = useState('');
   const [addingStore, setAddingStore] = useState(false);
   const [addStoreMsg, setAddStoreMsg] = useState(null);
+  const [storeDetailsDraft, setStoreDetailsDraft] = useState({ name: '', phone: '', address: '', vat: '' });
+  const [savingStoreDetails, setSavingStoreDetails] = useState(false);
+  const [storeDetailsMsg, setStoreDetailsMsg] = useState(null);
   const [warehouseNotes, setWarehouseNotes] = useState({});
   const [editingNote, setEditingNote] = useState(null);
   const [noteInput, setNoteInput] = useState('');
@@ -257,6 +260,65 @@ export default function Home() {
       setAddStoreMsg({ type: 'error', text: 'Σφάλμα δικτύου.' });
     } finally {
       setAddingStore(false);
+    }
+  };
+
+  const openStoreDetails = (store) => {
+    const next = {
+      name: store.name || '',
+      phone: store.phone || '',
+      address: store.address || '',
+      vat: store.vat || '',
+    };
+    setSelectedStoreDetails(next);
+    setStoreDetailsDraft(next);
+    setStoreDetailsMsg(null);
+  };
+
+  const closeStoreDetails = () => {
+    setSelectedStoreDetails(null);
+    setStoreDetailsDraft({ name: '', phone: '', address: '', vat: '' });
+    setStoreDetailsMsg(null);
+  };
+
+  const updateStoreDetailsDraft = (field, value) => {
+    setStoreDetailsDraft(prev => ({ ...prev, [field]: value }));
+    setStoreDetailsMsg(null);
+  };
+
+  const handleSaveStoreDetails = async () => {
+    if (!selectedStoreDetails || !storeDetailsDraft.name.trim()) return;
+    setSavingStoreDetails(true);
+    setStoreDetailsMsg(null);
+    try {
+      const updatedStore = {
+        name: storeDetailsDraft.name.trim(),
+        phone: storeDetailsDraft.phone.trim(),
+        address: storeDetailsDraft.address.trim(),
+        vat: storeDetailsDraft.vat.trim(),
+      };
+      const res = await fetch('/api/stores', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          originalName: selectedStoreDetails.name,
+          ...updatedStore,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Σφάλμα ενημέρωσης καταστήματος');
+      setSelectedStoreDetails(updatedStore);
+      setStoreDetailsDraft(updatedStore);
+      setStoresList(prev => prev.map(s => s === selectedStoreDetails.name ? updatedStore.name : s));
+      setStoreDetailsList(prev => prev.map(s => s.name === selectedStoreDetails.name ? updatedStore : s));
+      if (historyStore === selectedStoreDetails.name) setHistoryStore(updatedStore.name);
+      if (store === selectedStoreDetails.name) setStore(updatedStore.name);
+      setStoreDetailsMsg({ type: 'success', text: 'Τα στοιχεία ενημερώθηκαν.' });
+      loadStores();
+    } catch (e) {
+      setStoreDetailsMsg({ type: 'error', text: e.message || 'Σφάλμα ενημέρωσης καταστήματος.' });
+    } finally {
+      setSavingStoreDetails(false);
     }
   };
 
@@ -379,6 +441,15 @@ export default function Home() {
   const getSelectedStoreDetails = () => (
     storeDetailsList.find(s => s.name === store) || {
       name: store || (action === 'Αποστολή στα κεντρικά' ? 'Κεντρικά' : ''),
+      phone: '',
+      address: '',
+      vat: '',
+    }
+  );
+
+  const getStoreDetailsByName = (name) => (
+    storeDetailsList.find(s => s.name === name) || {
+      name: name || '',
       phone: '',
       address: '',
       vat: '',
@@ -1221,6 +1292,43 @@ ${table}
     );
   };
 
+  const renderStoreDetailsEditor = () => selectedStoreDetails && (
+    <div className="store-detail-card">
+      <div className="store-detail-head">
+        <div>
+          <div className="store-detail-title">{selectedStoreDetails.name}</div>
+          <div className="store-detail-sub">Επεξεργασία στοιχείων καταστήματος</div>
+        </div>
+        <button className="btn-note-cancel" onClick={closeStoreDetails}>✕</button>
+      </div>
+      <div className="store-detail-grid">
+        <div className="store-detail-field wide">
+          <span>Όνομα καταστήματος</span>
+          <input className="text-input store-detail-input" value={storeDetailsDraft.name} onChange={e=>updateStoreDetailsDraft('name', e.target.value)} />
+        </div>
+        <div className="store-detail-field">
+          <span>ΑΦΜ</span>
+          <input className="text-input store-detail-input" value={storeDetailsDraft.vat} onChange={e=>updateStoreDetailsDraft('vat', e.target.value)} />
+        </div>
+        <div className="store-detail-field">
+          <span>Τηλέφωνο</span>
+          <input className="text-input store-detail-input" value={storeDetailsDraft.phone} onChange={e=>updateStoreDetailsDraft('phone', e.target.value)} />
+        </div>
+        <div className="store-detail-field wide">
+          <span>Διεύθυνση</span>
+          <input className="text-input store-detail-input" value={storeDetailsDraft.address} onChange={e=>updateStoreDetailsDraft('address', e.target.value)} />
+        </div>
+      </div>
+      {storeDetailsMsg && <div className={storeDetailsMsg.type==='success'?'banner-success':'error-banner'} style={{marginTop:'10px'}}>{storeDetailsMsg.type==='success'?'✅ ':'⚠️ '}{storeDetailsMsg.text}</div>}
+      <div className="store-detail-actions">
+        <button className="btn-note-cancel" onClick={()=>openStoreDetails(selectedStoreDetails)} disabled={savingStoreDetails}>Επαναφορά</button>
+        <button className="btn-primary" onClick={handleSaveStoreDetails} disabled={savingStoreDetails || !storeDetailsDraft.name.trim()}>
+          {savingStoreDetails ? 'Αποθήκευση...' : 'Αποθήκευση αλλαγών'}
+        </button>
+      </div>
+    </div>
+  );
+
   // Shared content για κάθε tab
   const tabContent = (
     <>
@@ -1831,7 +1939,7 @@ ${table}
             <label className="field-label">Αναζήτηση με Κατάστημα</label>
             <div style={{display:'flex',gap:'8px'}}>
               <div className="text-input store-display" style={{cursor:'pointer',color:historyStore?'var(--t1)':'var(--t3)',flex:1}} onClick={()=>setShowStorePicker('history')}>{historyStore || 'Επίλεξε κατάστημα...'}</div>
-              {historyStore && <button className="btn-clear" onClick={()=>setHistoryStore('')}>✕</button>}
+              {historyStore && <button className="btn-clear" onClick={()=>{setHistoryStore('');closeStoreDetails();}}>✕</button>}
               <button className="btn-search" onClick={()=>loadHistory('', historyStore)}>Αναζήτηση</button>
             </div>
             {showStorePicker === 'history' && (
@@ -1844,9 +1952,14 @@ ${table}
                   {storesList.filter(s => {
                     const mc = storeChain==='all'?true:storeChain==='other'?!['ΚΩΤΣΟΒΟΛΟΣ','MINI KIOSK','ΚΤΕΛ','THE BEAUTY BAR','ΡΟΥΠΑΣ'].some(c=>s.startsWith(c)):s.startsWith(storeChain);
                     return mc && (storeSearch===''||s.toLowerCase().includes(storeSearch.toLowerCase()));
-                  }).map(s => <div key={s} className={`store-item ${historyStore===s?'active':''}`} onClick={()=>{setHistoryStore(s);setShowStorePicker(false);setStoreSearch('');setStoreChain('all');}}>{s}</div>)}
+                  }).map(s => <div key={s} className={`store-item ${historyStore===s?'active':''}`} onClick={()=>{setHistoryStore(s);openStoreDetails(getStoreDetailsByName(s));setShowStorePicker(false);setStoreSearch('');setStoreChain('all');}}>{s}</div>)}
                 </div>
                 <button className="btn-ghost" style={{marginTop:'8px'}} onClick={()=>setShowStorePicker(false)}>Άκυρο</button>
+              </div>
+            )}
+            {historyStore && selectedStoreDetails?.name === historyStore && (
+              <div style={{marginTop:'10px'}}>
+                {renderStoreDetailsEditor()}
               </div>
             )}
           </div>
@@ -1995,37 +2108,13 @@ ${table}
                   <button
                     key={`${store.name}-${i}`}
                     className={`settings-store-item ${selectedStoreDetails?.name===store.name?'active':''}`}
-                    onClick={()=>setSelectedStoreDetails(store)}
+                    onClick={()=>openStoreDetails(store)}
                   >
                     {store.name}
                   </button>
                 ))}
               </div>
-              {selectedStoreDetails && (
-                <div className="store-detail-card">
-                  <div className="store-detail-head">
-                    <div>
-                      <div className="store-detail-title">{selectedStoreDetails.name}</div>
-                      <div className="store-detail-sub">Στοιχεία καταστήματος</div>
-                    </div>
-                    <button className="btn-note-cancel" onClick={()=>setSelectedStoreDetails(null)}>✕</button>
-                  </div>
-                  <div className="store-detail-grid">
-                    <div className="store-detail-field">
-                      <span>Τηλέφωνο</span>
-                      <strong>{selectedStoreDetails.phone || '—'}</strong>
-                    </div>
-                    <div className="store-detail-field">
-                      <span>ΑΦΜ</span>
-                      <strong>{selectedStoreDetails.vat || '—'}</strong>
-                    </div>
-                    <div className="store-detail-field wide">
-                      <span>Διεύθυνση</span>
-                      <strong>{selectedStoreDetails.address || '—'}</strong>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {renderStoreDetailsEditor()}
             </div>
             <button className="btn-ghost" style={{marginTop:'12px'}} onClick={loadStores}>🔄 Ανανέωση</button>
           </div>
@@ -3211,6 +3300,8 @@ ${table}
         .store-detail-field.wide { grid-column: 1 / -1; }
         .store-detail-field span { display: block; font-size: 9px; color: var(--t3); font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
         .store-detail-field strong { display: block; font-size: 12px; color: var(--t1); font-weight: 700; overflow-wrap: anywhere; }
+        .store-detail-input { padding: 7px 9px; font-size: 12px; }
+        .store-detail-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
         .store-extra-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
         .loading { text-align: center; padding: 48px; color: var(--t3); font-size: 13px; font-weight: 600; }
         .empty { text-align: center; padding: 48px 20px; color: var(--t3); font-size: 13px; line-height: 1.7; font-weight: 600; }
