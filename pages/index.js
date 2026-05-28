@@ -2063,9 +2063,18 @@ ${table}
             radial-gradient(ellipse at 80% 100%, rgba(52,211,153,0.04) 0%, transparent 50%);
         }
 
-        ::-webkit-scrollbar { width: 3px; height: 3px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 2px; }
+        * {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(167,139,250,0.5) rgba(255,255,255,0.04);
+        }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.04); border-radius: 999px; }
+        ::-webkit-scrollbar-thumb {
+          background: linear-gradient(180deg, rgba(167,139,250,0.78), rgba(96,165,250,0.55));
+          border: 2px solid rgba(8,8,16,0.8);
+          border-radius: 999px;
+        }
+        ::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, var(--acc), var(--blue)); }
 
         /* ─── RESPONSIVE ─── */
         .desktop-layout { display: none; }
@@ -2931,6 +2940,14 @@ ${table}
           --blue:    #2563eb;
           --bbg:     rgba(37,99,235,0.08);
           --bg-l:    rgba(37,99,235,0.2);
+        }
+        .light * {
+          scrollbar-color: rgba(124,58,237,0.55) rgba(124,58,237,0.08);
+        }
+        .light ::-webkit-scrollbar-track { background: rgba(124,58,237,0.08); }
+        .light ::-webkit-scrollbar-thumb {
+          background: linear-gradient(180deg, rgba(124,58,237,0.72), rgba(37,99,235,0.5));
+          border-color: rgba(244,244,248,0.95);
         }
         .light body { background: var(--bg); color: var(--t1); background-image: radial-gradient(ellipse at 20% 0%, rgba(124,58,237,0.04) 0%, transparent 50%), radial-gradient(ellipse at 80% 100%, rgba(16,185,129,0.03) 0%, transparent 50%); }
         .light .sidebar { background: rgba(255,255,255,0.95); border-right-color: var(--border); }
