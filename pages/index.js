@@ -1269,12 +1269,31 @@ ${table}
     pullTouchStartY.current = null;
   };
 
-  // Prevent vertical scroll while doing a horizontal swipe
+  // Non-passive touchmove — handles swipe movement + blocks vertical scroll
+  // Must be native (not React synthetic) so we can call preventDefault()
   useEffect(() => {
     const el = mobMainRef.current;
     if (!el) return;
     const onMove = (e) => {
-      if (swipeDrag.current.horiz === true) e.preventDefault();
+      const d = swipeDrag.current;
+      if (!d.serial) return;
+      const dx = e.touches[0].clientX - d.x;
+      const dy = e.touches[0].clientY - d.y;
+      // Determine direction on first significant movement
+      if (d.horiz === null) {
+        if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
+        d.horiz = Math.abs(dx) > Math.abs(dy);
+        if (d.horiz) setDragSerial(d.serial);
+      }
+      if (!d.horiz) return;
+      // Lock vertical scroll
+      e.preventDefault();
+      // Move the card
+      const rowEl = swipeElRef.current;
+      if (!rowEl) return;
+      const nx = Math.max(Math.min(d.baseX + dx, 0), -SWIPE_W);
+      rowEl.style.transition = 'none';
+      rowEl.style.transform = `translateX(${nx}px)`;
     };
     el.addEventListener('touchmove', onMove, { passive: false });
     return () => el.removeEventListener('touchmove', onMove);
@@ -2068,7 +2087,6 @@ ${table}
               return (
                 <div key={i} className="swipe-container"
                   onTouchStart={e=>onSwipeStart(e, item.serialNumber)}
-                  onTouchMove={onSwipeMove}
                   onTouchEnd={onSwipeEnd}
                 >
                   {(isSwiped || dragSerial === item.serialNumber) && (() => {
