@@ -159,14 +159,16 @@ export default function Home() {
   const [openActionMenu, setOpenActionMenu] = useState(null);
   const [mobileSheet, setMobileSheet] = useState(null);
   const [swipedItem, setSwipedItem] = useState(null);
+  const [dragSerial, setDragSerial] = useState(null);
   const [pullDistance, setPullDistance] = useState(0);
   const [pullRefreshing, setPullRefreshing] = useState(false);
   const fileRef = useRef();
   const cameraRef = useRef();
   const mobMainRef = useRef(null);
-  const swipeTouchStartX = useRef(0);
-  const swipeTouchStartY = useRef(0);
+  const swipeElRef = useRef(null);
+  const swipeDrag = useRef({ x: 0, y: 0, baseX: 0, horiz: null, serial: null });
   const pullTouchStartY = useRef(0);
+  const SWIPE_W = 200;
 
   // Φόρτωση καταστημάτων από Sheet
   const loadStores = async () => {
@@ -1183,17 +1185,61 @@ ${table}
     handleTabClick('warehouse');
   };
 
-  // ── Swipe actions ──
-  const handleSwipeTouchStart = (e) => {
-    swipeTouchStartX.current = e.touches[0].clientX;
-    swipeTouchStartY.current = e.touches[0].clientY;
+  // ── Swipe actions (real-time drag) ──
+  const onSwipeStart = (e, serial) => {
+    const el = e.currentTarget.querySelector('[data-swipe-row]');
+    swipeElRef.current = el;
+    swipeDrag.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+      baseX: swipedItem === serial ? -SWIPE_W : 0,
+      horiz: null,
+      serial,
+    };
   };
-  const handleSwipeTouchEnd = (e, serialNumber) => {
-    const dx = e.changedTouches[0].clientX - swipeTouchStartX.current;
-    const dy = e.changedTouches[0].clientY - swipeTouchStartY.current;
-    if (Math.abs(dy) > Math.abs(dx) + 10) return; // vertical scroll — ignore
-    if (dx < -60) { setSwipedItem(serialNumber); setOpenActionMenu(null); }
-    else if (dx > 30) { setSwipedItem(null); }
+  const onSwipeMove = (e) => {
+    const el = swipeElRef.current;
+    const d = swipeDrag.current;
+    if (!el || !d.serial) return;
+    const dx = e.touches[0].clientX - d.x;
+    const dy = e.touches[0].clientY - d.y;
+    if (d.horiz === null) {
+      if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
+      d.horiz = Math.abs(dx) > Math.abs(dy);
+      if (d.horiz) setDragSerial(d.serial);
+    }
+    if (!d.horiz) return;
+    const nx = Math.max(Math.min(d.baseX + dx, 0), -SWIPE_W);
+    el.style.transition = 'none';
+    el.style.transform = `translateX(${nx}px)`;
+  };
+  const onSwipeEnd = (e) => {
+    const el = swipeElRef.current;
+    const d = swipeDrag.current;
+    swipeElRef.current = null;
+    if (!el) return;
+    const dx = e.changedTouches[0].clientX - d.x;
+    if (d.horiz === null || !d.horiz) {
+      // tap — close if open
+      if (swipedItem === d.serial) {
+        el.style.transition = 'transform 0.25s ease';
+        el.style.transform = 'translateX(0px)';
+        setTimeout(() => { if (el) el.style.transform = ''; }, 280);
+        setSwipedItem(null); setDragSerial(null);
+      }
+      return;
+    }
+    const nx = d.baseX + dx;
+    el.style.transition = 'transform 0.25s ease';
+    if (nx < -(SWIPE_W / 3)) {
+      el.style.transform = `translateX(-${SWIPE_W}px)`;
+      setTimeout(() => { if (el) el.style.transform = ''; }, 280);
+      setSwipedItem(d.serial); setDragSerial(null);
+    } else {
+      el.style.transform = 'translateX(0px)';
+      setTimeout(() => { if (el) el.style.transform = ''; }, 280);
+      setSwipedItem(null); setDragSerial(null);
+    }
   };
 
   // ── Pull-to-refresh ──
@@ -2008,22 +2054,43 @@ ${table}
               const isSwiped = swipedItem === item.serialNumber;
               return (
                 <div key={i} className="swipe-container"
-                  onTouchStart={handleSwipeTouchStart}
-                  onTouchEnd={e=>handleSwipeTouchEnd(e, item.serialNumber)}
+                  onTouchStart={e=>onSwipeStart(e, item.serialNumber)}
+                  onTouchMove={onSwipeMove}
+                  onTouchEnd={onSwipeEnd}
                 >
-                  {isSwiped && (
-                    <div className="swipe-actions-bg">
-                      <button className="swipe-action-btn new-action" onClick={e=>{e.stopPropagation();setSwipedItem(null);startNewAction(item.serialNumber,item.model);}}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                        Κίνηση
-                      </button>
-                      <button className="swipe-action-btn new-note" onClick={e=>{e.stopPropagation();setSwipedItem(null);setEditingNote(item.serialNumber);setNoteInput('');}}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                        Σημείωση
-                      </button>
-                    </div>
-                  )}
-                <a className={`machine-row row-link${openActionMenu === mobMenuId ? ' menu-open' : ''}${isSwiped ? ' swiped' : ''}`} href={historyHref(item.serialNumber)} onClick={e=>{ if(isSwiped){e.preventDefault();setSwipedItem(null);return;} handleHistoryLinkClick(e, item.serialNumber);}}>
+                  {(isSwiped || dragSerial === item.serialNumber) && (() => {
+                    const sw = (fn) => { setSwipedItem(null); setDragSerial(null); fn(); };
+                    const act = normalizeAction(item.action);
+                    return (
+                      <div className="swipe-actions-bg">
+                        <button className="swipe-action-btn sa-action" onClick={e=>{e.stopPropagation();sw(()=>startNewAction(item.serialNumber,item.model));}}>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                          Κίνηση
+                        </button>
+                        {act === 'Καινούριο Μηχάνημα' && (
+                          <button className="swipe-action-btn sa-repair" onClick={e=>{e.stopPropagation();sw(()=>handleMoveToRepair(item));}}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+                            Επισκευή
+                          </button>
+                        )}
+                        {act === 'Εισαγωγή για επισκευή' && (
+                          <button className="swipe-action-btn sa-done" onClick={e=>{e.stopPropagation();sw(()=>handleMarkRepaired(item));}}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            Έτοιμο
+                          </button>
+                        )}
+                        <button className="swipe-action-btn sa-part" onClick={e=>{e.stopPropagation();sw(()=>openPartModal(item));}}>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
+                          Ανταλ.
+                        </button>
+                        <button className="swipe-action-btn sa-delete" onClick={e=>{e.stopPropagation();sw(()=>handleDeleteItem(item));}}>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
+                          Διαγραφή
+                        </button>
+                      </div>
+                    );
+                  })()}
+                <a data-swipe-row className={`machine-row row-link${openActionMenu === mobMenuId ? ' menu-open' : ''}${isSwiped ? ' swiped' : ''}`} href={historyHref(item.serialNumber)} onClick={e=>{ if(isSwiped){e.preventDefault();setSwipedItem(null);setDragSerial(null);return;} handleHistoryLinkClick(e, item.serialNumber);}}>
                   <div className="machine-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
                   <div className="machine-info">
                     <div className="machine-name-row">
@@ -3327,29 +3394,33 @@ ${table}
         /* ── MACHINE CARDS ── */
         .swipe-container { position: relative; margin-bottom: 8px; border-radius: var(--r-lg); overflow: hidden; }
         .swipe-actions-bg {
-          position: absolute; right: 0; top: 0; bottom: 0; width: 130px;
+          position: absolute; right: 0; top: 0; bottom: 0; width: 200px;
           display: flex; border-radius: 0 var(--r-lg) var(--r-lg) 0;
           overflow: hidden;
         }
         .swipe-action-btn {
           flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-          gap: 4px; border: none; cursor: pointer;
-          font-size: 10px; font-weight: 800; font-family: var(--font);
+          gap: 3px; border: none; cursor: pointer;
+          font-size: 9px; font-weight: 800; font-family: var(--font); color: #fff;
+          padding: 0 2px;
         }
-        .swipe-action-btn svg { width: 17px; height: 17px; }
-        .swipe-action-btn.new-action { background: var(--acc); color: #fff; }
-        .swipe-action-btn.new-note { background: #1D9E75; color: #fff; }
+        .swipe-action-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+        .sa-action  { background: var(--acc); }
+        .sa-repair  { background: var(--orange); }
+        .sa-done    { background: #1D9E75; }
+        .sa-part    { background: #4A6FA5; }
+        .sa-delete  { background: var(--red); }
         .machine-row {
           background: var(--glass); backdrop-filter: blur(10px);
           border: 1px solid var(--border); border-radius: var(--r-lg);
           padding: 12px 14px; margin-bottom: 0;
           display: flex; align-items: flex-start; gap: 10px;
-          cursor: pointer; transition: transform 0.22s ease, border-color 0.2s, background 0.2s;
+          cursor: pointer; transition: border-color 0.2s, background 0.2s;
           position: relative; z-index: 0;
         }
         .machine-row:hover { border-color: var(--border2); background: rgba(167,139,250,0.04); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
         .machine-row.menu-open { z-index: 50; }
-        .machine-row.swiped { transform: translateX(-130px); border-radius: var(--r-lg) 0 0 var(--r-lg); }
+        .machine-row.swiped { transform: translateX(-200px); border-radius: var(--r-lg) 0 0 var(--r-lg); }
         .pull-inner { height: 44px; display: flex; align-items: center; justify-content: center; }
         .pull-spinner {
           width: 20px; height: 20px; border-radius: 50%;
