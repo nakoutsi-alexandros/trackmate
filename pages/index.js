@@ -315,6 +315,10 @@ export default function Home() {
     return inventory.find(i => cleanSerial(i.serialNumber) === sn) || null;
   };
 
+  const isDuplicateNewMachine = () => (
+    !!existingItem && normalizeAction(action) === 'Καινούριο Μηχάνημα'
+  );
+
   const handleScan = async () => {
     if (!imageBase64) return;
     setScanning(true);
@@ -483,9 +487,9 @@ ${table}
     if (!serialNumber) { alert('Βάλε Serial Number!'); return; }
     if (!action) { alert('Επίλεξε τύπο κίνησης!'); return; }
     const duplicate = findExistingSerial(serialNumber);
-    if (duplicate) {
+    if (duplicate && normalizeAction(action) === 'Καινούριο Μηχάνημα') {
       setExistingItem(duplicate);
-      alert('Αυτό το serial υπάρχει ήδη. Δεν επιτρέπεται δεύτερη καταχώρηση με ίδιο serial number.');
+      alert('Αυτό το serial υπάρχει ήδη. Δεν μπορεί να καταχωρηθεί ξανά ως Καινούριο Μηχάνημα. Επίλεξε άλλη κίνηση.');
       return;
     }
     setSubmitting(true);
@@ -1121,7 +1125,7 @@ ${table}
               {existingItem && (
                 <div className="existing-item-banner">
                   <div className="existing-item-title">⚠️ Αυτό το serial υπάρχει ήδη</div>
-                  <div className="existing-item-note">Δεν επιτρέπεται δεύτερη καταχώρηση με ίδιο serial number.</div>
+                  <div className="existing-item-note">Μπορείς να κάνεις νέα κίνηση, αλλά όχι νέα καταχώρηση ως Καινούριο Μηχάνημα.</div>
                   {renderMachineCard(existingItem, { compact: true, showHistoryButton: true })}
                 </div>
               )}
@@ -1246,7 +1250,7 @@ ${table}
                 <label className="field-label">📝 Σημειώσεις</label>
                 <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Οποιαδήποτε επιπλέον πληροφορία..." />
               </div>
-              <button className="btn-primary" onClick={handleSubmit} disabled={submitting || !!existingItem}>{submitting ? '⏳ Καταχώριση...' : existingItem ? '⚠️ Υπάρχει ήδη αυτό το serial' : '✅ Καταχώριση κίνησης'}</button>
+              <button className="btn-primary" onClick={handleSubmit} disabled={submitting || isDuplicateNewMachine()}>{submitting ? '⏳ Καταχώριση...' : isDuplicateNewMachine() ? '⚠️ Υπάρχει ήδη ως καινούριο' : '✅ Καταχώριση κίνησης'}</button>
               <button className="btn-ghost" onClick={handleReset}>← Πίσω</button>
             </div>
           )}
