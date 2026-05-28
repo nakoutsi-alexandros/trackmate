@@ -1269,6 +1269,17 @@ ${table}
     pullTouchStartY.current = null;
   };
 
+  // Prevent vertical scroll while doing a horizontal swipe
+  useEffect(() => {
+    const el = mobMainRef.current;
+    if (!el) return;
+    const onMove = (e) => {
+      if (swipeDrag.current.horiz === true) e.preventDefault();
+    };
+    el.addEventListener('touchmove', onMove, { passive: false });
+    return () => el.removeEventListener('touchmove', onMove);
+  }, []);
+
   useEffect(() => {
     if (!router.isReady) return;
     const queryTab = Array.isArray(router.query.tab) ? router.query.tab[0] : router.query.tab;
