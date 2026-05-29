@@ -8,6 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.100.1",
     "cookie": "^0.6.0",
     "google-auth-library": "^9.0.0",
     "googleapis": "^140.0.0",
