@@ -1254,33 +1254,28 @@ ${table}
     pullTouchStartY.current = null;
   };
 
-  // Non-passive touchmove — handles swipe movement + blocks vertical scroll
-  // Must be native (not React synthetic) so we can call preventDefault()
+  // Non-passive touchmove on document — scroll is on window/body so must go top-level
   useEffect(() => {
-    const el = mobMainRef.current;
-    if (!el) return;
     const onMove = (e) => {
       const d = swipeDrag.current;
       if (!d.serial) return;
       const dx = e.touches[0].clientX - d.x;
       const dy = e.touches[0].clientY - d.y;
-      // Determine direction on first significant movement
       if (d.horiz === null) {
-        if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
+        // Block scroll speculatively until direction is confirmed
+        if (Math.abs(dx) < 6 && Math.abs(dy) < 6) { e.preventDefault(); return; }
         d.horiz = Math.abs(dx) > Math.abs(dy);
       }
-      if (!d.horiz) return;
-      // Lock vertical scroll — no React setState here to avoid re-renders during drag
-      e.preventDefault();
-      // Move the card
+      if (!d.horiz) return; // vertical — let scroll happen
+      e.preventDefault();   // horizontal — block scroll
       const rowEl = swipeElRef.current;
       if (!rowEl) return;
       const nx = Math.max(Math.min(d.baseX + dx, 0), -SWIPE_W);
       rowEl.style.transition = 'none';
       rowEl.style.transform = `translateX(${nx}px)`;
     };
-    el.addEventListener('touchmove', onMove, { passive: false });
-    return () => el.removeEventListener('touchmove', onMove);
+    document.addEventListener('touchmove', onMove, { passive: false });
+    return () => document.removeEventListener('touchmove', onMove);
   }, []);
 
   useEffect(() => {
