@@ -8,11 +8,14 @@ export default async function handler(req, res) {
   if (req.method === 'PATCH') {
     try {
       const { serialNumber, newStore, newDate } = req.body;
-      if (!serialNumber || (!newStore && !newDate)) {
+      // Treat empty-string as absent — don't silently skip a provided-but-blank value
+      const hasStore = newStore != null && newStore !== '';
+      const hasDate  = newDate  != null && newDate  !== '';
+      if (!serialNumber || (!hasStore && !hasDate)) {
         return res.status(400).json({ error: 'Serial number και πεδίο ενημέρωσης υποχρεωτικά' });
       }
-      if (newStore) await updateStore(serialNumber, newStore);
-      if (newDate) await updateItemDate(serialNumber, newDate);
+      if (hasStore) await updateStore(serialNumber, newStore);
+      if (hasDate)  await updateItemDate(serialNumber, newDate);
       return res.status(200).json({ success: true });
     } catch (err) {
       console.error('updateWarehouse error:', err);

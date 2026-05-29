@@ -706,7 +706,8 @@ ${table}
         'Ημερομηνία': item.date,
         'Χρήστης': item.user || '',
         'Πρόβλημα': item.problem || '',
-        'Σημείωση': warehouseNotes[item.serialNumber]?.note || '',
+        // warehouseNotes[serial] is an array of note objects — access the latest with [0]
+        'Σημείωση': warehouseNotes[item.serialNumber]?.[0]?.note || '',
       }));
 
       const movementsData = inventory.map(item => ({
@@ -1048,12 +1049,13 @@ ${table}
   const filteredItems = itemsList.filter(item => {
     const q = itemSearch.trim().toLowerCase();
     if (!q) return true;
-    return item.code.toLowerCase().includes(q) || item.description.toLowerCase().includes(q);
+    // Guard against null/undefined description coming from the Sheet
+    return item.code.toLowerCase().includes(q) || (item.description || '').toLowerCase().includes(q);
   });
   const filteredParts = partsList.filter(part => {
     const q = partSearch.trim().toLowerCase();
     if (!q) return true;
-    return part.code.toLowerCase().includes(q) || part.description.toLowerCase().includes(q);
+    return part.code.toLowerCase().includes(q) || (part.description || '').toLowerCase().includes(q);
   });
   const historyTimeline = history && historySerial
     ? [
@@ -1062,12 +1064,14 @@ ${table}
           item,
           sortTime: parseGreekTimestamp(item.timestamp) || parseItemDate(item.date)?.getTime() || 0,
         })),
-        ...(machineParts[history[0]?.serialNumber] || []).map(part => ({
+        // Use historySerial (the queried serial) as the lookup key, not history[0].serialNumber
+        // which is undefined when history is empty (machine exists but has no movements yet)
+        ...(machineParts[historySerial] || []).map(part => ({
           type: 'part',
           part,
           sortTime: parseGreekTimestamp(part.createdAt) || 0,
         })),
-        ...(machineLogLinks[history[0]?.serialNumber] || []).map(link => ({
+        ...(machineLogLinks[historySerial] || []).map(link => ({
           type: 'logLink',
           link,
           sortTime: parseGreekTimestamp(link.createdAt) || 0,

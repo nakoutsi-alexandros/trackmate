@@ -52,7 +52,15 @@ export default async function handler(req, res) {
 
     const text = response.content[0].text.trim();
     const clean = text.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(clean);
+
+    let parsed;
+    try {
+      parsed = JSON.parse(clean);
+    } catch {
+      // Model returned non-JSON prose — treat as a low-confidence failure
+      console.error('Scan: model returned non-JSON:', clean);
+      return res.status(422).json({ valid: false, reason: 'no_data', message: 'Δεν ήταν δυνατή η αναγνώριση. Δοκιμάστε ξανά με καλύτερο φωτισμό.' });
+    }
 
     // Αν δεν είναι valid, επιστρέφουμε 422
     if (!parsed.valid) {
@@ -62,6 +70,7 @@ export default async function handler(req, res) {
     return res.status(200).json(parsed);
   } catch (err) {
     console.error('Scan error:', err);
-    return res.status(500).json({ error: 'Σφάλμα αναγνώρισης', details: err.message });
+    // Do NOT forward err.message — it may contain API key hints or SDK internals
+    return res.status(500).json({ error: 'Σφάλμα αναγνώρισης. Δοκιμάστε ξανά.' });
   }
 }

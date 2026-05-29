@@ -19,6 +19,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true });
   } catch (err) {
     console.error('Log error:', err);
-    return res.status(500).json({ error: 'Σφάλμα καταγραφής', details: err.message });
+    return res.status(500).json({ error: 'Σφάλμα καταγραφής' });
   }
 }
