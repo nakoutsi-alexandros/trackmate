@@ -11,15 +11,20 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   // Αν είναι ήδη συνδεδεμένος, redirect στην αρχική
   useEffect(() => {
+    // Έλεγχος αν το middleware έστειλε ?expired=1
+    if (router.isReady && router.query.expired) {
+      setSessionExpired(true);
+    }
     fetch('/api/auth/me')
       .then((res) => {
         if (res.ok) router.replace('/');
       })
       .catch(() => {});
-  }, [router]);
+  }, [router.isReady, router.query.expired]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -91,6 +96,11 @@ export default function LoginPage() {
               />
             </div>
 
+            {sessionExpired && !error && (
+              <div className="error" style={{background:'#fef3c7', color:'#92400e', borderLeft:'3px solid #f59e0b'}}>
+                Η συνεδρία σου έληξε. Συνδέσου ξανά.
+              </div>
+            )}
             {error && <div className="error">{error}</div>}
 
             <button type="submit" disabled={loading}>
