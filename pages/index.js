@@ -65,6 +65,9 @@ const STORE_CHAINS = [
   { id: 'other', label: 'Άλλα' },
 ];
 
+// Width of the swipe-reveal action tray in px (module-level so it's never recreated)
+const SWIPE_W = 200;
+
 const TAB_IDS = ['home', 'scan', 'inventory', 'warehouse', 'history', 'settings'];
 
 export default function Home() {
@@ -159,6 +162,7 @@ export default function Home() {
   const [openActionMenu, setOpenActionMenu] = useState(null);
   const [mobileSheet, setMobileSheet] = useState(null);
   const [swipedItem, setSwipedItem] = useState(null);
+  const swipedItemRef = useRef(null); // mirrors swipedItem for use inside non-reactive callbacks
   const [pullDistance, setPullDistance] = useState(0);
   const [pullRefreshing, setPullRefreshing] = useState(false);
   const fileRef = useRef();
@@ -167,7 +171,6 @@ export default function Home() {
   const swipeElRef = useRef(null);
   const swipeDrag = useRef({ x: 0, y: 0, baseX: 0, horiz: null, serial: null });
   const pullTouchStartY = useRef(0);
-  const SWIPE_W = 200;
 
   // Φόρτωση καταστημάτων από Sheet
   const loadStores = async () => {
@@ -1184,6 +1187,12 @@ ${table}
     handleTabClick('warehouse');
   };
 
+  // Helper: set swipedItem state AND keep the ref in sync
+  const setSwipedItemSynced = (val) => {
+    swipedItemRef.current = val;
+    setSwipedItem(val);
+  };
+
   // ── Swipe actions (real-time drag) ──
   const onSwipeStart = (e, serial) => {
     const el = e.currentTarget.querySelector('[data-swipe-row]');
@@ -1193,7 +1202,8 @@ ${table}
     swipeDrag.current = {
       x: e.touches[0].clientX,
       y: e.touches[0].clientY,
-      baseX: swipedItem === serial ? -SWIPE_W : 0,
+      // Use ref so we always read current value even if React hasn't re-rendered yet
+      baseX: swipedItemRef.current === serial ? -SWIPE_W : 0,
       horiz: null,
       serial,
     };
@@ -1201,18 +1211,22 @@ ${table}
   const onSwipeEnd = (e) => {
     const el = swipeElRef.current;
     const d = swipeDrag.current;
+    const serial = d.serial; // snapshot before clearing
+    // Always clear both refs immediately so the document touchmove listener
+    // stops intercepting on the very next touch, regardless of early returns below
     swipeElRef.current = null;
+    d.serial = null;
     if (!el) return;
     const dx = e.changedTouches[0].clientX - d.x;
     if (d.horiz === null || !d.horiz) {
       // Αν το tap είναι πάνω σε action button, αφήνουμε το onClick να τρέξει κανονικά
       if (e.target.closest('.swipe-actions-bg')) return;
-      // Tap στο card body — κλείσε αν είναι ανοιχτό
-      if (swipedItem === d.serial) {
+      // Tap στο card body — κλείσε αν είναι ανοιχτό (ref αντί closure για να αποφύγουμε stale value)
+      if (swipedItemRef.current === serial) {
         el.style.transition = 'transform 0.28s cubic-bezier(0.25,0.46,0.45,0.94)';
         el.style.transform = 'translateX(0px)';
         setTimeout(() => { if (el) el.style.transform = ''; }, 300);
-        setSwipedItem(null);
+        setSwipedItemSynced(null);
       }
       return;
     }
@@ -1221,11 +1235,11 @@ ${table}
     if (nx < -(SWIPE_W / 3)) {
       el.style.transform = `translateX(-${SWIPE_W}px)`;
       setTimeout(() => { if (el) el.style.transform = ''; }, 300);
-      setSwipedItem(d.serial);
+      setSwipedItemSynced(serial);
     } else {
       el.style.transform = 'translateX(0px)';
       setTimeout(() => { if (el) el.style.transform = ''; }, 300);
-      setSwipedItem(null);
+      setSwipedItemSynced(null);
     }
   };
 
@@ -1246,8 +1260,12 @@ ${table}
     if (pullDistance > 60) {
       setPullRefreshing(true);
       setPullDistance(0);
-      await Promise.all([loadInventory(), loadParts(), loadLogLinks()]);
-      setPullRefreshing(false);
+      try {
+        await Promise.all([loadInventory(), loadParts(), loadLogLinks()]);
+      } finally {
+        // Guarantee spinner is hidden even if one of the load calls throws
+        setPullRefreshing(false);
+      }
     } else {
       setPullDistance(0);
     }
@@ -2069,7 +2087,7 @@ ${table}
                   onTouchEnd={onSwipeEnd}
                 >
                   {isSwiped && (() => {
-                    const sw = (fn) => { setSwipedItem(null); fn(); };
+                    const sw = (fn) => { setSwipedItemSynced(null); fn(); };
                     const act = normalizeAction(item.action);
                     return (
                       <div className="swipe-actions-bg">
@@ -2100,7 +2118,7 @@ ${table}
                       </div>
                     );
                   })()}
-                <a data-swipe-row className={`machine-row row-link${openActionMenu === mobMenuId ? ' menu-open' : ''}${isSwiped ? ' swiped' : ''}`} href={historyHref(item.serialNumber)} onClick={e=>{ if(isSwiped){e.preventDefault();setSwipedItem(null);setDragSerial(null);return;} handleHistoryLinkClick(e, item.serialNumber);}}>
+                <a data-swipe-row className={`machine-row row-link${openActionMenu === mobMenuId ? ' menu-open' : ''}${isSwiped ? ' swiped' : ''}`} href={historyHref(item.serialNumber)} onClick={e=>{ if(isSwiped){e.preventDefault();setSwipedItemSynced(null);return;} handleHistoryLinkClick(e, item.serialNumber);}}>
                   <div className="machine-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
                   <div className="machine-info">
                     <div className="machine-name-row">
@@ -2202,7 +2220,7 @@ ${table}
                       </div>
                     )}
                     <div className="mobile-actions-row">
-                      <button className="action-menu-btn" onClick={e=>{e.preventDefault();e.stopPropagation();setMobileSheet(item);setSwipedItem(null);}}>⋯</button>
+                      <button className="action-menu-btn" onClick={e=>{e.preventDefault();e.stopPropagation();setMobileSheet(item);setSwipedItemSynced(null);}}>⋯</button>
                     </div>
                   </div>
                 </a>
