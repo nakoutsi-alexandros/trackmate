@@ -159,7 +159,6 @@ export default function Home() {
   const [openActionMenu, setOpenActionMenu] = useState(null);
   const [mobileSheet, setMobileSheet] = useState(null);
   const [swipedItem, setSwipedItem] = useState(null);
-  const [dragSerial, setDragSerial] = useState(null);
   const [pullDistance, setPullDistance] = useState(0);
   const [pullRefreshing, setPullRefreshing] = useState(false);
   const fileRef = useRef();
@@ -1189,6 +1188,8 @@ ${table}
   const onSwipeStart = (e, serial) => {
     const el = e.currentTarget.querySelector('[data-swipe-row]');
     swipeElRef.current = el;
+    // Immediately kill transition so card follows finger from frame 1
+    if (el) el.style.transition = 'none';
     swipeDrag.current = {
       x: e.touches[0].clientX,
       y: e.touches[0].clientY,
@@ -1196,22 +1197,6 @@ ${table}
       horiz: null,
       serial,
     };
-  };
-  const onSwipeMove = (e) => {
-    const el = swipeElRef.current;
-    const d = swipeDrag.current;
-    if (!el || !d.serial) return;
-    const dx = e.touches[0].clientX - d.x;
-    const dy = e.touches[0].clientY - d.y;
-    if (d.horiz === null) {
-      if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
-      d.horiz = Math.abs(dx) > Math.abs(dy);
-      if (d.horiz) setDragSerial(d.serial);
-    }
-    if (!d.horiz) return;
-    const nx = Math.max(Math.min(d.baseX + dx, 0), -SWIPE_W);
-    el.style.transition = 'none';
-    el.style.transform = `translateX(${nx}px)`;
   };
   const onSwipeEnd = (e) => {
     const el = swipeElRef.current;
@@ -1224,23 +1209,23 @@ ${table}
       if (e.target.closest('.swipe-actions-bg')) return;
       // Tap στο card body — κλείσε αν είναι ανοιχτό
       if (swipedItem === d.serial) {
-        el.style.transition = 'transform 0.25s ease';
+        el.style.transition = 'transform 0.28s cubic-bezier(0.25,0.46,0.45,0.94)';
         el.style.transform = 'translateX(0px)';
-        setTimeout(() => { if (el) el.style.transform = ''; }, 280);
-        setSwipedItem(null); setDragSerial(null);
+        setTimeout(() => { if (el) el.style.transform = ''; }, 300);
+        setSwipedItem(null);
       }
       return;
     }
     const nx = d.baseX + dx;
-    el.style.transition = 'transform 0.25s ease';
+    el.style.transition = 'transform 0.28s cubic-bezier(0.25,0.46,0.45,0.94)';
     if (nx < -(SWIPE_W / 3)) {
       el.style.transform = `translateX(-${SWIPE_W}px)`;
-      setTimeout(() => { if (el) el.style.transform = ''; }, 280);
-      setSwipedItem(d.serial); setDragSerial(null);
+      setTimeout(() => { if (el) el.style.transform = ''; }, 300);
+      setSwipedItem(d.serial);
     } else {
       el.style.transform = 'translateX(0px)';
-      setTimeout(() => { if (el) el.style.transform = ''; }, 280);
-      setSwipedItem(null); setDragSerial(null);
+      setTimeout(() => { if (el) el.style.transform = ''; }, 300);
+      setSwipedItem(null);
     }
   };
 
@@ -1283,10 +1268,9 @@ ${table}
       if (d.horiz === null) {
         if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
         d.horiz = Math.abs(dx) > Math.abs(dy);
-        if (d.horiz) setDragSerial(d.serial);
       }
       if (!d.horiz) return;
-      // Lock vertical scroll
+      // Lock vertical scroll — no React setState here to avoid re-renders during drag
       e.preventDefault();
       // Move the card
       const rowEl = swipeElRef.current;
@@ -2089,8 +2073,8 @@ ${table}
                   onTouchStart={e=>onSwipeStart(e, item.serialNumber)}
                   onTouchEnd={onSwipeEnd}
                 >
-                  {(isSwiped || dragSerial === item.serialNumber) && (() => {
-                    const sw = (fn) => { setSwipedItem(null); setDragSerial(null); fn(); };
+                  {isSwiped && (() => {
+                    const sw = (fn) => { setSwipedItem(null); fn(); };
                     const act = normalizeAction(item.action);
                     return (
                       <div className="swipe-actions-bg">
@@ -3446,7 +3430,7 @@ ${table}
           border: 1px solid var(--border); border-radius: var(--r-lg);
           padding: 12px 14px; margin-bottom: 0;
           display: flex; align-items: flex-start; gap: 10px;
-          cursor: pointer; transition: transform 0.25s ease, border-color 0.2s, background 0.2s;
+          cursor: pointer; transition: transform 0.28s cubic-bezier(0.25,0.46,0.45,0.94), border-color 0.2s, background 0.2s;
           position: relative; z-index: 0;
         }
         .machine-row:hover { border-color: var(--border2); background: rgba(167,139,250,0.04); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
