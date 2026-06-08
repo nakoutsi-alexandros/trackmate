@@ -70,6 +70,7 @@ const SWIPE_W = 200;
 
 const TAB_IDS = ['home', 'scan', 'inventory', 'warehouse', 'history', 'settings'];
 const INVENTORY_CACHE_KEY = 'trackmate_inventory_cache_v1';
+const MACHINE_CATEGORIES = ['CashDro', "McDonald's"];
 
 const readInventoryCache = () => {
   if (typeof window === 'undefined') return [];
@@ -120,6 +121,7 @@ export default function Home() {
   const [action, setAction] = useState('');
   const [existingItem, setExistingItem] = useState(null); // υπάρχον μηχάνημα με ίδιο serial
   const [actionCat, setActionCat] = useState(null);
+  const [machineCategory, setMachineCategory] = useState('CashDro');
   const [store, setStore] = useState('');
   const [storeSearch, setStoreSearch] = useState('');
   const [storeChain, setStoreChain] = useState('all');
@@ -143,7 +145,11 @@ export default function Home() {
   const [historyStore, setHistoryStore] = useState('');
   const [historyError, setHistoryError] = useState('');
   const [filterAction, setFilterAction] = useState('Όλα');
+  const [inventoryCategoryFilter, setInventoryCategoryFilter] = useState('all');
+  const [homeCategoryFilter, setHomeCategoryFilter] = useState('all');
   const [warehouseFilter, setWarehouseFilter] = useState('all');
+  const [warehouseCategoryFilter, setWarehouseCategoryFilter] = useState('all');
+  const [historyStoreCategoryFilter, setHistoryStoreCategoryFilter] = useState('all');
   const [sortOrder, setSortOrder] = useState('desc');
   const [filterPeriod, setFilterPeriod] = useState('all'); // all | today | 7 | 30 | custom
   const [filterDateFrom, setFilterDateFrom] = useState('');
@@ -448,9 +454,11 @@ export default function Home() {
       if (!res.ok) throw new Error(data.error || 'Σφάλμα');
 
       const scannedSerial = data.serialNumber !== 'unknown' ? data.serialNumber : '';
+      const existingScannedItem = findExistingSerial(scannedSerial);
       setSerialNumber(scannedSerial);
       setModel(data.model !== 'unknown' ? data.model : '');
-      setExistingItem(findExistingSerial(scannedSerial));
+      setExistingItem(existingScannedItem);
+      if (existingScannedItem) setMachineCategory(getMachineCategory(existingScannedItem));
       setScanError(null);
       setStep(2);
     } catch (e) {
@@ -613,7 +621,7 @@ ${table}
       const res = await fetch('/api/log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ serialNumber, model, action, store, date, problem, notes: buildMovementNotes() }),
+        body: JSON.stringify({ serialNumber, model, action, store, date, problem, notes: buildMovementNotes(), category: machineCategory }),
       });
       if (!res.ok) throw new Error();
       setStep(3);
@@ -629,6 +637,7 @@ ${table}
     setSerialNumber(''); setModel(''); setScanError(null);
     setItemSearch(''); setShowItemPicker(false); setManualItemEntry(false);
     setAction(''); setActionCat(null);
+    setMachineCategory('CashDro');
     setStore(''); setStoreSearch(''); setStoreChain('all'); setShowStorePicker(false);
     setDate(new Date().toISOString().split('T')[0]);
     setProblem(''); setNotes('');
@@ -700,7 +709,7 @@ ${table}
       const res = await fetch('/api/warehouse', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ serialNumber: item.serialNumber, model: item.model, store: item.store }),
+        body: JSON.stringify({ serialNumber: item.serialNumber, model: item.model, store: item.store, category: getMachineCategory(item) }),
       });
       if (!res.ok) throw new Error();
       loadInventory();
@@ -717,6 +726,7 @@ ${table}
       const warehouseData = warehouseItems.map(item => ({
         'Serial Number': item.serialNumber,
         'Model': item.model || '',
+        'Κατηγορία': getMachineCategory(item),
         'Κατάσταση': normalizeAction(item.action),
         'Από Κατάστημα': displayStore(item),
         'Ημερομηνία': item.date,
@@ -729,6 +739,7 @@ ${table}
       const movementsData = inventory.map(item => ({
         'Serial Number': item.serialNumber,
         'Model': item.model || '',
+        'Κατηγορία': getMachineCategory(item),
         'Τελευταία Κίνηση': normalizeAction(item.action),
         'Κατάστημα': item.store || '',
         'Ημερομηνία': item.date,
@@ -768,6 +779,7 @@ ${table}
           date: new Date().toISOString().split('T')[0],
           problem: '',
           notes: 'Επισκευάστηκε',
+          category: getMachineCategory(item),
         }),
       });
       if (!res.ok) throw new Error();
@@ -931,6 +943,7 @@ ${table}
           date: new Date().toISOString().split('T')[0],
           problem: '',
           notes: 'Μεταφέρθηκε σε επισκευή από την αποθήκη',
+          category: getMachineCategory(item),
         }),
       });
       if (!res.ok) throw new Error();
@@ -942,9 +955,11 @@ ${table}
 
   // Quick action: πάει στη φόρμα με serial+κωδικό είδους προσυμπληρωμένα
   const startNewAction = (serial, mdl) => {
+    const source = findExistingSerial(serial);
     handleReset();
     setSerialNumber(serial || '');
     setModel(mdl || '');
+    setMachineCategory(getMachineCategory(source));
     setStep(2);
     handleTabClick('scan');
   };
@@ -1056,10 +1071,17 @@ ${table}
     if (ta === 0 && tb === 0) return 0;
     return sortOrder === 'desc' ? tb - ta : ta - tb;
   });
+  const getMachineCategory = (item) => item?.category || 'CashDro';
+  const matchesMachineCategory = (item, category) => category === 'all' || getMachineCategory(item) === category;
+  const looksLikeMcdStore = (storeName) => /mcd|mc\s*donald/i.test(String(storeName || ''));
 
-  const filtered = sortItems(applyDateFilter(filterAction === 'Όλα' ? inventory : inventory.filter(i => normalizeAction(i.action) === filterAction)));
-  const warehouseItems = sortItems(inventory.filter(i => ['Καινούριο Μηχάνημα', 'Εισαγωγή για επισκευή'].includes(normalizeAction(i.action))));
-  const shippedItems = sortItems(inventory.filter(i => ['Αποστολή σε κατάστημα','Αποστολή στα κεντρικά'].includes(normalizeAction(i.action))));
+  const inventoryCategoryItems = inventory.filter(i => matchesMachineCategory(i, inventoryCategoryFilter));
+  const filtered = sortItems(applyDateFilter(filterAction === 'Όλα' ? inventoryCategoryItems : inventoryCategoryItems.filter(i => normalizeAction(i.action) === filterAction)));
+  const categoryFilteredInventory = warehouseCategoryFilter === 'all'
+    ? inventory
+    : inventory.filter(i => getMachineCategory(i) === warehouseCategoryFilter);
+  const warehouseItems = sortItems(categoryFilteredInventory.filter(i => ['Καινούριο Μηχάνημα', 'Εισαγωγή για επισκευή'].includes(normalizeAction(i.action))));
+  const shippedItems = sortItems(categoryFilteredInventory.filter(i => ['Αποστολή σε κατάστημα','Αποστολή στα κεντρικά'].includes(normalizeAction(i.action))));
   const availableItems = warehouseItems.filter(i => normalizeAction(i.action) === 'Καινούριο Μηχάνημα');
   const repairItems = warehouseItems.filter(i => normalizeAction(i.action) === 'Εισαγωγή για επισκευή');
   const todayStart = new Date(); todayStart.setHours(0,0,0,0);
@@ -1068,7 +1090,22 @@ ${table}
     const time = parseGreekTimestamp(item.timestamp) || parseItemDate(item.date)?.getTime() || 0;
     return time >= weekStart.getTime();
   });
+  const homeInventory = inventory.filter(i => matchesMachineCategory(i, homeCategoryFilter));
+  const homeWarehouseItems = sortItems(homeInventory.filter(i => ['Καινούριο Μηχάνημα', 'Εισαγωγή για επισκευή'].includes(normalizeAction(i.action))));
+  const homeShippedItems = sortItems(homeInventory.filter(i => ['Αποστολή σε κατάστημα','Αποστολή στα κεντρικά'].includes(normalizeAction(i.action))));
+  const homeAvailableItems = homeWarehouseItems.filter(i => normalizeAction(i.action) === 'Καινούριο Μηχάνημα');
+  const homeRepairItems = homeWarehouseItems.filter(i => normalizeAction(i.action) === 'Εισαγωγή για επισκευή');
+  const homeWeekMovements = homeInventory.filter(item => {
+    const time = parseGreekTimestamp(item.timestamp) || parseItemDate(item.date)?.getTime() || 0;
+    return time >= weekStart.getTime();
+  });
   const attentionRepairItems = repairItems.filter(item => {
+    const d = parseItemDate(item.date);
+    if (!d) return false;
+    d.setHours(0,0,0,0);
+    return (todayStart - d) > 7 * 86400000;
+  });
+  const homeAttentionRepairItems = homeRepairItems.filter(item => {
     const d = parseItemDate(item.date);
     if (!d) return false;
     d.setHours(0,0,0,0);
@@ -1084,10 +1121,26 @@ ${table}
   const storeRows = storeDetailsList.length
     ? storeDetailsList
     : storesList.map(name => ({ name, phone: '', address: '', vat: '' }));
+  const historyCategoryStoreNames = new Set(
+    inventory
+      .filter(item => matchesMachineCategory(item, historyStoreCategoryFilter))
+      .map(item => item.store || '')
+      .filter(Boolean)
+  );
+  const historyStoreOptions = storesList.filter(storeName => {
+    if (historyStoreCategoryFilter === 'all') return true;
+    const hasCategoryMovement = Array.from(historyCategoryStoreNames).some(name => name.toLowerCase().includes(storeName.toLowerCase()));
+    if (historyStoreCategoryFilter === "McDonald's") return hasCategoryMovement || looksLikeMcdStore(storeName);
+    if (historyStoreCategoryFilter === 'CashDro') return hasCategoryMovement || !looksLikeMcdStore(storeName);
+    return hasCategoryMovement;
+  });
   const missingNoteItems = warehouseItems.filter(item => !(warehouseNotes[item.serialNumber] || []).length);
+  const homeMissingNoteItems = homeWarehouseItems.filter(item => !(warehouseNotes[item.serialNumber] || []).length);
   const incompleteStoreRows = storeRows.filter(store => !store.phone || !store.address || !store.vat);
   const attentionCount = attentionRepairItems.length + missingNoteItems.length + incompleteStoreRows.length;
+  const homeAttentionCount = homeAttentionRepairItems.length + homeMissingNoteItems.length + incompleteStoreRows.length;
   const recentMovements = sortItems(inventory).slice(0, 5);
+  const homeRecentMovements = sortItems(homeInventory).slice(0, 5);
   const countOrDash = (value) => inventorySnapshotReady ? value : '—';
   const filteredStoreRows = storeRows.filter(store => {
     const q = settingsStoreSearch.trim().toLowerCase();
@@ -1235,8 +1288,9 @@ ${table}
     openHistoryForSerial(serial);
   };
 
-  const openWarehouseFilter = (filter) => {
+  const openWarehouseFilter = (filter, category = homeCategoryFilter) => {
     setWarehouseFilter(filter);
+    setWarehouseCategoryFilter(category);
     handleTabClick('warehouse');
   };
 
@@ -1453,6 +1507,7 @@ ${table}
         </div>
         <div className="machine-card-grid">
           <div><span>Κατάστημα</span><strong>{displayStore(item)}</strong></div>
+          <div><span>Κατηγορία</span><strong>{getMachineCategory(item)}</strong></div>
           <div><span>Τελευταία κίνηση</span><strong>{item.date || '—'}</strong></div>
           <div><span>Χρήστης</span><strong>{item.user || '—'}</strong></div>
           <div><span>Εγγραφές</span><strong>{historySerial && history?.[0]?.serialNumber === serial ? `${history.length} κινήσεις` : '—'}</strong></div>
@@ -1567,25 +1622,34 @@ ${table}
             </div>
           </div>
 
+          <div className="warehouse-category-tabs dashboard-category-tabs">
+            <button className={`warehouse-category-tab ${homeCategoryFilter === 'all' ? 'active' : ''}`} onClick={()=>setHomeCategoryFilter('all')}>Όλα</button>
+            {MACHINE_CATEGORIES.map(cat => (
+              <button key={cat} className={`warehouse-category-tab ${homeCategoryFilter === cat ? 'active' : ''}`} onClick={()=>setHomeCategoryFilter(cat)}>
+                {cat}
+              </button>
+            ))}
+          </div>
+
           <div className="dashboard-stat-grid">
             <button className="dash-stat" onClick={()=>openWarehouseFilter('all')}>
               <span>Σύνολο αποθήκης</span>
-              <strong>{countOrDash(warehouseItems.length)}</strong>
+              <strong>{countOrDash(homeWarehouseItems.length)}</strong>
               <small>μηχανήματα μέσα</small>
             </button>
             <button className="dash-stat" onClick={()=>openWarehouseFilter('new')}>
               <span>Διαθέσιμα</span>
-              <strong>{countOrDash(availableItems.length)}</strong>
+              <strong>{countOrDash(homeAvailableItems.length)}</strong>
               <small>έτοιμα για αποστολή</small>
             </button>
             <button className="dash-stat warn" onClick={()=>openWarehouseFilter('repair')}>
               <span>Σε επισκευή</span>
-              <strong>{countOrDash(repairItems.length)}</strong>
-              <small>{countOrDash(attentionRepairItems.length)} πάνω από 7 ημέρες</small>
+              <strong>{countOrDash(homeRepairItems.length)}</strong>
+              <small>{countOrDash(homeAttentionRepairItems.length)} πάνω από 7 ημέρες</small>
             </button>
             <button className="dash-stat" onClick={()=>openWarehouseFilter('shipped')}>
               <span>Απεσταλμένα</span>
-              <strong>{countOrDash(shippedItems.length)}</strong>
+              <strong>{countOrDash(homeShippedItems.length)}</strong>
               <small>τελευταία κατάσταση έξοδος</small>
             </button>
           </div>
@@ -1595,13 +1659,13 @@ ${table}
               <div className="dashboard-panel-head">
                 <div>
                   <div className="panel-title">Κινήσεις εβδομάδας</div>
-                  <div className="panel-sub">{countOrDash(weekMovements.length)} καταχωρήσεις τις τελευταίες 7 ημέρες</div>
+                  <div className="panel-sub">{countOrDash(homeWeekMovements.length)} καταχωρήσεις τις τελευταίες 7 ημέρες</div>
                 </div>
                 <button className="note-add-btn" onClick={()=>handleTabClick('inventory')}>Όλες</button>
               </div>
               <div className="movement-breakdown">
                 {ACTION_CATEGORIES.map(cat => {
-                  const count = weekMovements.filter(item => normalizeAction(item.action) === cat.value).length;
+                  const count = homeWeekMovements.filter(item => normalizeAction(item.action) === cat.value).length;
                   return (
                     <div key={cat.id} className="movement-breakdown-item">
                       <span>{cat.label}</span>
@@ -1612,20 +1676,20 @@ ${table}
               </div>
             </section>
 
-            <section className={`dashboard-panel attention-panel${attentionCount > 0 ? ' attention-panel--active' : ''}`}>
+            <section className={`dashboard-panel attention-panel${homeAttentionCount > 0 ? ' attention-panel--active' : ''}`}>
               <div className="dashboard-panel-head">
                 <div>
-                  <div className="panel-title">Θέλουν προσοχή {inventorySnapshotReady && attentionCount > 0 && <span className="attention-badge">{attentionCount}</span>}</div>
+                  <div className="panel-title">Θέλουν προσοχή {inventorySnapshotReady && homeAttentionCount > 0 && <span className="attention-badge">{homeAttentionCount}</span>}</div>
                   <div className="panel-sub">Σημεία που αξίζει να δεις πρώτα</div>
                 </div>
               </div>
               <button className="attention-row" onClick={()=>openWarehouseFilter('repair')}>
                 <span>Σε επισκευή πάνω από 7 ημέρες</span>
-                <strong style={inventorySnapshotReady && attentionRepairItems.length > 0 ? {color:'var(--orange)'} : {}}>{countOrDash(attentionRepairItems.length)}</strong>
+                <strong style={inventorySnapshotReady && homeAttentionRepairItems.length > 0 ? {color:'var(--orange)'} : {}}>{countOrDash(homeAttentionRepairItems.length)}</strong>
               </button>
               <button className="attention-row" onClick={()=>openWarehouseFilter('all')}>
                 <span>Μηχανήματα χωρίς σημείωση</span>
-                <strong style={inventorySnapshotReady && missingNoteItems.length > 0 ? {color:'var(--orange)'} : {}}>{countOrDash(missingNoteItems.length)}</strong>
+                <strong style={inventorySnapshotReady && homeMissingNoteItems.length > 0 ? {color:'var(--orange)'} : {}}>{countOrDash(homeMissingNoteItems.length)}</strong>
               </button>
               <button className="attention-row" onClick={()=>handleTabClick('settings')}>
                 <span>Καταστήματα με ελλιπή στοιχεία</span>
@@ -1643,7 +1707,7 @@ ${table}
               <button className="note-add-btn" onClick={()=>handleTabClick('inventory')}>Άνοιγμα κινήσεων</button>
             </div>
             <div className="recent-list">
-              {recentMovements.map((item, i) => (
+              {homeRecentMovements.map((item, i) => (
                 <a key={`${item.serialNumber}-${item.timestamp}-${i}`} className="recent-row row-link" href={historyHref(item.serialNumber)} onClick={e=>handleHistoryLinkClick(e, item.serialNumber)}>
                   <span className="recent-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
                   <div>
@@ -1654,7 +1718,7 @@ ${table}
                   <em>{item.date || '—'}</em>
                 </a>
               ))}
-              {recentMovements.length === 0 && (
+              {homeRecentMovements.length === 0 && (
                 <div className="empty">{inventorySnapshotReady ? 'Δεν υπάρχουν κινήσεις ακόμα.' : 'Δεν έχει φορτωθεί αποθήκη ακόμα.'}</div>
               )}
             </div>
@@ -1694,11 +1758,34 @@ ${table}
               {!scanError && imagePreview && <div className="ai-badge">✨ Αναγνωρίστηκε — έλεγξε τα στοιχεία</div>}
               <div className="section-label">Στοιχεία μηχανήματος</div>
               <div className="field-group">
+                <label className="field-label">Κατηγορία</label>
+                <div className="category-tabs">
+                  {MACHINE_CATEGORIES.map(cat => (
+                    <button
+                      key={cat}
+                      type="button"
+                      className={`category-tab ${machineCategory === cat ? 'active' : ''}`}
+                      onClick={()=>setMachineCategory(cat)}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="field-group">
                 <label className="field-label">Serial Number *</label>
                 <input className="text-input" value={serialNumber}
-                  onChange={e=>{ const value = e.target.value; setSerialNumber(value); setExistingItem(findExistingSerial(value)); }}
+                  onChange={e=>{
+                    const value = e.target.value;
+                    const found = findExistingSerial(value);
+                    setSerialNumber(value);
+                    setExistingItem(found);
+                    if (found) setMachineCategory(getMachineCategory(found));
+                  }}
                   onBlur={e=>{
-                    setExistingItem(findExistingSerial(e.target.value));
+                    const found = findExistingSerial(e.target.value);
+                    setExistingItem(found);
+                    if (found) setMachineCategory(getMachineCategory(found));
                   }}
                   placeholder="π.χ. A4829301" />
               </div>
@@ -1877,6 +1964,14 @@ ${table}
         <div className="fade-in">
           {/* Desktop: table view */}
           <div className="desktop-only">
+            <div className="warehouse-category-tabs">
+              <button className={`warehouse-category-tab ${inventoryCategoryFilter === 'all' ? 'active' : ''}`} onClick={()=>setInventoryCategoryFilter('all')}>Όλα</button>
+              {MACHINE_CATEGORIES.map(cat => (
+                <button key={cat} className={`warehouse-category-tab ${inventoryCategoryFilter === cat ? 'active' : ''}`} onClick={()=>setInventoryCategoryFilter(cat)}>
+                  {cat}
+                </button>
+              ))}
+            </div>
             <div className="filter-row">
               {FILTERS.map(f => <button key={f} className={`filter-pill ${filterAction===f?'active':''}`} onClick={()=>setFilterAction(f)}>{f}</button>)}
               <button className="sort-btn" onClick={()=>setSortOrder(s=>s==='desc'?'asc':'desc')}>{sortOrder==='desc'?'↓ Νεότερα':'↑ Παλαιότερα'}</button>
@@ -1929,6 +2024,14 @@ ${table}
           </div>
           {/* Mobile: card view */}
           <div className="mobile-only">
+            <div className="warehouse-category-tabs">
+              <button className={`warehouse-category-tab ${inventoryCategoryFilter === 'all' ? 'active' : ''}`} onClick={()=>setInventoryCategoryFilter('all')}>Όλα</button>
+              {MACHINE_CATEGORIES.map(cat => (
+                <button key={cat} className={`warehouse-category-tab ${inventoryCategoryFilter === cat ? 'active' : ''}`} onClick={()=>setInventoryCategoryFilter(cat)}>
+                  {cat}
+                </button>
+              ))}
+            </div>
             <div className="filter-row">
               {FILTERS.map(f => <button key={f} className={`filter-pill ${filterAction===f?'active':''}`} onClick={()=>setFilterAction(f)}>{f}</button>)}
               <button className="sort-btn" onClick={()=>setSortOrder(s=>s==='desc'?'asc':'desc')}>{sortOrder==='desc'?'↓ Νεότερα':'↑ Παλαιότερα'}</button>
@@ -1976,6 +2079,14 @@ ${table}
 
       {tab === 'warehouse' && (
         <div className="fade-in">
+          <div className="warehouse-category-tabs">
+            <button className={`warehouse-category-tab ${warehouseCategoryFilter === 'all' ? 'active' : ''}`} onClick={()=>setWarehouseCategoryFilter('all')}>Όλα</button>
+            {MACHINE_CATEGORIES.map(cat => (
+              <button key={cat} className={`warehouse-category-tab ${warehouseCategoryFilter === cat ? 'active' : ''}`} onClick={()=>setWarehouseCategoryFilter(cat)}>
+                {cat}
+              </button>
+            ))}
+          </div>
           <div className="inv-stats">
             <button className={`stat-card stat-card-btn ${warehouseFilter==='all'?'active':''}`} onClick={()=>setWarehouseFilter('all')}><div className="stat-label">Σύνολο αποθήκης</div><div className="stat-val">{countOrDash(warehouseItems.length)}</div><div className="stat-sub">μηχανήματα</div></button>
             <button className={`stat-card stat-card-btn ${warehouseFilter==='new'?'active':''}`} onClick={()=>setWarehouseFilter('new')}><div className="stat-label">Καινούρια</div><div className="stat-val">{countOrDash(availableItems.length)}</div><div className="stat-sub">έτοιμα για αποστολή</div></button>
@@ -2314,11 +2425,19 @@ ${table}
             {showStorePicker === 'history' && (
               <div className="store-picker" style={{marginTop:'8px'}}>
                 <input className="text-input" placeholder="🔍 Αναζήτηση..." value={storeSearch} onChange={e=>{setStoreSearch(e.target.value);setStoreChain('all');}} autoFocus />
+                <div className="category-tabs" style={{padding:'6px 0'}}>
+                  <button className={`category-tab ${historyStoreCategoryFilter === 'all' ? 'active' : ''}`} onClick={()=>setHistoryStoreCategoryFilter('all')}>Όλα</button>
+                  {MACHINE_CATEGORIES.map(cat => (
+                    <button key={cat} className={`category-tab ${historyStoreCategoryFilter === cat ? 'active' : ''}`} onClick={()=>setHistoryStoreCategoryFilter(cat)}>
+                      {cat}
+                    </button>
+                  ))}
+                </div>
                 <div className="chain-tabs">
                   {STORE_CHAINS.map(c => <button key={c.id} className={`chain-tab ${storeChain===c.id?'active':''}`} onClick={()=>{setStoreChain(c.id);setStoreSearch('');}}>{c.label}</button>)}
                 </div>
                 <div className="store-list">
-                  {storesList.filter(s => {
+                  {historyStoreOptions.filter(s => {
                     const mc = storeChain==='all'?true:storeChain==='other'?!['ΚΩΤΣΟΒΟΛΟΣ','MINI KIOSK','ΚΤΕΛ','THE BEAUTY BAR','ΡΟΥΠΑΣ'].some(c=>s.startsWith(c)):s.startsWith(storeChain);
                     return mc && (storeSearch===''||s.toLowerCase().includes(storeSearch.toLowerCase()));
                   }).map(s => <div key={s} className={`store-item ${historyStore===s?'active':''}`} onClick={()=>{setHistoryStore(s);openStoreDetails(getStoreDetailsByName(s));setShowStorePicker(false);setStoreSearch('');setStoreChain('all');}}>{s}</div>)}
@@ -3117,6 +3236,38 @@ ${table}
           font-size: 12px; font-family: var(--font); cursor: pointer; transition: all 0.2s;
         }
         .btn-half:hover { border-color: var(--acc); color: var(--acc); }
+        .category-tabs, .warehouse-category-tabs {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        .warehouse-category-tabs { margin-bottom: 12px; }
+        .dashboard-category-tabs { margin-top: -4px; margin-bottom: 16px; }
+        .category-tab, .warehouse-category-tab {
+          min-height: 34px;
+          padding: 7px 12px;
+          border: 1px solid var(--border2);
+          border-radius: var(--r);
+          background: var(--glass2);
+          color: var(--t3);
+          font-family: var(--font);
+          font-size: 12px;
+          font-weight: 800;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+        .category-tab:hover, .warehouse-category-tab:hover {
+          border-color: var(--acc);
+          color: var(--acc);
+          background: var(--glow2);
+        }
+        .category-tab.active, .warehouse-category-tab.active {
+          border-color: var(--acc);
+          color: var(--acc);
+          background: linear-gradient(135deg, rgba(167,139,250,0.14), rgba(124,58,237,0.07));
+          box-shadow: 0 0 12px var(--glow2);
+        }
         .btn-note-cancel {
           padding: 5px 10px; border: 1px solid var(--border2);
           border-radius: var(--r-sm); background: var(--glass2);
@@ -4038,6 +4189,8 @@ ${table}
         .light .chain-tab { background: rgba(255,255,255,0.8); color: var(--t3); border-color: var(--border2); }
         .light .btn-ghost { background: rgba(255,255,255,0.8); border-color: var(--border2); color: var(--t3); }
         .light .btn-half { background: rgba(255,255,255,0.8); border-color: var(--border2); color: var(--t2); }
+        .light .category-tab, .light .warehouse-category-tab { background: rgba(255,255,255,0.86); border-color: var(--border2); color: var(--t3); }
+        .light .category-tab.active, .light .warehouse-category-tab.active { background: var(--glow2); color: var(--acc); }
         .light .btn-quick-action { background: rgba(255,255,255,0.8); border-color: var(--border2); color: var(--t2); }
         .light .action-menu-btn { background: rgba(255,255,255,0.85); border-color: var(--border2); color: var(--t2); }
         .light .action-menu { background: rgba(255,255,255,0.98); border-color: var(--border2); box-shadow: 0 16px 32px rgba(124,58,237,0.14); }
