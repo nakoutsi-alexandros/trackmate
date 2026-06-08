@@ -125,9 +125,11 @@ export default function Home() {
   const [submitting, setSubmitting] = useState(false);
   const [inventory, setInventory] = useState([]);
   const [loadingInv, setLoadingInv] = useState(false);
+  const [inventoryError, setInventoryError] = useState('');
   const [history, setHistory] = useState(null);
   const [historySerial, setHistorySerial] = useState('');
   const [historyStore, setHistoryStore] = useState('');
+  const [historyError, setHistoryError] = useState('');
   const [filterAction, setFilterAction] = useState('Όλα');
   const [warehouseFilter, setWarehouseFilter] = useState('all');
   const [sortOrder, setSortOrder] = useState('desc');
@@ -935,25 +937,43 @@ ${table}
 
   const loadInventory = async () => {
     setLoadingInv(true);
+    setInventoryError('');
     try {
-      const res = await fetch('/api/inventory');
-      const data = await res.json();
-      setInventory(data.inventory || []);
-    } catch (e) { alert('Σφάλμα φόρτωσης.'); }
+      const res = await fetch('/api/inventory', { cache: 'no-store' });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        router.replace('/login');
+        return;
+      }
+      if (!res.ok) throw new Error(data.error || 'Σφάλμα φόρτωσης αποθήκης.');
+      if (!Array.isArray(data.inventory)) throw new Error('Η αποθήκη δεν επέστρεψε σωστά δεδομένα.');
+      setInventory(data.inventory);
+    } catch (e) {
+      setInventoryError(e.message || 'Σφάλμα φόρτωσης. Τα προηγούμενα δεδομένα έμειναν στην οθόνη.');
+    }
     finally { setLoadingInv(false); }
   };
 
   const loadHistory = async (serial, store) => {
     setHistorySerial(serial || '');
     setHistoryStore(store || '');
+    setHistoryError('');
     try {
       const params = new URLSearchParams();
       if (serial) params.set('serial', serial);
       if (store) params.set('store', store);
-      const res = await fetch(`/api/inventory?${params.toString()}`);
-      const data = await res.json();
-      setHistory(data.history || []);
-    } catch (e) { alert('Σφάλμα φόρτωσης ιστορικού.'); }
+      const res = await fetch(`/api/inventory?${params.toString()}`, { cache: 'no-store' });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        router.replace('/login');
+        return;
+      }
+      if (!res.ok) throw new Error(data.error || 'Σφάλμα φόρτωσης ιστορικού.');
+      if (!Array.isArray(data.history)) throw new Error('Το ιστορικό δεν επέστρεψε σωστά δεδομένα.');
+      setHistory(data.history);
+    } catch (e) {
+      setHistoryError(e.message || 'Σφάλμα φόρτωσης ιστορικού.');
+    }
   };
 
   // Helper: parse ημερομηνία από ISO ή Greek format
@@ -1488,6 +1508,13 @@ ${table}
   // Shared content για κάθε tab
   const tabContent = (
     <>
+      {inventoryError && ['home','inventory','warehouse'].includes(tab) && (
+        <div className="error-banner">⚠️ {inventoryError} Τα προηγούμενα δεδομένα έμειναν στην οθόνη.</div>
+      )}
+      {historyError && tab === 'history' && (
+        <div className="error-banner">⚠️ {historyError}</div>
+      )}
+
       {tab === 'home' && (
         <div className="fade-in dashboard">
           <div className="dashboard-greeting">
