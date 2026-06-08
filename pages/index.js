@@ -1135,10 +1135,13 @@ ${table}
   };
   const historyStoreOptions = storesList.filter(storeName => {
     if (historyStoreCategoryFilter === 'all') return true;
+    const isMcdStore = looksLikeMcdStore(storeName);
+    if (historyStoreCategoryFilter === "McDonald's" && isMcdStore) return true;
+    if (historyStoreCategoryFilter === 'CashDro' && isMcdStore) return false;
     const movementCategories = getStoreMovementCategories(storeName);
     if (movementCategories.size > 0) return movementCategories.has(historyStoreCategoryFilter);
-    if (historyStoreCategoryFilter === "McDonald's") return looksLikeMcdStore(storeName);
-    if (historyStoreCategoryFilter === 'CashDro') return !looksLikeMcdStore(storeName);
+    if (historyStoreCategoryFilter === "McDonald's") return false;
+    if (historyStoreCategoryFilter === 'CashDro') return true;
     return false;
   });
   const missingNoteItems = warehouseItems.filter(item => !(warehouseNotes[item.serialNumber] || []).length);
