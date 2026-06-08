@@ -69,6 +69,17 @@ const STORE_CHAINS = [
 const SWIPE_W = 200;
 
 const TAB_IDS = ['home', 'scan', 'inventory', 'warehouse', 'history', 'settings'];
+const INVENTORY_CACHE_KEY = 'trackmate_inventory_cache_v1';
+
+const readInventoryCache = () => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const cached = JSON.parse(localStorage.getItem(INVENTORY_CACHE_KEY) || '[]');
+    return Array.isArray(cached) ? cached : [];
+  } catch {
+    return [];
+  }
+};
 
 export default function Home() {
   const router = useRouter();
@@ -123,7 +134,8 @@ export default function Home() {
   const [copiedShipmentEmail, setCopiedShipmentEmail] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
-  const [inventory, setInventory] = useState([]);
+  const [inventory, setInventory] = useState(() => readInventoryCache());
+  const [inventorySnapshotReady, setInventorySnapshotReady] = useState(() => readInventoryCache().length > 0);
   const [loadingInv, setLoadingInv] = useState(false);
   const [inventoryError, setInventoryError] = useState('');
   const [history, setHistory] = useState(null);
@@ -953,6 +965,8 @@ ${table}
       if (!res.ok) throw new Error(data.error || 'Σφάλμα φόρτωσης αποθήκης.');
       if (!Array.isArray(data.inventory)) throw new Error('Η αποθήκη δεν επέστρεψε σωστά δεδομένα.');
       setInventory(data.inventory);
+      setInventorySnapshotReady(true);
+      localStorage.setItem(INVENTORY_CACHE_KEY, JSON.stringify(data.inventory));
       setInventoryError('');
     } catch (e) {
       if (requestId !== inventoryRequestRef.current) return;
@@ -1074,6 +1088,7 @@ ${table}
   const incompleteStoreRows = storeRows.filter(store => !store.phone || !store.address || !store.vat);
   const attentionCount = attentionRepairItems.length + missingNoteItems.length + incompleteStoreRows.length;
   const recentMovements = sortItems(inventory).slice(0, 5);
+  const countOrDash = (value) => inventorySnapshotReady ? value : '—';
   const filteredStoreRows = storeRows.filter(store => {
     const q = settingsStoreSearch.trim().toLowerCase();
     if (!q) return true;
@@ -1523,7 +1538,7 @@ ${table}
   const tabContent = (
     <>
       {inventoryError && ['home','inventory','warehouse'].includes(tab) && (
-        <div className="error-banner">⚠️ {inventoryError} Τα προηγούμενα δεδομένα έμειναν στην οθόνη.</div>
+        <div className="error-banner">⚠️ {inventoryError} {inventorySnapshotReady ? 'Τα τελευταία διαθέσιμα δεδομένα έμειναν στην οθόνη.' : 'Δεν εμφανίζονται προσωρινά μηδενικά μέχρι να φορτώσει η αποθήκη.'}</div>
       )}
       {historyError && tab === 'history' && (
         <div className="error-banner">⚠️ {historyError}</div>
@@ -1555,22 +1570,22 @@ ${table}
           <div className="dashboard-stat-grid">
             <button className="dash-stat" onClick={()=>openWarehouseFilter('all')}>
               <span>Σύνολο αποθήκης</span>
-              <strong>{warehouseItems.length}</strong>
+              <strong>{countOrDash(warehouseItems.length)}</strong>
               <small>μηχανήματα μέσα</small>
             </button>
             <button className="dash-stat" onClick={()=>openWarehouseFilter('new')}>
               <span>Διαθέσιμα</span>
-              <strong>{availableItems.length}</strong>
+              <strong>{countOrDash(availableItems.length)}</strong>
               <small>έτοιμα για αποστολή</small>
             </button>
             <button className="dash-stat warn" onClick={()=>openWarehouseFilter('repair')}>
               <span>Σε επισκευή</span>
-              <strong>{repairItems.length}</strong>
-              <small>{attentionRepairItems.length} πάνω από 7 ημέρες</small>
+              <strong>{countOrDash(repairItems.length)}</strong>
+              <small>{countOrDash(attentionRepairItems.length)} πάνω από 7 ημέρες</small>
             </button>
             <button className="dash-stat" onClick={()=>openWarehouseFilter('shipped')}>
               <span>Απεσταλμένα</span>
-              <strong>{shippedItems.length}</strong>
+              <strong>{countOrDash(shippedItems.length)}</strong>
               <small>τελευταία κατάσταση έξοδος</small>
             </button>
           </div>
@@ -1580,7 +1595,7 @@ ${table}
               <div className="dashboard-panel-head">
                 <div>
                   <div className="panel-title">Κινήσεις εβδομάδας</div>
-                  <div className="panel-sub">{weekMovements.length} καταχωρήσεις τις τελευταίες 7 ημέρες</div>
+                  <div className="panel-sub">{countOrDash(weekMovements.length)} καταχωρήσεις τις τελευταίες 7 ημέρες</div>
                 </div>
                 <button className="note-add-btn" onClick={()=>handleTabClick('inventory')}>Όλες</button>
               </div>
@@ -1590,7 +1605,7 @@ ${table}
                   return (
                     <div key={cat.id} className="movement-breakdown-item">
                       <span>{cat.label}</span>
-                      <strong>{count}</strong>
+                      <strong>{countOrDash(count)}</strong>
                     </div>
                   );
                 })}
@@ -1600,21 +1615,21 @@ ${table}
             <section className={`dashboard-panel attention-panel${attentionCount > 0 ? ' attention-panel--active' : ''}`}>
               <div className="dashboard-panel-head">
                 <div>
-                  <div className="panel-title">Θέλουν προσοχή {attentionCount > 0 && <span className="attention-badge">{attentionCount}</span>}</div>
+                  <div className="panel-title">Θέλουν προσοχή {inventorySnapshotReady && attentionCount > 0 && <span className="attention-badge">{attentionCount}</span>}</div>
                   <div className="panel-sub">Σημεία που αξίζει να δεις πρώτα</div>
                 </div>
               </div>
               <button className="attention-row" onClick={()=>openWarehouseFilter('repair')}>
                 <span>Σε επισκευή πάνω από 7 ημέρες</span>
-                <strong style={attentionRepairItems.length > 0 ? {color:'var(--orange)'} : {}}>{attentionRepairItems.length}</strong>
+                <strong style={inventorySnapshotReady && attentionRepairItems.length > 0 ? {color:'var(--orange)'} : {}}>{countOrDash(attentionRepairItems.length)}</strong>
               </button>
               <button className="attention-row" onClick={()=>openWarehouseFilter('all')}>
                 <span>Μηχανήματα χωρίς σημείωση</span>
-                <strong style={missingNoteItems.length > 0 ? {color:'var(--orange)'} : {}}>{missingNoteItems.length}</strong>
+                <strong style={inventorySnapshotReady && missingNoteItems.length > 0 ? {color:'var(--orange)'} : {}}>{countOrDash(missingNoteItems.length)}</strong>
               </button>
               <button className="attention-row" onClick={()=>handleTabClick('settings')}>
                 <span>Καταστήματα με ελλιπή στοιχεία</span>
-                <strong style={incompleteStoreRows.length > 0 ? {color:'var(--orange)'} : {}}>{incompleteStoreRows.length}</strong>
+                <strong style={inventorySnapshotReady && incompleteStoreRows.length > 0 ? {color:'var(--orange)'} : {}}>{countOrDash(incompleteStoreRows.length)}</strong>
               </button>
             </section>
           </div>
@@ -1639,7 +1654,9 @@ ${table}
                   <em>{item.date || '—'}</em>
                 </a>
               ))}
-              {recentMovements.length === 0 && <div className="empty">Δεν υπάρχουν κινήσεις ακόμα.</div>}
+              {recentMovements.length === 0 && (
+                <div className="empty">{inventorySnapshotReady ? 'Δεν υπάρχουν κινήσεις ακόμα.' : 'Δεν έχει φορτωθεί αποθήκη ακόμα.'}</div>
+              )}
             </div>
           </section>
         </div>
@@ -1960,13 +1977,13 @@ ${table}
       {tab === 'warehouse' && (
         <div className="fade-in">
           <div className="inv-stats">
-            <button className={`stat-card stat-card-btn ${warehouseFilter==='all'?'active':''}`} onClick={()=>setWarehouseFilter('all')}><div className="stat-label">Σύνολο αποθήκης</div><div className="stat-val">{warehouseItems.length}</div><div className="stat-sub">μηχανήματα</div></button>
-            <button className={`stat-card stat-card-btn ${warehouseFilter==='new'?'active':''}`} onClick={()=>setWarehouseFilter('new')}><div className="stat-label">Καινούρια</div><div className="stat-val">{warehouseItems.filter(i=>normalizeAction(i.action)==='Καινούριο Μηχάνημα').length}</div><div className="stat-sub">έτοιμα για αποστολή</div></button>
-            <button className={`stat-card stat-card-btn ${warehouseFilter==='repair'?'active':''}`} onClick={()=>setWarehouseFilter('repair')}><div className="stat-label">Σε επισκευή</div><div className="stat-val">{warehouseItems.filter(i=>normalizeAction(i.action)==='Εισαγωγή για επισκευή').length}</div><div className="stat-sub">στην αποθήκη</div></button>
-            <button className={`stat-card stat-card-btn ${warehouseFilter==='shipped'?'active':''}`} onClick={()=>setWarehouseFilter('shipped')}><div className="stat-label">Αποσταλμένα</div><div className="stat-val">{shippedItems.length}</div><div className="stat-sub">έχουν φύγει</div></button>
+            <button className={`stat-card stat-card-btn ${warehouseFilter==='all'?'active':''}`} onClick={()=>setWarehouseFilter('all')}><div className="stat-label">Σύνολο αποθήκης</div><div className="stat-val">{countOrDash(warehouseItems.length)}</div><div className="stat-sub">μηχανήματα</div></button>
+            <button className={`stat-card stat-card-btn ${warehouseFilter==='new'?'active':''}`} onClick={()=>setWarehouseFilter('new')}><div className="stat-label">Καινούρια</div><div className="stat-val">{countOrDash(availableItems.length)}</div><div className="stat-sub">έτοιμα για αποστολή</div></button>
+            <button className={`stat-card stat-card-btn ${warehouseFilter==='repair'?'active':''}`} onClick={()=>setWarehouseFilter('repair')}><div className="stat-label">Σε επισκευή</div><div className="stat-val">{countOrDash(repairItems.length)}</div><div className="stat-sub">στην αποθήκη</div></button>
+            <button className={`stat-card stat-card-btn ${warehouseFilter==='shipped'?'active':''}`} onClick={()=>setWarehouseFilter('shipped')}><div className="stat-label">Αποσταλμένα</div><div className="stat-val">{countOrDash(shippedItems.length)}</div><div className="stat-sub">έχουν φύγει</div></button>
           </div>
           {loadingInv && <div className="loading">⏳ Φόρτωση...</div>}
-          {!loadingInv && warehouseVisibleItems.length === 0 && <div className="empty">Δεν υπάρχουν μηχανήματα για αυτό το φίλτρο.</div>}
+          {!loadingInv && warehouseVisibleItems.length === 0 && <div className="empty">{inventorySnapshotReady ? 'Δεν υπάρχουν μηχανήματα για αυτό το φίλτρο.' : 'Δεν έχει φορτωθεί αποθήκη ακόμα.'}</div>}
           {!loadingInv && warehouseVisibleItems.length > 0 && (
             <div className="dt-table desktop-only">
               <div className="dt-head">
