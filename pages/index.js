@@ -1071,7 +1071,7 @@ ${table}
     if (ta === 0 && tb === 0) return 0;
     return sortOrder === 'desc' ? tb - ta : ta - tb;
   });
-  const looksLikeMcdStore = (storeName) => /mcd|mc\s*donald/i.test(String(storeName || ''));
+  const looksLikeMcdStore = (storeName) => String(storeName || '').trim().toLowerCase().startsWith('mcd');
   const getMachineCategory = (item) => {
     if (item?.category) return item.category;
     if (looksLikeMcdStore(item?.store)) return "McDonald's";
