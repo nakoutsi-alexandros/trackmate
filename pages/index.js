@@ -1071,9 +1071,13 @@ ${table}
     if (ta === 0 && tb === 0) return 0;
     return sortOrder === 'desc' ? tb - ta : ta - tb;
   });
-  const getMachineCategory = (item) => item?.category || 'CashDro';
-  const matchesMachineCategory = (item, category) => category === 'all' || getMachineCategory(item) === category;
   const looksLikeMcdStore = (storeName) => /mcd|mc\s*donald/i.test(String(storeName || ''));
+  const getMachineCategory = (item) => {
+    if (item?.category) return item.category;
+    if (looksLikeMcdStore(item?.store)) return "McDonald's";
+    return 'CashDro';
+  };
+  const matchesMachineCategory = (item, category) => category === 'all' || getMachineCategory(item) === category;
 
   const inventoryCategoryItems = inventory.filter(i => matchesMachineCategory(i, inventoryCategoryFilter));
   const filtered = sortItems(applyDateFilter(filterAction === 'Όλα' ? inventoryCategoryItems : inventoryCategoryItems.filter(i => normalizeAction(i.action) === filterAction)));
