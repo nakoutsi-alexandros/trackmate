@@ -173,6 +173,8 @@ export default function Home() {
   const swipeElRef = useRef(null);
   const swipeDrag = useRef({ x: 0, y: 0, baseX: 0, horiz: null, serial: null });
   const pullTouchStartY = useRef(0);
+  const inventoryRequestRef = useRef(0);
+  const historyRequestRef = useRef(0);
 
   // Φόρτωση καταστημάτων από Sheet
   const loadStores = async () => {
@@ -936,11 +938,14 @@ ${table}
   };
 
   const loadInventory = async () => {
+    const requestId = inventoryRequestRef.current + 1;
+    inventoryRequestRef.current = requestId;
     setLoadingInv(true);
     setInventoryError('');
     try {
       const res = await fetch('/api/inventory', { cache: 'no-store' });
       const data = await res.json().catch(() => ({}));
+      if (requestId !== inventoryRequestRef.current) return;
       if (res.status === 401) {
         router.replace('/login');
         return;
@@ -948,13 +953,19 @@ ${table}
       if (!res.ok) throw new Error(data.error || 'Σφάλμα φόρτωσης αποθήκης.');
       if (!Array.isArray(data.inventory)) throw new Error('Η αποθήκη δεν επέστρεψε σωστά δεδομένα.');
       setInventory(data.inventory);
+      setInventoryError('');
     } catch (e) {
+      if (requestId !== inventoryRequestRef.current) return;
       setInventoryError(e.message || 'Σφάλμα φόρτωσης. Τα προηγούμενα δεδομένα έμειναν στην οθόνη.');
     }
-    finally { setLoadingInv(false); }
+    finally {
+      if (requestId === inventoryRequestRef.current) setLoadingInv(false);
+    }
   };
 
   const loadHistory = async (serial, store) => {
+    const requestId = historyRequestRef.current + 1;
+    historyRequestRef.current = requestId;
     setHistorySerial(serial || '');
     setHistoryStore(store || '');
     setHistoryError('');
@@ -964,6 +975,7 @@ ${table}
       if (store) params.set('store', store);
       const res = await fetch(`/api/inventory?${params.toString()}`, { cache: 'no-store' });
       const data = await res.json().catch(() => ({}));
+      if (requestId !== historyRequestRef.current) return;
       if (res.status === 401) {
         router.replace('/login');
         return;
@@ -971,7 +983,9 @@ ${table}
       if (!res.ok) throw new Error(data.error || 'Σφάλμα φόρτωσης ιστορικού.');
       if (!Array.isArray(data.history)) throw new Error('Το ιστορικό δεν επέστρεψε σωστά δεδομένα.');
       setHistory(data.history);
+      setHistoryError('');
     } catch (e) {
+      if (requestId !== historyRequestRef.current) return;
       setHistoryError(e.message || 'Σφάλμα φόρτωσης ιστορικού.');
     }
   };
