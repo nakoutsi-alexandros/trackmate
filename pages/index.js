@@ -1121,18 +1121,21 @@ ${table}
   const storeRows = storeDetailsList.length
     ? storeDetailsList
     : storesList.map(name => ({ name, phone: '', address: '', vat: '' }));
-  const historyCategoryStoreNames = new Set(
-    inventory
-      .filter(item => matchesMachineCategory(item, historyStoreCategoryFilter))
-      .map(item => item.store || '')
-      .filter(Boolean)
-  );
+  const getStoreMovementCategories = (storeName) => {
+    const storeKey = String(storeName || '').toLowerCase();
+    return new Set(
+      inventory
+        .filter(item => String(item.store || '').toLowerCase().includes(storeKey))
+        .map(item => getMachineCategory(item))
+    );
+  };
   const historyStoreOptions = storesList.filter(storeName => {
     if (historyStoreCategoryFilter === 'all') return true;
-    const hasCategoryMovement = Array.from(historyCategoryStoreNames).some(name => name.toLowerCase().includes(storeName.toLowerCase()));
-    if (historyStoreCategoryFilter === "McDonald's") return hasCategoryMovement || looksLikeMcdStore(storeName);
-    if (historyStoreCategoryFilter === 'CashDro') return hasCategoryMovement || !looksLikeMcdStore(storeName);
-    return hasCategoryMovement;
+    const movementCategories = getStoreMovementCategories(storeName);
+    if (movementCategories.size > 0) return movementCategories.has(historyStoreCategoryFilter);
+    if (historyStoreCategoryFilter === "McDonald's") return looksLikeMcdStore(storeName);
+    if (historyStoreCategoryFilter === 'CashDro') return !looksLikeMcdStore(storeName);
+    return false;
   });
   const missingNoteItems = warehouseItems.filter(item => !(warehouseNotes[item.serialNumber] || []).length);
   const homeMissingNoteItems = homeWarehouseItems.filter(item => !(warehouseNotes[item.serialNumber] || []).length);
