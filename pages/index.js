@@ -897,7 +897,7 @@ ${table}
       }));
       closeLogLinkModal();
     } catch (e) {
-      alert('Σφάλμα αποθήκευσης link logs.');
+      alert(`Σφάλμα αποθήκευσης ${getLinkActionLabel(logLinkModalItem)}.`);
     } finally {
       setSavingLogLink(false);
     }
@@ -1129,6 +1129,10 @@ ${table}
   const matchesListCategory = (entry, category) => getListCategory(entry) === category;
   const supportsSparePartsCategory = (category) => MACHINE_CATEGORIES.includes(category);
   const supportsSpareParts = (item) => supportsSparePartsCategory(getMachineCategory(item));
+  const isTicketLinkItem = (item) => getMachineCategory(item) === "McDonald's";
+  const getLinkLabel = (item) => isTicketLinkItem(item) ? 'Ticket' : 'Logs';
+  const getLinkActionLabel = (item) => `Link ${getLinkLabel(item).toLowerCase()}`;
+  const getOpenLinkLabel = (item) => `Άνοιγμα ${getLinkLabel(item).toLowerCase()}`;
 
   const inventoryCategoryItems = inventory.filter(i => matchesMachineCategory(i, inventoryCategoryFilter));
   const filtered = sortItems(applyDateFilter(filterAction === 'Όλα' ? inventoryCategoryItems : inventoryCategoryItems.filter(i => normalizeAction(i.action) === filterAction)));
@@ -1528,7 +1532,7 @@ ${table}
             {supportsSpareParts(item) && (
               <button className="action-menu-item" onClick={e=>runMenuAction(e, ()=>openPartModal(item))}>Ανταλλακτικό</button>
             )}
-            <button className="action-menu-item" onClick={e=>runMenuAction(e, ()=>openLogLinkModal(item))}>Link logs</button>
+            <button className="action-menu-item" onClick={e=>runMenuAction(e, ()=>openLogLinkModal(item))}>{getLinkActionLabel(item)}</button>
             <button className="action-menu-item danger" onClick={e=>runMenuAction(e, ()=>handleDeleteItem(item))}>✕ Διαγραφή</button>
           </div>
         )}
@@ -1605,9 +1609,9 @@ ${table}
         )}
         {itemLogLinks.length > 0 && (
           <div className="machine-card-section">
-            <span className="machine-card-label">Logs</span>
+            <span className="machine-card-label">{getLinkLabel(item)}</span>
             <a className="log-link" href={itemLogLinks[0].url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}>
-              Άνοιγμα logs
+              {getOpenLinkLabel(item)}
             </a>
           </div>
         )}
@@ -1617,7 +1621,7 @@ ${table}
           ))}
           <button className="note-add-btn" onClick={()=>handleQuickSaveNote(serial)}>+ Νέα σημείωση</button>
           {supportsSpareParts(item) && <button className="note-add-btn" onClick={()=>openPartModal(item)}>Ανταλλακτικό</button>}
-          <button className="note-add-btn" onClick={()=>openLogLinkModal(item)}>Link logs</button>
+          <button className="note-add-btn" onClick={()=>openLogLinkModal(item)}>{getLinkActionLabel(item)}</button>
           {options.showHistoryButton && (
             <a className="btn-quick-action row-link" href={historyHref(serial)} onClick={e=>handleHistoryLinkClick(e, serial)}>Ιστορικό</a>
           )}
@@ -2325,9 +2329,9 @@ ${table}
                     )}
                     {itemLogLinks[0] && (
                       <div className="dt-part-row log-row" onClick={e=>e.stopPropagation()}>
-                        <span className="part-label">Logs</span>
+                        <span className="part-label">{getLinkLabel(item)}</span>
                         <a className="log-link" href={itemLogLinks[0].url} target="_blank" rel="noreferrer">
-                          Άνοιγμα logs
+                          {getOpenLinkLabel(item)}
                         </a>
                         <span className="note-inline-meta">· {itemLogLinks[0].createdAt}</span>
                       </div>
@@ -2480,9 +2484,9 @@ ${table}
                     )}
                     {itemLogLinks[0] && (
                       <div className="machine-parts log-row" onClick={e=>{e.preventDefault();e.stopPropagation();}}>
-                        <span className="part-label">Logs</span>
+                        <span className="part-label">{getLinkLabel(item)}</span>
                         <button className="log-link" onClick={()=>openLogLink(itemLogLinks[0].url)}>
-                          Άνοιγμα logs
+                          {getOpenLinkLabel(item)}
                         </button>
                         <span className="note-inline-meta">· {itemLogLinks[0].createdAt}</span>
                       </div>
@@ -2649,6 +2653,7 @@ ${table}
             }
             if (entry.type === 'logLink') {
               const link = entry.link;
+              const linkMachine = history?.[0] || {};
               return (
                 <div key={`log-${link.url}-${link.createdAt}-${i}`} className="history-item">
                   <div className="h-dot-wrap">
@@ -2657,11 +2662,11 @@ ${table}
                   </div>
                   <div className="h-card log-history-card">
                     <div className="h-action-row">
-                      <div className="h-action">Link logs</div>
-                      <span className="status-pill pill-purple">Logs</span>
+                      <div className="h-action">{getLinkActionLabel(linkMachine)}</div>
+                      <span className="status-pill pill-purple">{getLinkLabel(linkMachine)}</span>
                     </div>
                     <div className="h-notes">
-                      <a className="log-link" href={link.url} target="_blank" rel="noreferrer">Άνοιγμα logs</a>
+                      <a className="log-link" href={link.url} target="_blank" rel="noreferrer">{getOpenLinkLabel(linkMachine)}</a>
                     </div>
                     <div className="h-meta">🔗 {link.createdAt}{link.createdBy ? ` · 👤 ${link.createdBy}` : ''}</div>
                   </div>
@@ -2976,7 +2981,7 @@ ${table}
                 )}
                 <button className="mob-sheet-btn" onClick={()=>{close();openLogLinkModal(mobileSheet);}}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-                  Link logs
+                  {getLinkActionLabel(mobileSheet)}
                 </button>
                 <button className="mob-sheet-btn danger" onClick={()=>{close();handleDeleteItem(mobileSheet);}}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
@@ -3072,7 +3077,7 @@ ${table}
           <div className="part-modal" onClick={e=>e.stopPropagation()}>
             <div className="part-modal-head">
               <div>
-                <div className="part-modal-title">Link logs</div>
+                <div className="part-modal-title">{getLinkActionLabel(logLinkModalItem)}</div>
                 <div className="part-modal-sub">{logLinkModalItem.model || 'Χωρίς κωδικό'} · {logLinkModalItem.serialNumber}</div>
               </div>
               <button className="modal-close" onClick={closeLogLinkModal}>×</button>
@@ -3084,7 +3089,7 @@ ${table}
               placeholder="https://..."
               autoFocus
             />
-            <div className="part-picker-hint">Βάλε εδώ το link από τα logs του συγκεκριμένου μηχανήματος</div>
+            <div className="part-picker-hint">Βάλε εδώ το link από το {getLinkLabel(logLinkModalItem).toLowerCase()} του συγκεκριμένου μηχανήματος</div>
             <div className="part-modal-actions">
               <button className="btn-note-cancel" onClick={closeLogLinkModal}>Άκυρο</button>
               <button className="btn-search" onClick={handleSaveLogLink} disabled={!logLinkInput.trim() || savingLogLink}>
