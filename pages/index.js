@@ -1202,8 +1202,12 @@ ${table}
   const missingNoteItems = warehouseItems.filter(item => !(warehouseNotes[item.serialNumber] || []).length);
   const homeMissingNoteItems = homeWarehouseItems.filter(item => !(warehouseNotes[item.serialNumber] || []).length);
   const incompleteStoreRows = storeRows.filter(store => !store.phone || !store.address || !store.vat);
+  const homeIncompleteStoreRows = incompleteStoreRows.filter(store => {
+    if (homeCategoryFilter === 'all') return true;
+    return matchesStoreMachineCategory(store.name, homeCategoryFilter);
+  });
   const attentionCount = attentionRepairItems.length + missingNoteItems.length + incompleteStoreRows.length;
-  const homeAttentionCount = homeAttentionRepairItems.length + homeMissingNoteItems.length + incompleteStoreRows.length;
+  const homeAttentionCount = homeAttentionRepairItems.length + homeMissingNoteItems.length + homeIncompleteStoreRows.length;
   const recentMovements = sortItems(inventory).slice(0, 5);
   const homeRecentMovements = sortItems(homeInventory).slice(0, 5);
   const countOrDash = (value) => inventorySnapshotReady ? value : '—';
@@ -1811,7 +1815,7 @@ ${table}
               </button>
               <button className="attention-row" onClick={()=>handleTabClick('settings')}>
                 <span>Καταστήματα με ελλιπή στοιχεία</span>
-                <strong style={inventorySnapshotReady && incompleteStoreRows.length > 0 ? {color:'var(--orange)'} : {}}>{countOrDash(incompleteStoreRows.length)}</strong>
+                <strong style={inventorySnapshotReady && homeIncompleteStoreRows.length > 0 ? {color:'var(--orange)'} : {}}>{countOrDash(homeIncompleteStoreRows.length)}</strong>
               </button>
             </section>
           </div>
