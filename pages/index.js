@@ -734,8 +734,9 @@ ${table}
   const handleExportExcel = async () => {
     try {
       const XLSX = await import('xlsx');
-      const formatMachineParts = (serialNumber) => {
-        const parts = machineParts[serialNumber] || [];
+      const formatMachineParts = (item) => {
+        if (!supportsSpareParts(item)) return '';
+        const parts = machineParts[item.serialNumber] || [];
         return parts
           .map(part => [part.code, part.description].filter(Boolean).join(' - '))
           .join(' | ');
@@ -750,7 +751,7 @@ ${table}
         'Ημερομηνία': item.date,
         'Χρήστης': item.user || '',
         'Πρόβλημα': item.problem || '',
-        'Ανταλλακτικά': formatMachineParts(item.serialNumber),
+        'Ανταλλακτικά': formatMachineParts(item),
         // warehouseNotes[serial] is an array of note objects — access the latest with [0]
         'Σημείωση': warehouseNotes[item.serialNumber]?.[0]?.note || '',
       }));
@@ -764,7 +765,7 @@ ${table}
         'Ημερομηνία': item.date,
         'Χρήστης': item.user || '',
         'Πρόβλημα': item.problem || '',
-        'Ανταλλακτικά': formatMachineParts(item.serialNumber),
+        'Ανταλλακτικά': formatMachineParts(item),
         'Σημειώσεις': item.notes || '',
       }));
 
@@ -833,6 +834,10 @@ ${table}
   };
 
   const openPartModal = (item) => {
+    if (!supportsSpareParts(item)) {
+      alert('Τα ανταλλακτικά ισχύουν μόνο για CashDro μηχανήματα.');
+      return;
+    }
     setPartModalItem(item);
     setPartSearch('');
     setSelectedPart(null);
@@ -902,7 +907,7 @@ ${table}
     const partToSave = manualPartEntry
       ? { code: manualPartCode.trim(), description: manualPartDescription.trim() }
       : selectedPart;
-    if (!partModalItem || !partToSave?.code?.trim()) return;
+    if (!partModalItem || !supportsSpareParts(partModalItem) || !partToSave?.code?.trim()) return;
     setSavingPart(true);
     try {
       const res = await fetch('/api/parts', {
@@ -1117,6 +1122,8 @@ ${table}
     return 'CashDro';
   };
   const matchesMachineCategory = (item, category) => category === 'all' || getMachineCategory(item) === category;
+  const supportsSparePartsCategory = (category) => category === 'CashDro';
+  const supportsSpareParts = (item) => supportsSparePartsCategory(getMachineCategory(item));
 
   const inventoryCategoryItems = inventory.filter(i => matchesMachineCategory(i, inventoryCategoryFilter));
   const filtered = sortItems(applyDateFilter(filterAction === 'Όλα' ? inventoryCategoryItems : inventoryCategoryItems.filter(i => normalizeAction(i.action) === filterAction)));
@@ -1221,7 +1228,7 @@ ${table}
         })),
         // Use historySerial (the queried serial) as the lookup key, not history[0].serialNumber
         // which is undefined when history is empty (machine exists but has no movements yet)
-        ...(machineParts[historySerial] || []).map(part => ({
+        ...(history?.[0] && supportsSpareParts(history[0]) ? (machineParts[historySerial] || []) : []).map(part => ({
           type: 'part',
           part,
           sortTime: parseGreekTimestamp(part.createdAt) || 0,
@@ -1236,17 +1243,22 @@ ${table}
 
   const handleSelectItem = (item) => {
     setModel(item.code);
-    setShipmentItemDescription(item.description || '');
+    setShipmentItemDescription(supportsSparePartsCategory(machineCategory) ? (item.description || '') : '');
     setItemSearch('');
     setShowItemPicker(false);
     setManualItemEntry(false);
   };
 
   useEffect(() => {
-    if (!model || shipmentItemDescription || itemsList.length === 0) return;
+    if (!supportsSparePartsCategory(machineCategory) || !model || shipmentItemDescription || itemsList.length === 0) return;
     const match = itemsList.find(item => item.code.toLowerCase() === model.toLowerCase());
     if (match?.description) setShipmentItemDescription(match.description);
-  }, [model, shipmentItemDescription, itemsList]);
+  }, [machineCategory, model, shipmentItemDescription, itemsList]);
+
+  useEffect(() => {
+    if (supportsSparePartsCategory(machineCategory)) return;
+    if (shipmentItemDescription) setShipmentItemDescription('');
+  }, [machineCategory, shipmentItemDescription]);
 
   // Εμφάνιση store: αν είναι κενό και η κίνηση είναι Καινούριο Μηχάνημα → "Αποθήκη"
   const displayStore = (item) => {
@@ -1506,7 +1518,9 @@ ${table}
             {isRepair && (
               <button className="action-menu-item success" onClick={e=>runMenuAction(e, ()=>handleMarkRepaired(item))}>✓ Επισκευάστηκε</button>
             )}
-            <button className="action-menu-item" onClick={e=>runMenuAction(e, ()=>openPartModal(item))}>Ανταλλακτικό</button>
+            {supportsSpareParts(item) && (
+              <button className="action-menu-item" onClick={e=>runMenuAction(e, ()=>openPartModal(item))}>Ανταλλακτικό</button>
+            )}
             <button className="action-menu-item" onClick={e=>runMenuAction(e, ()=>openLogLinkModal(item))}>Link logs</button>
             <button className="action-menu-item danger" onClick={e=>runMenuAction(e, ()=>handleDeleteItem(item))}>✕ Διαγραφή</button>
           </div>
@@ -1534,7 +1548,7 @@ ${table}
     if (!item) return null;
     const serial = item.serialNumber;
     const itemNotes = warehouseNotes[serial] || [];
-    const itemParts = machineParts[serial] || [];
+    const itemParts = supportsSpareParts(item) ? (machineParts[serial] || []) : [];
     const itemLogLinks = machineLogLinks[serial] || [];
     const status = normalizeAction(item.action);
     const suggested = getSuggestedActions(item)
@@ -1595,7 +1609,7 @@ ${table}
             <button key={cat.id} className="btn-quick-action" onClick={()=>useAsMovement(cat.id)}>{cat.label}</button>
           ))}
           <button className="note-add-btn" onClick={()=>handleQuickSaveNote(serial)}>+ Νέα σημείωση</button>
-          <button className="note-add-btn" onClick={()=>openPartModal(item)}>Ανταλλακτικό</button>
+          {supportsSpareParts(item) && <button className="note-add-btn" onClick={()=>openPartModal(item)}>Ανταλλακτικό</button>}
           <button className="note-add-btn" onClick={()=>openLogLinkModal(item)}>Link logs</button>
           {options.showHistoryButton && (
             <a className="btn-quick-action row-link" href={historyHref(serial)} onClick={e=>handleHistoryLinkClick(e, serial)}>Ιστορικό</a>
@@ -1870,6 +1884,10 @@ ${table}
                         setMachineCategory(cat);
                         setStoreSearch('');
                         setStoreChain('all');
+                        if (!supportsSparePartsCategory(cat)) {
+                          setShipmentItemDescription('');
+                          setManualPartEntry(false);
+                        }
                         if (store && !matchesStoreMachineCategory(store, cat)) setStore('');
                       }}
                     >
@@ -1909,7 +1927,7 @@ ${table}
                   <div className="item-picker">
                     <button type="button" className="item-picker-trigger" onClick={()=>setShowItemPicker(v=>!v)}>
                       <span>{model || 'Επίλεξε κωδικό είδους...'}</span>
-                      <small>{shipmentItemDescription || 'Πάτα για λίστα κωδικών'}</small>
+                      <small>{supportsSparePartsCategory(machineCategory) ? (shipmentItemDescription || 'Πάτα για λίστα κωδικών') : 'Κωδικός για McDonald’s'}</small>
                     </button>
                     {showItemPicker && (
                       <div className="item-picker-menu">
@@ -1933,7 +1951,9 @@ ${table}
                 ) : (
                   <div>
                     <input className="text-input" value={model} onChange={e=>setModel(e.target.value)} placeholder="π.χ. BV-11-SO-EU" />
-                    <textarea value={shipmentItemDescription} onChange={e=>setShipmentItemDescription(e.target.value)} placeholder="Περιγραφή είδους..." style={{marginTop:'8px'}} />
+                    {supportsSparePartsCategory(machineCategory) && (
+                      <textarea value={shipmentItemDescription} onChange={e=>setShipmentItemDescription(e.target.value)} placeholder="Περιγραφή είδους..." style={{marginTop:'8px'}} />
+                    )}
                     <button className="btn-ghost" type="button" onClick={()=>setManualItemEntry(false)}>↩ Επιλογή από λίστα</button>
                   </div>
                 )}
@@ -2007,10 +2027,12 @@ ${table}
                       <input className="text-input" value={shipmentCourier} onChange={e=>setShipmentCourier(e.target.value)} placeholder="π.χ. ACS, Γενική Ταχυδρομική" />
                     </div>
                   )}
-                  <div className="field-group">
-                    <label className="field-label">Περιγραφή Είδους</label>
-                    <textarea value={shipmentItemDescription} onChange={e=>setShipmentItemDescription(e.target.value)} placeholder="π.χ. Coin validator Pelicano, ανταλλακτικό CashDro..." />
-                  </div>
+                  {supportsSparePartsCategory(machineCategory) && (
+                    <div className="field-group">
+                      <label className="field-label">Περιγραφή Είδους</label>
+                      <textarea value={shipmentItemDescription} onChange={e=>setShipmentItemDescription(e.target.value)} placeholder="π.χ. Coin validator Pelicano, ανταλλακτικό CashDro..." />
+                    </div>
+                  )}
                   <div className="field-group">
                     <label className="field-label">Σημειώσεις αποστολής</label>
                     <textarea value={shipmentNotes} onChange={e=>setShipmentNotes(e.target.value)} placeholder="π.χ. Να παραδοθεί πρωί, εύθραυστο, παραλαβή από Χάρη..." />
@@ -2214,7 +2236,7 @@ ${table}
               {warehouseVisibleItems.map((item, i) => {
                 const badge = getRepairBadge(item);
                 const itemNote = warehouseNotes[item.serialNumber]; // array ή undefined
-                const itemParts = machineParts[item.serialNumber] || [];
+                const itemParts = supportsSpareParts(item) ? (machineParts[item.serialNumber] || []) : [];
                 const itemLogLinks = machineLogLinks[item.serialNumber] || [];
                 return (
                   <div key={i}>
@@ -2357,7 +2379,7 @@ ${table}
           <div className="mobile-only">
             {warehouseVisibleItems.map((item, i) => {
               const badge = getRepairBadge(item);
-              const itemParts = machineParts[item.serialNumber] || [];
+              const itemParts = supportsSpareParts(item) ? (machineParts[item.serialNumber] || []) : [];
               const itemLogLinks = machineLogLinks[item.serialNumber] || [];
               const mobMenuId = `${item.serialNumber}-${item.model || ''}`;
               const isSwiped = swipedItem === item.serialNumber;
@@ -2387,10 +2409,12 @@ ${table}
                             Έτοιμο
                           </button>
                         )}
-                        <button className="swipe-action-btn sa-part" onClick={e=>{e.stopPropagation();sw(()=>openPartModal(item));}}>
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
-                          Ανταλ.
-                        </button>
+                        {supportsSpareParts(item) && (
+                          <button className="swipe-action-btn sa-part" onClick={e=>{e.stopPropagation();sw(()=>openPartModal(item));}}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
+                            Ανταλ.
+                          </button>
+                        )}
                         <button className="swipe-action-btn sa-delete" onClick={e=>{e.stopPropagation();sw(()=>handleDeleteItem(item));}}>
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
                           Διαγραφή
@@ -2944,10 +2968,12 @@ ${table}
                     Επισκευάστηκε
                   </button>
                 )}
-                <button className="mob-sheet-btn" onClick={()=>{close();openPartModal(mobileSheet);}}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
-                  Ανταλλακτικό
-                </button>
+                {supportsSpareParts(mobileSheet) && (
+                  <button className="mob-sheet-btn" onClick={()=>{close();openPartModal(mobileSheet);}}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
+                    Ανταλλακτικό
+                  </button>
+                )}
                 <button className="mob-sheet-btn" onClick={()=>{close();openLogLinkModal(mobileSheet);}}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
                   Link logs
