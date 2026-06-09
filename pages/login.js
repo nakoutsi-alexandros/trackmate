@@ -59,8 +59,8 @@ export default function LoginPage() {
       <Head>
         <title>TrackMate - Σύνδεση</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" type="image/png" href="/favicon.png" />
-        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <link rel="icon" type="image/png" href="/favicon-v2.png" />
+        <link rel="apple-touch-icon" href="/icon-192-v2.png" />
       </Head>
 
       <div className="login-container">
