@@ -1122,7 +1122,12 @@ ${table}
     return 'CashDro';
   };
   const matchesMachineCategory = (item, category) => category === 'all' || getMachineCategory(item) === category;
-  const supportsSparePartsCategory = (category) => category === 'CashDro';
+  const getListCategory = (entry) => {
+    const raw = String(entry?.category || '').trim();
+    return raw || 'CashDro';
+  };
+  const matchesListCategory = (entry, category) => getListCategory(entry) === category;
+  const supportsSparePartsCategory = (category) => MACHINE_CATEGORIES.includes(category);
   const supportsSpareParts = (item) => supportsSparePartsCategory(getMachineCategory(item));
 
   const inventoryCategoryItems = inventory.filter(i => matchesMachineCategory(i, inventoryCategoryFilter));
@@ -1209,12 +1214,15 @@ ${table}
       .some(value => String(value || '').toLowerCase().includes(q));
   });
   const filteredItems = itemsList.filter(item => {
+    if (!matchesListCategory(item, machineCategory)) return false;
     const q = itemSearch.trim().toLowerCase();
     if (!q) return true;
     // Guard against null/undefined description coming from the Sheet
     return item.code.toLowerCase().includes(q) || (item.description || '').toLowerCase().includes(q);
   });
   const filteredParts = partsList.filter(part => {
+    const modalCategory = partModalItem ? getMachineCategory(partModalItem) : machineCategory;
+    if (!matchesListCategory(part, modalCategory)) return false;
     const q = partSearch.trim().toLowerCase();
     if (!q) return true;
     return part.code.toLowerCase().includes(q) || (part.description || '').toLowerCase().includes(q);
@@ -1243,22 +1251,17 @@ ${table}
 
   const handleSelectItem = (item) => {
     setModel(item.code);
-    setShipmentItemDescription(supportsSparePartsCategory(machineCategory) ? (item.description || '') : '');
+    setShipmentItemDescription(item.description || '');
     setItemSearch('');
     setShowItemPicker(false);
     setManualItemEntry(false);
   };
 
   useEffect(() => {
-    if (!supportsSparePartsCategory(machineCategory) || !model || shipmentItemDescription || itemsList.length === 0) return;
-    const match = itemsList.find(item => item.code.toLowerCase() === model.toLowerCase());
+    if (!model || shipmentItemDescription || itemsList.length === 0) return;
+    const match = itemsList.find(item => matchesListCategory(item, machineCategory) && item.code.toLowerCase() === model.toLowerCase());
     if (match?.description) setShipmentItemDescription(match.description);
   }, [machineCategory, model, shipmentItemDescription, itemsList]);
-
-  useEffect(() => {
-    if (supportsSparePartsCategory(machineCategory)) return;
-    if (shipmentItemDescription) setShipmentItemDescription('');
-  }, [machineCategory, shipmentItemDescription]);
 
   // Εμφάνιση store: αν είναι κενό και η κίνηση είναι Καινούριο Μηχάνημα → "Αποθήκη"
   const displayStore = (item) => {
@@ -1884,10 +1887,7 @@ ${table}
                         setMachineCategory(cat);
                         setStoreSearch('');
                         setStoreChain('all');
-                        if (!supportsSparePartsCategory(cat)) {
-                          setShipmentItemDescription('');
-                          setManualPartEntry(false);
-                        }
+                        setShipmentItemDescription('');
                         if (store && !matchesStoreMachineCategory(store, cat)) setStore('');
                       }}
                     >
@@ -1927,7 +1927,7 @@ ${table}
                   <div className="item-picker">
                     <button type="button" className="item-picker-trigger" onClick={()=>setShowItemPicker(v=>!v)}>
                       <span>{model || 'Επίλεξε κωδικό είδους...'}</span>
-                      <small>{supportsSparePartsCategory(machineCategory) ? (shipmentItemDescription || 'Πάτα για λίστα κωδικών') : 'Κωδικός για McDonald’s'}</small>
+                      <small>{shipmentItemDescription || `Πάτα για λίστα κωδικών ${machineCategory}`}</small>
                     </button>
                     {showItemPicker && (
                       <div className="item-picker-menu">
@@ -1951,9 +1951,7 @@ ${table}
                 ) : (
                   <div>
                     <input className="text-input" value={model} onChange={e=>setModel(e.target.value)} placeholder="π.χ. BV-11-SO-EU" />
-                    {supportsSparePartsCategory(machineCategory) && (
-                      <textarea value={shipmentItemDescription} onChange={e=>setShipmentItemDescription(e.target.value)} placeholder="Περιγραφή είδους..." style={{marginTop:'8px'}} />
-                    )}
+                    <textarea value={shipmentItemDescription} onChange={e=>setShipmentItemDescription(e.target.value)} placeholder="Περιγραφή είδους..." style={{marginTop:'8px'}} />
                     <button className="btn-ghost" type="button" onClick={()=>setManualItemEntry(false)}>↩ Επιλογή από λίστα</button>
                   </div>
                 )}
@@ -2027,12 +2025,10 @@ ${table}
                       <input className="text-input" value={shipmentCourier} onChange={e=>setShipmentCourier(e.target.value)} placeholder="π.χ. ACS, Γενική Ταχυδρομική" />
                     </div>
                   )}
-                  {supportsSparePartsCategory(machineCategory) && (
-                    <div className="field-group">
-                      <label className="field-label">Περιγραφή Είδους</label>
-                      <textarea value={shipmentItemDescription} onChange={e=>setShipmentItemDescription(e.target.value)} placeholder="π.χ. Coin validator Pelicano, ανταλλακτικό CashDro..." />
-                    </div>
-                  )}
+                  <div className="field-group">
+                    <label className="field-label">Περιγραφή Είδους</label>
+                    <textarea value={shipmentItemDescription} onChange={e=>setShipmentItemDescription(e.target.value)} placeholder={`Περιγραφή είδους ${machineCategory}...`} />
+                  </div>
                   <div className="field-group">
                     <label className="field-label">Σημειώσεις αποστολής</label>
                     <textarea value={shipmentNotes} onChange={e=>setShipmentNotes(e.target.value)} placeholder="π.χ. Να παραδοθεί πρωί, εύθραυστο, παραλαβή από Χάρη..." />
@@ -3009,7 +3005,7 @@ ${table}
               />
             </div>
             <div className="part-picker-hint">
-              {filteredParts.length} διαθέσιμα ανταλλακτικά
+              {filteredParts.length} διαθέσιμα ανταλλακτικά για {getMachineCategory(partModalItem)}
             </div>
             <div className="part-picker-list">
               <button
@@ -3054,7 +3050,7 @@ ${table}
                 </button>
               ))}
               {filteredParts.length === 0 && (
-                <div className="part-empty">Δεν βρέθηκε ανταλλακτικό. Βάλε τους κωδικούς στο tab Parts με στήλες code και description.</div>
+                <div className="part-empty">Δεν βρέθηκε ανταλλακτικό για {getMachineCategory(partModalItem)}. Βάλε τους κωδικούς στο tab Parts με στήλες code, description και category.</div>
               )}
             </div>
             <div className="part-modal-actions">
