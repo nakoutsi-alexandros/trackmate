@@ -1072,6 +1072,16 @@ ${table}
     return sortOrder === 'desc' ? tb - ta : ta - tb;
   });
   const looksLikeMcdStore = (storeName) => String(storeName || '').trim().toLowerCase().startsWith('mcd');
+  const matchesStoreMachineCategory = (storeName, category) => {
+    if (category === "McDonald's") return looksLikeMcdStore(storeName);
+    if (category === 'CashDro') return !looksLikeMcdStore(storeName);
+    return true;
+  };
+  const matchesStoreChain = (storeName, chain) => {
+    if (chain === 'all') return true;
+    if (chain === 'other') return !['ΚΩΤΣΟΒΟΛΟΣ','MINI KIOSK','ΚΤΕΛ','THE BEAUTY BAR','ΡΟΥΠΑΣ'].some(c => storeName.startsWith(c));
+    return storeName.startsWith(chain);
+  };
   const getMachineCategory = (item) => {
     if (item?.category) return item.category;
     if (looksLikeMcdStore(item?.store)) return "McDonald's";
@@ -1775,7 +1785,12 @@ ${table}
                       key={cat}
                       type="button"
                       className={`category-tab ${machineCategory === cat ? 'active' : ''}`}
-                      onClick={()=>setMachineCategory(cat)}
+                      onClick={() => {
+                        setMachineCategory(cat);
+                        setStoreSearch('');
+                        setStoreChain('all');
+                        if (store && !matchesStoreMachineCategory(store, cat)) setStore('');
+                      }}
                     >
                       {cat}
                     </button>
@@ -1879,8 +1894,9 @@ ${table}
                     </div>
                     <div className="store-list">
                       {storesList.filter(s => {
-                        const mc = storeChain==='all'?true:storeChain==='other'?!['ΚΩΤΣΟΒΟΛΟΣ','MINI KIOSK','ΚΤΕΛ','THE BEAUTY BAR','ΡΟΥΠΑΣ'].some(c=>s.startsWith(c)):s.startsWith(storeChain);
-                        return mc && (storeSearch===''||s.toLowerCase().includes(storeSearch.toLowerCase()));
+                        return matchesStoreMachineCategory(s, machineCategory)
+                          && matchesStoreChain(s, storeChain)
+                          && (storeSearch===''||s.toLowerCase().includes(storeSearch.toLowerCase()));
                       }).map(s => <div key={s} className={`store-item ${store===s?'active':''}`} onClick={()=>{setStore(s);setShowStorePicker(false);setStoreSearch('');setStoreChain('all');}}>{s}</div>)}
                     </div>
                     <button className="btn-ghost" style={{marginTop:'8px'}} onClick={()=>setShowStorePicker(false)}>Άκυρο</button>
