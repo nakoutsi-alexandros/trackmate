@@ -18,7 +18,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'POST') {
     try {
-      const { name, phone = '', address = '', vat = '' } = req.body;
+      const { name, phone = '', address = '', vat = '', contract = '', contractStart = '', contractEnd = '' } = req.body;
 
       if (!name || !name.trim()) {
         return res.status(400).json({ error: 'Το όνομα καταστήματος είναι υποχρεωτικό' });
@@ -38,6 +38,9 @@ export default async function handler(req, res) {
         phone: phone.trim(),
         address: address.trim(),
         vat: vat.trim(),
+        contract: contract.trim(),
+        contractStart: contractStart.trim(),
+        contractEnd: contractEnd.trim(),
       });
       return res.status(200).json({ success: true });
     } catch (err) {
@@ -48,7 +51,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'PUT') {
     try {
-      const { originalName, name, phone = '', address = '', vat = '' } = req.body;
+      const { originalName, name, phone = '', address = '', vat = '', contract = '', contractStart = '', contractEnd = '' } = req.body;
 
       if (!originalName || !name || !name.trim()) {
         return res.status(400).json({ error: 'Όνομα καταστήματος υποχρεωτικό' });
@@ -69,6 +72,9 @@ export default async function handler(req, res) {
         phone: phone.trim(),
         address: address.trim(),
         vat: vat.trim(),
+        contract: contract.trim(),
+        contractStart: contractStart.trim(),
+        contractEnd: contractEnd.trim(),
       });
       return res.status(200).json({ success: true });
     } catch (err) {

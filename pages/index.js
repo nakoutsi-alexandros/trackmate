@@ -166,7 +166,7 @@ export default function Home() {
   const [newStoreVat, setNewStoreVat] = useState('');
   const [addingStore, setAddingStore] = useState(false);
   const [addStoreMsg, setAddStoreMsg] = useState(null);
-  const [storeDetailsDraft, setStoreDetailsDraft] = useState({ name: '', phone: '', address: '', vat: '' });
+  const [storeDetailsDraft, setStoreDetailsDraft] = useState({ name: '', phone: '', address: '', vat: '', contract: '', contractStart: '', contractEnd: '' });
   const [savingStoreDetails, setSavingStoreDetails] = useState(false);
   const [storeDetailsMsg, setStoreDetailsMsg] = useState(null);
   const [settingsStoreSearch, setSettingsStoreSearch] = useState('');
@@ -307,6 +307,9 @@ export default function Home() {
       phone: store.phone || '',
       address: store.address || '',
       vat: store.vat || '',
+      contract: store.contract || '',
+      contractStart: store.contractStart || '',
+      contractEnd: store.contractEnd || '',
     };
     setSelectedStoreDetails(next);
     setStoreDetailsDraft(next);
@@ -315,7 +318,7 @@ export default function Home() {
 
   const closeStoreDetails = () => {
     setSelectedStoreDetails(null);
-    setStoreDetailsDraft({ name: '', phone: '', address: '', vat: '' });
+    setStoreDetailsDraft({ name: '', phone: '', address: '', vat: '', contract: '', contractStart: '', contractEnd: '' });
     setStoreDetailsMsg(null);
   };
 
@@ -334,6 +337,9 @@ export default function Home() {
         phone: storeDetailsDraft.phone.trim(),
         address: storeDetailsDraft.address.trim(),
         vat: storeDetailsDraft.vat.trim(),
+        contract: storeDetailsDraft.contract.trim(),
+        contractStart: storeDetailsDraft.contractStart.trim(),
+        contractEnd: storeDetailsDraft.contractEnd.trim(),
       };
       const res = await fetch('/api/stores', {
         method: 'PUT',
@@ -493,6 +499,9 @@ export default function Home() {
       phone: '',
       address: '',
       vat: '',
+      contract: '',
+      contractStart: '',
+      contractEnd: '',
     }
   );
 
@@ -1155,6 +1164,10 @@ ${table}
   const storeRows = storeDetailsList.length
     ? storeDetailsList
     : storesList.map(name => ({ name, phone: '', address: '', vat: '' }));
+  const inventoryStoreNames = inventory
+    .map(item => item.store || '')
+    .filter(name => name.trim() !== '');
+  const historyStoreBaseOptions = Array.from(new Set([...storesList, ...inventoryStoreNames]));
   const getStoreMovementCategories = (storeName) => {
     const storeKey = String(storeName || '').toLowerCase();
     return new Set(
@@ -1163,7 +1176,7 @@ ${table}
         .map(item => getMachineCategory(item))
     );
   };
-  const historyStoreOptions = storesList.filter(storeName => {
+  const historyStoreOptions = historyStoreBaseOptions.filter(storeName => {
     if (historyStoreCategoryFilter === 'all') return true;
     const isMcdStore = looksLikeMcdStore(storeName);
     if (historyStoreCategoryFilter === "McDonald's" && isMcdStore) return true;
@@ -1592,42 +1605,90 @@ ${table}
     );
   };
 
-  const renderStoreDetailsEditor = () => selectedStoreDetails && (
-    <div className="store-detail-card">
-      <div className="store-detail-head">
-        <div>
-          <div className="store-detail-title">{selectedStoreDetails.name}</div>
-          <div className="store-detail-sub">Επεξεργασία στοιχείων καταστήματος</div>
+  const getContractDurationLabel = (start, end) => {
+    if (!start || !end) return '';
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate < startDate) return '';
+    const months = Math.max(1, Math.round((endDate - startDate) / (1000 * 60 * 60 * 24 * 30.44)));
+    if (months < 12) return `${months} μήνες`;
+    const years = Math.floor(months / 12);
+    const restMonths = months % 12;
+    return restMonths ? `${years} έτη και ${restMonths} μήνες` : `${years} έτη`;
+  };
+
+  const renderStoreDetailsEditor = () => {
+    if (!selectedStoreDetails) return null;
+    const isCashDroStore = !looksLikeMcdStore(storeDetailsDraft.name || selectedStoreDetails.name);
+    const hasContract = storeDetailsDraft.contract === 'yes';
+    const contractDuration = getContractDurationLabel(storeDetailsDraft.contractStart, storeDetailsDraft.contractEnd);
+
+    return (
+      <div className="store-detail-card">
+        <div className="store-detail-head">
+          <div>
+            <div className="store-detail-title">{selectedStoreDetails.name}</div>
+            <div className="store-detail-sub">Επεξεργασία στοιχείων καταστήματος</div>
+          </div>
+          <button className="btn-note-cancel" onClick={closeStoreDetails}>✕</button>
         </div>
-        <button className="btn-note-cancel" onClick={closeStoreDetails}>✕</button>
+        <div className="store-detail-grid">
+          <div className="store-detail-field wide">
+            <span>Όνομα καταστήματος</span>
+            <input className="text-input store-detail-input" value={storeDetailsDraft.name} onChange={e=>updateStoreDetailsDraft('name', e.target.value)} />
+          </div>
+          <div className="store-detail-field">
+            <span>ΑΦΜ</span>
+            <input className="text-input store-detail-input" value={storeDetailsDraft.vat} onChange={e=>updateStoreDetailsDraft('vat', e.target.value)} />
+          </div>
+          <div className="store-detail-field">
+            <span>Τηλέφωνο</span>
+            <input className="text-input store-detail-input" value={storeDetailsDraft.phone} onChange={e=>updateStoreDetailsDraft('phone', e.target.value)} />
+          </div>
+          <div className="store-detail-field wide">
+            <span>Διεύθυνση</span>
+            <input className="text-input store-detail-input" value={storeDetailsDraft.address} onChange={e=>updateStoreDetailsDraft('address', e.target.value)} />
+          </div>
+        </div>
+
+        {isCashDroStore && (
+          <div className="store-contract-box">
+            <label className="store-contract-toggle">
+              <input
+                type="checkbox"
+                checked={hasContract}
+                onChange={e=>updateStoreDetailsDraft('contract', e.target.checked ? 'yes' : '')}
+              />
+              <span>Έχει σύμβαση</span>
+            </label>
+            {hasContract && (
+              <div className="store-detail-grid">
+                <div className="store-detail-field">
+                  <span>Έναρξη σύμβασης</span>
+                  <input className="text-input store-detail-input" type="date" value={storeDetailsDraft.contractStart} onChange={e=>updateStoreDetailsDraft('contractStart', e.target.value)} />
+                </div>
+                <div className="store-detail-field">
+                  <span>Λήξη σύμβασης</span>
+                  <input className="text-input store-detail-input" type="date" value={storeDetailsDraft.contractEnd} onChange={e=>updateStoreDetailsDraft('contractEnd', e.target.value)} />
+                </div>
+                <div className="store-contract-duration">
+                  Διάρκεια: <strong>{contractDuration || 'συμπλήρωσε ημερομηνίες'}</strong>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {storeDetailsMsg && <div className={storeDetailsMsg.type==='success'?'banner-success':'error-banner'} style={{marginTop:'10px'}}>{storeDetailsMsg.type==='success'?'✅ ':'⚠️ '}{storeDetailsMsg.text}</div>}
+        <div className="store-detail-actions">
+          <button className="btn-note-cancel" onClick={()=>openStoreDetails(selectedStoreDetails)} disabled={savingStoreDetails}>Επαναφορά</button>
+          <button className="btn-primary" onClick={handleSaveStoreDetails} disabled={savingStoreDetails || !storeDetailsDraft.name.trim()}>
+            {savingStoreDetails ? 'Αποθήκευση...' : 'Αποθήκευση αλλαγών'}
+          </button>
+        </div>
       </div>
-      <div className="store-detail-grid">
-        <div className="store-detail-field wide">
-          <span>Όνομα καταστήματος</span>
-          <input className="text-input store-detail-input" value={storeDetailsDraft.name} onChange={e=>updateStoreDetailsDraft('name', e.target.value)} />
-        </div>
-        <div className="store-detail-field">
-          <span>ΑΦΜ</span>
-          <input className="text-input store-detail-input" value={storeDetailsDraft.vat} onChange={e=>updateStoreDetailsDraft('vat', e.target.value)} />
-        </div>
-        <div className="store-detail-field">
-          <span>Τηλέφωνο</span>
-          <input className="text-input store-detail-input" value={storeDetailsDraft.phone} onChange={e=>updateStoreDetailsDraft('phone', e.target.value)} />
-        </div>
-        <div className="store-detail-field wide">
-          <span>Διεύθυνση</span>
-          <input className="text-input store-detail-input" value={storeDetailsDraft.address} onChange={e=>updateStoreDetailsDraft('address', e.target.value)} />
-        </div>
-      </div>
-      {storeDetailsMsg && <div className={storeDetailsMsg.type==='success'?'banner-success':'error-banner'} style={{marginTop:'10px'}}>{storeDetailsMsg.type==='success'?'✅ ':'⚠️ '}{storeDetailsMsg.text}</div>}
-      <div className="store-detail-actions">
-        <button className="btn-note-cancel" onClick={()=>openStoreDetails(selectedStoreDetails)} disabled={savingStoreDetails}>Επαναφορά</button>
-        <button className="btn-primary" onClick={handleSaveStoreDetails} disabled={savingStoreDetails || !storeDetailsDraft.name.trim()}>
-          {savingStoreDetails ? 'Αποθήκευση...' : 'Αποθήκευση αλλαγών'}
-        </button>
-      </div>
-    </div>
-  );
+    );
+  };
 
   // Shared content για κάθε tab
   const tabContent = (
@@ -2483,10 +2544,29 @@ ${table}
                   {STORE_CHAINS.map(c => <button key={c.id} className={`chain-tab ${storeChain===c.id?'active':''}`} onClick={()=>{setStoreChain(c.id);setStoreSearch('');}}>{c.label}</button>)}
                 </div>
                 <div className="store-list">
-                  {historyStoreOptions.filter(s => {
-                    const mc = storeChain==='all'?true:storeChain==='other'?!['ΚΩΤΣΟΒΟΛΟΣ','MINI KIOSK','ΚΤΕΛ','THE BEAUTY BAR','ΡΟΥΠΑΣ'].some(c=>s.startsWith(c)):s.startsWith(storeChain);
-                    return mc && (storeSearch===''||s.toLowerCase().includes(storeSearch.toLowerCase()));
-                  }).map(s => <div key={s} className={`store-item ${historyStore===s?'active':''}`} onClick={()=>{setHistoryStore(s);openStoreDetails(getStoreDetailsByName(s));setShowStorePicker(false);setStoreSearch('');setStoreChain('all');}}>{s}</div>)}
+                  {(() => {
+                    const visibleStores = historyStoreOptions.filter(s => {
+                      const mc = matchesStoreChain(s, storeChain);
+                      return mc && (storeSearch===''||s.toLowerCase().includes(storeSearch.toLowerCase()));
+                    });
+                    const canOpenManualStore = storeSearch.trim() && !visibleStores.some(s => s.toLowerCase() === storeSearch.trim().toLowerCase());
+                    return (
+                      <>
+                        {visibleStores.map(s => <div key={s} className={`store-item ${historyStore===s?'active':''}`} onClick={()=>{setHistoryStore(s);openStoreDetails(getStoreDetailsByName(s));setShowStorePicker(false);setStoreSearch('');setStoreChain('all');}}>{s}</div>)}
+                        {canOpenManualStore && (
+                          <button
+                            className="store-item store-item-manual"
+                            onClick={()=>{const manualName=storeSearch.trim();setHistoryStore(manualName);openStoreDetails(getStoreDetailsByName(manualName));setShowStorePicker(false);setStoreSearch('');setStoreChain('all');}}
+                          >
+                            + Άνοιγμα καρτέλας για “{storeSearch.trim()}”
+                          </button>
+                        )}
+                        {visibleStores.length === 0 && !canOpenManualStore && (
+                          <div className="store-picker-empty">Δεν βρέθηκε κατάστημα. Γράψε όνομα για χειροκίνητο άνοιγμα καρτέλας.</div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
                 <button className="btn-ghost" style={{marginTop:'8px'}} onClick={()=>setShowStorePicker(false)}>Άκυρο</button>
               </div>
@@ -3681,6 +3761,8 @@ ${table}
         .store-item { padding: 8px 10px; border-radius: var(--r-sm); font-size: 12px; cursor: pointer; color: var(--t2); transition: all 0.1s; }
         .store-item:hover { background: var(--glass2); color: var(--t1); }
         .store-item.active { background: var(--glow2); color: var(--acc); font-weight: 600; }
+        .store-item-manual { width: 100%; border: 1px dashed var(--border2); background: var(--glass2); text-align: left; font-family: var(--font); }
+        .store-picker-empty { padding: 12px; color: var(--t3); font-size: 12px; font-weight: 600; text-align: center; line-height: 1.5; }
         .item-picker { position: relative; }
         .item-picker-trigger { width: 100%; display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; border: 1px solid var(--border2); border-radius: var(--r); background: var(--glass2); color: var(--t1); text-align: left; cursor: pointer; font-family: var(--font); transition: all 0.15s; }
         .item-picker-trigger:hover { border-color: var(--acc); background: var(--glow2); }
@@ -4146,6 +4228,11 @@ ${table}
         .store-detail-field span { display: block; font-size: 9px; color: var(--t3); font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
         .store-detail-field strong { display: block; font-size: 12px; color: var(--t1); font-weight: 700; overflow-wrap: anywhere; }
         .store-detail-input { padding: 7px 9px; font-size: 12px; }
+        .store-contract-box { margin-top: 10px; border: 1px solid var(--border); border-radius: var(--r); background: var(--glass); padding: 10px; }
+        .store-contract-toggle { display: inline-flex; align-items: center; gap: 8px; color: var(--t2); font-weight: 800; font-size: 12px; cursor: pointer; margin-bottom: 10px; }
+        .store-contract-toggle input { width: 16px; height: 16px; accent-color: var(--acc); }
+        .store-contract-duration { grid-column: 1 / -1; padding: 9px 11px; border: 1px solid var(--border2); border-radius: var(--r); background: var(--glow2); color: var(--t3); font-size: 12px; font-weight: 700; }
+        .store-contract-duration strong { color: var(--t1); }
         .store-detail-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
         .store-extra-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
         .loading { text-align: center; padding: 48px; color: var(--t3); font-size: 13px; font-weight: 600; }
