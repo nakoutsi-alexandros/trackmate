@@ -113,6 +113,9 @@ export default function Home() {
   const [partModalItem, setPartModalItem] = useState(null);
   const [partSearch, setPartSearch] = useState('');
   const [selectedPart, setSelectedPart] = useState(null);
+  const [manualPartEntry, setManualPartEntry] = useState(false);
+  const [manualPartCode, setManualPartCode] = useState('');
+  const [manualPartDescription, setManualPartDescription] = useState('');
   const [savingPart, setSavingPart] = useState(false);
   const [machineLogLinks, setMachineLogLinks] = useState({});
   const [logLinkModalItem, setLogLinkModalItem] = useState(null);
@@ -816,12 +819,18 @@ ${table}
     setPartModalItem(item);
     setPartSearch('');
     setSelectedPart(null);
+    setManualPartEntry(false);
+    setManualPartCode('');
+    setManualPartDescription('');
   };
 
   const closePartModal = () => {
     setPartModalItem(null);
     setPartSearch('');
     setSelectedPart(null);
+    setManualPartEntry(false);
+    setManualPartCode('');
+    setManualPartDescription('');
   };
 
   const openLogLinkModal = (item) => {
@@ -873,7 +882,10 @@ ${table}
   };
 
   const handleSavePart = async () => {
-    if (!partModalItem || !selectedPart) return;
+    const partToSave = manualPartEntry
+      ? { code: manualPartCode.trim(), description: manualPartDescription.trim() }
+      : selectedPart;
+    if (!partModalItem || !partToSave?.code?.trim()) return;
     setSavingPart(true);
     try {
       const res = await fetch('/api/parts', {
@@ -882,15 +894,15 @@ ${table}
         body: JSON.stringify({
           serialNumber: partModalItem.serialNumber,
           machineModel: partModalItem.model || '',
-          code: selectedPart.code,
-          description: selectedPart.description || '',
+          code: partToSave.code,
+          description: partToSave.description || '',
         }),
       });
       if (!res.ok) throw new Error();
       const data = await res.json();
       const savedPart = data.part || {
-        code: selectedPart.code,
-        description: selectedPart.description || '',
+        code: partToSave.code,
+        description: partToSave.description || '',
         createdAt: new Date().toLocaleString('el-GR', { timeZone: 'Europe/Athens' }),
         createdBy: currentUser?.fullName || '',
         machineModel: partModalItem.model || '',
@@ -2886,11 +2898,42 @@ ${table}
               {filteredParts.length} διαθέσιμα ανταλλακτικά
             </div>
             <div className="part-picker-list">
+              <button
+                className={`part-picker-item manual-part-option ${manualPartEntry ? 'active' : ''}`}
+                onClick={() => {
+                  setManualPartEntry(true);
+                  setSelectedPart(null);
+                  setManualPartCode(partSearch.trim());
+                }}
+              >
+                <span className="part-picker-code">+ Νέο ανταλλακτικό</span>
+                <span className="part-picker-desc">Δεν υπάρχει στη λίστα; γράψε κωδικό και περιγραφή.</span>
+              </button>
+              {manualPartEntry && (
+                <div className="manual-part-fields">
+                  <input
+                    className="text-input"
+                    value={manualPartCode}
+                    onChange={e=>setManualPartCode(e.target.value)}
+                    placeholder="Κωδικός ανταλλακτικού *"
+                  />
+                  <textarea
+                    value={manualPartDescription}
+                    onChange={e=>setManualPartDescription(e.target.value)}
+                    placeholder="Περιγραφή ανταλλακτικού"
+                  />
+                </div>
+              )}
               {filteredParts.map(part => (
                 <button
                   key={`${part.code}-${part.description}`}
                   className={`part-picker-item ${selectedPart?.code === part.code ? 'active' : ''}`}
-                  onClick={()=>setSelectedPart(part)}
+                  onClick={() => {
+                    setManualPartEntry(false);
+                    setManualPartCode('');
+                    setManualPartDescription('');
+                    setSelectedPart(part);
+                  }}
                 >
                   <span className="part-picker-code">{part.code}</span>
                   <span className="part-picker-desc">{part.description || 'Χωρίς περιγραφή'}</span>
@@ -2902,7 +2945,7 @@ ${table}
             </div>
             <div className="part-modal-actions">
               <button className="btn-note-cancel" onClick={closePartModal}>Άκυρο</button>
-              <button className="btn-search" onClick={handleSavePart} disabled={!selectedPart || savingPart}>
+              <button className="btn-search" onClick={handleSavePart} disabled={savingPart || (manualPartEntry ? !manualPartCode.trim() : !selectedPart)}>
                 {savingPart ? 'Αποθήκευση...' : 'Αποθήκευση'}
               </button>
             </div>
@@ -4025,6 +4068,20 @@ ${table}
         .part-picker-item:hover, .part-picker-item.active {
           border-color: var(--border2);
           background: var(--glow2);
+        }
+        .manual-part-option { border-style: dashed; }
+        .manual-part-fields {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          padding: 10px;
+          border: 1px solid var(--border2);
+          border-radius: var(--r);
+          background: var(--glass2);
+        }
+        .manual-part-fields textarea {
+          min-height: 76px;
+          resize: vertical;
         }
         .part-picker-code { font-family: var(--mono); color: var(--t1); font-size: 12px; font-weight: 800; }
         .part-picker-desc { color: var(--t3); font-size: 11px; font-weight: 600; line-height: 1.4; }
