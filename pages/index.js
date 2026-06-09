@@ -725,6 +725,12 @@ ${table}
   const handleExportExcel = async () => {
     try {
       const XLSX = await import('xlsx');
+      const formatMachineParts = (serialNumber) => {
+        const parts = machineParts[serialNumber] || [];
+        return parts
+          .map(part => [part.code, part.description].filter(Boolean).join(' - '))
+          .join(' | ');
+      };
 
       const warehouseData = warehouseItems.map(item => ({
         'Serial Number': item.serialNumber,
@@ -735,6 +741,7 @@ ${table}
         'Ημερομηνία': item.date,
         'Χρήστης': item.user || '',
         'Πρόβλημα': item.problem || '',
+        'Ανταλλακτικά': formatMachineParts(item.serialNumber),
         // warehouseNotes[serial] is an array of note objects — access the latest with [0]
         'Σημείωση': warehouseNotes[item.serialNumber]?.[0]?.note || '',
       }));
@@ -748,17 +755,18 @@ ${table}
         'Ημερομηνία': item.date,
         'Χρήστης': item.user || '',
         'Πρόβλημα': item.problem || '',
+        'Ανταλλακτικά': formatMachineParts(item.serialNumber),
         'Σημειώσεις': item.notes || '',
       }));
 
       const wb = XLSX.utils.book_new();
 
       const ws1 = XLSX.utils.json_to_sheet(warehouseData);
-      ws1['!cols'] = [20,20,18,30,14,18,25,30].map(w=>({wch:w}));
+      ws1['!cols'] = [20,20,18,20,30,14,18,25,38,30].map(w=>({wch:w}));
       XLSX.utils.book_append_sheet(wb, ws1, 'Αποθήκη');
 
       const ws2 = XLSX.utils.json_to_sheet(movementsData);
-      ws2['!cols'] = [20,20,20,30,14,18,25,30].map(w=>({wch:w}));
+      ws2['!cols'] = [20,20,18,20,30,14,18,25,38,30].map(w=>({wch:w}));
       XLSX.utils.book_append_sheet(wb, ws2, 'Κινήσεις');
 
       const date = new Date().toISOString().split('T')[0];
