@@ -59,11 +59,14 @@ export default function LoginPage() {
       <Head>
         <title>TrackMate - Σύνδεση</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="icon" type="image/png" href="/favicon.png" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
       </Head>
 
       <div className="login-container">
         <div className="login-box">
           <div className="logo">
+            <img src="/trackmate-tm.png" alt="" />
             <h1>TrackMate</h1>
             <p>Σύστημα παρακολούθησης μηχανημάτων</p>
           </div>
@@ -144,6 +147,15 @@ export default function LoginPage() {
         .logo {
           text-align: center;
           margin-bottom: 32px;
+        }
+
+        .logo img {
+          width: 56px;
+          height: 56px;
+          border-radius: 14px;
+          display: block;
+          margin: 0 auto 12px;
+          box-shadow: 0 12px 28px rgba(124, 58, 237, 0.25);
         }
 
         .logo h1 {

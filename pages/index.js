@@ -2792,6 +2792,7 @@ ${table}
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="TrackMate" />
         <link rel="manifest" href="/manifest.json" />
+        <link rel="icon" type="image/png" href="/favicon.png" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
       </Head>
@@ -2802,7 +2803,7 @@ ${table}
           <div className="sb-logo" onClick={()=>handleTabClick('home')} style={{cursor:'pointer'}}>
             <div className="sb-logo-mark">
               <div className="sb-logo-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2v-4M9 21H5a2 2 0 01-2-2v-4m0 0h18"/></svg>
+                <img src="/trackmate-tm.png" alt="" />
               </div>
               <span className="sb-logo-text">Track<span>Mate</span></span>
             </div>
@@ -2880,7 +2881,7 @@ ${table}
           <div className="mob-header-top">
             <div className="mob-logo" onClick={()=>handleTabClick('home')} style={{cursor:'pointer'}}>
               <div className="mob-logo-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2v-4M9 21H5a2 2 0 01-2-2v-4m0 0h18"/></svg>
+                <img src="/trackmate-tm.png" alt="" />
               </div>
               <span>Track<span>Mate</span></span>
             </div>
@@ -3204,11 +3205,13 @@ ${table}
         .sb-logo-mark { display: flex; align-items: center; gap: 10px; }
         .sb-logo-icon {
           width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
-          background: linear-gradient(135deg, var(--acc), var(--acc2));
+          background: var(--bg3);
           display: flex; align-items: center; justify-content: center;
           box-shadow: 0 0 16px var(--glow);
+          overflow: hidden;
         }
         .sb-logo-icon svg { width: 17px; height: 17px; }
+        .sb-logo-icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .sb-logo-text { font-size: 16px; font-weight: 700; letter-spacing: -0.5px; color: var(--t1); }
         .sb-logo-text span { color: var(--acc); text-shadow: 0 0 20px var(--glow); }
 
@@ -3631,11 +3634,13 @@ ${table}
         }
         .mob-logo-icon {
           width: 28px; height: 28px; border-radius: 7px; flex-shrink: 0;
-          background: linear-gradient(135deg, var(--acc), var(--acc2));
+          background: var(--bg3);
           display: flex; align-items: center; justify-content: center;
           box-shadow: 0 0 12px var(--glow);
+          overflow: hidden;
         }
         .mob-logo-icon svg { width: 15px; height: 15px; }
+        .mob-logo-icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .mob-logo span:first-of-type { color: var(--t1); }
         .mob-logo span:last-of-type { color: var(--acc); text-shadow: 0 0 16px var(--glow); }
         .user-area { display: flex; align-items: center; gap: 8px; }
