@@ -2803,7 +2803,7 @@ ${table}
           <div className="sb-logo" onClick={()=>handleTabClick('home')} style={{cursor:'pointer'}}>
             <div className="sb-logo-mark">
               <div className="sb-logo-icon">
-                <img src="/trackmate-tm.png" alt="" />
+                <img src="/icon-192-v2.png" alt="" />
               </div>
               <span className="sb-logo-text">Track<span>Mate</span></span>
             </div>
@@ -2881,7 +2881,7 @@ ${table}
           <div className="mob-header-top">
             <div className="mob-logo" onClick={()=>handleTabClick('home')} style={{cursor:'pointer'}}>
               <div className="mob-logo-icon">
-                <img src="/trackmate-tm.png" alt="" />
+                <img src="/icon-192-v2.png" alt="" />
               </div>
               <span>Track<span>Mate</span></span>
             </div>
@@ -3202,12 +3202,12 @@ ${table}
 
         /* Logo */
         .sb-logo { padding: 22px 18px 18px; border-bottom: 1px solid var(--border); }
-        .sb-logo-mark { display: flex; align-items: center; gap: 10px; }
+        .sb-logo-mark { display: flex; align-items: center; gap: 12px; }
         .sb-logo-icon {
-          width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
+          width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
           background: var(--bg3);
           display: flex; align-items: center; justify-content: center;
-          box-shadow: 0 0 16px var(--glow);
+          box-shadow: 0 0 18px var(--glow);
           overflow: hidden;
         }
         .sb-logo-icon svg { width: 17px; height: 17px; }
@@ -3629,14 +3629,14 @@ ${table}
         }
         .mob-header-top { padding: 12px 16px 10px; display: flex; align-items: center; justify-content: space-between; }
         .mob-logo {
-          display: flex; align-items: center; gap: 9px;
+          display: flex; align-items: center; gap: 10px;
           font-size: 16px; font-weight: 700; letter-spacing: -0.4px; cursor: pointer;
         }
         .mob-logo-icon {
-          width: 28px; height: 28px; border-radius: 7px; flex-shrink: 0;
+          width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;
           background: var(--bg3);
           display: flex; align-items: center; justify-content: center;
-          box-shadow: 0 0 12px var(--glow);
+          box-shadow: 0 0 14px var(--glow);
           overflow: hidden;
         }
         .mob-logo-icon svg { width: 15px; height: 15px; }

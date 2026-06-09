@@ -66,7 +66,7 @@ export default function LoginPage() {
       <div className="login-container">
         <div className="login-box">
           <div className="logo">
-            <img src="/trackmate-tm.png" alt="" />
+            <img src="/icon-192-v2.png" alt="" />
             <h1>TrackMate</h1>
             <p>Σύστημα παρακολούθησης μηχανημάτων</p>
           </div>
@@ -150,9 +150,9 @@ export default function LoginPage() {
         }
 
         .logo img {
-          width: 56px;
-          height: 56px;
-          border-radius: 14px;
+          width: 72px;
+          height: 72px;
+          border-radius: 18px;
           display: block;
           margin: 0 auto 12px;
           box-shadow: 0 12px 28px rgba(124, 58, 237, 0.25);
