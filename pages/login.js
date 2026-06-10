@@ -1,6 +1,3 @@
-// pages/login.js
-// Σελίδα εισόδου χρήστη
-
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
@@ -13,16 +10,12 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [sessionExpired, setSessionExpired] = useState(false);
 
-  // Αν είναι ήδη συνδεδεμένος, redirect στην αρχική
   useEffect(() => {
-    // Έλεγχος αν το middleware έστειλε ?expired=1
     if (router.isReady && router.query.expired) {
       setSessionExpired(true);
     }
     fetch('/api/auth/me')
-      .then((res) => {
-        if (res.ok) router.replace('/');
-      })
+      .then((res) => { if (res.ok) router.replace('/'); })
       .catch(() => {});
   }, [router.isReady, router.query.expired]);
 
@@ -30,25 +23,20 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       });
-
       const data = await res.json();
-
       if (!res.ok) {
         setError(data.error || 'Σφάλμα κατά τη σύνδεση');
         setLoading(false);
         return;
       }
-
-      // Επιτυχής σύνδεση - πάμε στην αρχική
       router.replace('/');
-    } catch (err) {
+    } catch {
       setError('Σφάλμα δικτύου. Δοκιμάστε ξανά.');
       setLoading(false);
     }
@@ -57,19 +45,21 @@ export default function LoginPage() {
   return (
     <>
       <Head>
-        <title>TrackMate - Σύνδεση</title>
+        <title>TrackMate</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" type="image/png" href="/favicon-v2.png" />
         <link rel="apple-touch-icon" href="/icon-192-v2.png" />
       </Head>
 
-      <div className="login-container">
-        <div className="login-box">
-          <div className="logo">
-            <img src="/icon-192-v2.png" alt="" />
-            <h1>TrackMate</h1>
-            <p>Σύστημα παρακολούθησης μηχανημάτων</p>
+      <div className="page">
+        <div className="card">
+
+          <div className="brand">
+            <img src="/trackmate-tm.png" alt="TM" className="brand-logo" />
+            <span className="brand-name">TrackMate</span>
           </div>
+
+          <h1 className="heading">Σύνδεση</h1>
 
           <form onSubmit={handleSubmit}>
             <div className="field">
@@ -80,6 +70,7 @@ export default function LoginPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 autoComplete="username"
+                placeholder="username"
                 required
                 disabled={loading}
                 autoFocus
@@ -94,150 +85,183 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"
+                placeholder="••••••••"
                 required
                 disabled={loading}
               />
             </div>
 
             {sessionExpired && !error && (
-              <div className="error" style={{background:'#fef3c7', color:'#92400e', borderLeft:'3px solid #f59e0b'}}>
-                Η συνεδρία σου έληξε. Συνδέσου ξανά.
-              </div>
+              <div className="notice warn">Η συνεδρία σου έληξε. Συνδέσου ξανά.</div>
             )}
-            {error && <div className="error">{error}</div>}
+            {error && <div className="notice error">{error}</div>}
 
             <button type="submit" disabled={loading}>
-              {loading ? 'Σύνδεση...' : 'Σύνδεση'}
+              {loading ? (
+                <span className="btn-inner">
+                  <span className="spinner" />
+                  Σύνδεση…
+                </span>
+              ) : 'Σύνδεση'}
             </button>
           </form>
         </div>
       </div>
 
       <style jsx global>{`
-        * {
-          box-sizing: border-box;
-          margin: 0;
-          padding: 0;
-        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          background: #f5f7fa;
+          font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+          background: #0c0c0e;
           min-height: 100vh;
+          -webkit-font-smoothing: antialiased;
         }
 
-        .login-container {
+        .page {
           min-height: 100vh;
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 20px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          padding: 24px 16px;
+          background:
+            radial-gradient(ellipse 80% 50% at 50% -10%, rgba(99,102,241,0.12) 0%, transparent 70%),
+            #0c0c0e;
         }
 
-        .login-box {
-          background: white;
-          padding: 40px 32px;
-          border-radius: 16px;
-          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+        .card {
           width: 100%;
-          max-width: 400px;
+          max-width: 380px;
+          background: #18181b;
+          border: 1px solid #27272a;
+          border-radius: 16px;
+          padding: 36px 32px 32px;
         }
 
-        .logo {
-          text-align: center;
-          margin-bottom: 32px;
+        .brand {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 28px;
         }
 
-        .logo img {
-          width: 72px;
-          height: 72px;
-          border-radius: 18px;
-          display: block;
-          margin: 0 auto 12px;
-          box-shadow: 0 12px 28px rgba(124, 58, 237, 0.25);
+        .brand-logo {
+          width: 30px;
+          height: 30px;
+          border-radius: 7px;
+          object-fit: contain;
         }
 
-        .logo h1 {
-          font-size: 32px;
-          color: #2d3748;
-          margin-bottom: 8px;
-          font-weight: 700;
+        .brand-name {
+          font-size: 15px;
+          font-weight: 600;
+          color: #e4e4e7;
+          letter-spacing: -0.01em;
         }
 
-        .logo p {
-          color: #718096;
-          font-size: 14px;
+        .heading {
+          font-size: 22px;
+          font-weight: 600;
+          color: #fafafa;
+          letter-spacing: -0.02em;
+          margin-bottom: 24px;
         }
 
         .field {
-          margin-bottom: 20px;
+          margin-bottom: 16px;
         }
 
         .field label {
           display: block;
-          margin-bottom: 8px;
-          color: #4a5568;
-          font-size: 14px;
+          font-size: 13px;
           font-weight: 500;
+          color: #a1a1aa;
+          margin-bottom: 6px;
         }
 
         .field input {
           width: 100%;
-          padding: 12px 16px;
-          border: 2px solid #e2e8f0;
+          padding: 10px 14px;
+          background: #09090b;
+          border: 1px solid #3f3f46;
           border-radius: 8px;
-          font-size: 16px;
-          transition: border-color 0.2s;
+          font-size: 15px;
           font-family: inherit;
+          color: #fafafa;
+          transition: border-color 0.15s;
+          outline: none;
         }
 
+        .field input::placeholder { color: #52525b; }
+
         .field input:focus {
-          outline: none;
-          border-color: #667eea;
+          border-color: #6366f1;
+          box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
         }
 
         .field input:disabled {
-          background: #f7fafc;
+          opacity: 0.5;
           cursor: not-allowed;
         }
 
-        .error {
-          background: #fed7d7;
-          color: #c53030;
-          padding: 12px;
+        .notice {
+          font-size: 13px;
+          padding: 10px 14px;
           border-radius: 8px;
           margin-bottom: 16px;
-          font-size: 14px;
-          text-align: center;
+          line-height: 1.45;
         }
 
-        button {
+        .notice.error {
+          background: rgba(239,68,68,0.1);
+          border: 1px solid rgba(239,68,68,0.25);
+          color: #fca5a5;
+        }
+
+        .notice.warn {
+          background: rgba(245,158,11,0.1);
+          border: 1px solid rgba(245,158,11,0.25);
+          color: #fcd34d;
+        }
+
+        button[type="submit"] {
           width: 100%;
-          padding: 14px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
+          margin-top: 8px;
+          padding: 11px 16px;
+          background: #6366f1;
+          color: #fff;
           border: none;
           border-radius: 8px;
-          font-size: 16px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: opacity 0.2s, transform 0.1s;
+          font-size: 15px;
+          font-weight: 500;
           font-family: inherit;
+          cursor: pointer;
+          transition: background 0.15s, transform 0.1s;
+          letter-spacing: -0.01em;
         }
 
-        button:hover:not(:disabled) {
-          opacity: 0.95;
+        button[type="submit"]:hover:not(:disabled) { background: #4f52e0; }
+        button[type="submit"]:active:not(:disabled) { transform: scale(0.99); }
+        button[type="submit"]:disabled { opacity: 0.45; cursor: not-allowed; }
+
+        .btn-inner {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
         }
 
-        button:active:not(:disabled) {
-          transform: scale(0.99);
+        .spinner {
+          width: 14px;
+          height: 14px;
+          border: 2px solid rgba(255,255,255,0.25);
+          border-top-color: #fff;
+          border-radius: 50%;
+          animation: spin 0.7s linear infinite;
+          flex-shrink: 0;
         }
 
-        button:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
     </>
   );
