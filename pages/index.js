@@ -1003,27 +1003,32 @@ ${table}
     inventoryRequestRef.current = requestId;
     setLoadingInv(true);
     setInventoryError('');
-    try {
-      const res = await fetch('/api/inventory', { cache: 'no-store' });
-      const data = await res.json().catch(() => ({}));
+
+    let lastError = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
       if (requestId !== inventoryRequestRef.current) return;
-      if (res.status === 401) {
-        router.replace('/login');
-        return;
+      if (attempt > 0) await new Promise(r => setTimeout(r, attempt * 1000));
+      try {
+        const res = await fetch('/api/inventory', { cache: 'no-store' });
+        const data = await res.json().catch(() => ({}));
+        if (requestId !== inventoryRequestRef.current) return;
+        if (res.status === 401) { router.replace('/login'); return; }
+        if (!res.ok) { lastError = new Error(data.error || 'Σφάλμα φόρτωσης αποθήκης.'); continue; }
+        if (!Array.isArray(data.inventory)) { lastError = new Error('Η αποθήκη δεν επέστρεψε σωστά δεδομένα.'); continue; }
+        setInventory(data.inventory);
+        setInventorySnapshotReady(true);
+        localStorage.setItem(INVENTORY_CACHE_KEY, JSON.stringify(data.inventory));
+        setInventoryError('');
+        lastError = null;
+        break;
+      } catch (e) {
+        lastError = e;
       }
-      if (!res.ok) throw new Error(data.error || 'Σφάλμα φόρτωσης αποθήκης.');
-      if (!Array.isArray(data.inventory)) throw new Error('Η αποθήκη δεν επέστρεψε σωστά δεδομένα.');
-      setInventory(data.inventory);
-      setInventorySnapshotReady(true);
-      localStorage.setItem(INVENTORY_CACHE_KEY, JSON.stringify(data.inventory));
-      setInventoryError('');
-    } catch (e) {
-      if (requestId !== inventoryRequestRef.current) return;
-      setInventoryError(e.message || 'Σφάλμα φόρτωσης. Τα προηγούμενα δεδομένα έμειναν στην οθόνη.');
     }
-    finally {
-      if (requestId === inventoryRequestRef.current) setLoadingInv(false);
-    }
+
+    if (requestId !== inventoryRequestRef.current) return;
+    if (lastError) setInventoryError(lastError.message || 'Σφάλμα φόρτωσης. Τα προηγούμενα δεδομένα έμειναν στην οθόνη.');
+    setLoadingInv(false);
   };
 
   const loadHistory = async (serial, store) => {
