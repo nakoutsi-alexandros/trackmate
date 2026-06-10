@@ -52,59 +52,62 @@ export default function LoginPage() {
       </Head>
 
       <div className="page">
-        <div className="card">
+        {/* gradient border wrapper */}
+        <div className="card-outer">
+          <div className="card">
 
-          <div className="brand">
-            <img src="/trackmate-tm.png" alt="TM" className="brand-logo" />
-            <span className="brand-name">TrackMate</span>
+            <div className="brand">
+              <img src="/icon-192-v2.png" alt="TM" className="brand-logo" />
+              <span className="brand-name">TrackMate</span>
+            </div>
+
+            <h1 className="heading">Σύνδεση</h1>
+
+            <form onSubmit={handleSubmit}>
+              <div className="field">
+                <label htmlFor="username">Όνομα χρήστη</label>
+                <input
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  autoComplete="username"
+                  placeholder="username"
+                  required
+                  disabled={loading}
+                  autoFocus
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="password">Κωδικός</label>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  required
+                  disabled={loading}
+                />
+              </div>
+
+              {sessionExpired && !error && (
+                <div className="notice warn">Η συνεδρία σου έληξε. Συνδέσου ξανά.</div>
+              )}
+              {error && <div className="notice error">{error}</div>}
+
+              <button type="submit" disabled={loading}>
+                {loading ? (
+                  <span className="btn-inner">
+                    <span className="spinner" />
+                    Σύνδεση…
+                  </span>
+                ) : 'Σύνδεση'}
+              </button>
+            </form>
           </div>
-
-          <h1 className="heading">Σύνδεση</h1>
-
-          <form onSubmit={handleSubmit}>
-            <div className="field">
-              <label htmlFor="username">Όνομα χρήστη</label>
-              <input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                autoComplete="username"
-                placeholder="username"
-                required
-                disabled={loading}
-                autoFocus
-              />
-            </div>
-
-            <div className="field">
-              <label htmlFor="password">Κωδικός</label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-                placeholder="••••••••"
-                required
-                disabled={loading}
-              />
-            </div>
-
-            {sessionExpired && !error && (
-              <div className="notice warn">Η συνεδρία σου έληξε. Συνδέσου ξανά.</div>
-            )}
-            {error && <div className="notice error">{error}</div>}
-
-            <button type="submit" disabled={loading}>
-              {loading ? (
-                <span className="btn-inner">
-                  <span className="spinner" />
-                  Σύνδεση…
-                </span>
-              ) : 'Σύνδεση'}
-            </button>
-          </form>
         </div>
       </div>
 
@@ -125,15 +128,30 @@ export default function LoginPage() {
           justify-content: center;
           padding: 24px 16px;
           background:
-            radial-gradient(ellipse 80% 50% at 50% -10%, rgba(99,102,241,0.12) 0%, transparent 70%),
+            radial-gradient(ellipse 90% 60% at 50% 0%, rgba(99,102,241,0.18) 0%, transparent 65%),
             #0c0c0e;
         }
 
-        .card {
+        /* gradient border */
+        .card-outer {
           width: 100%;
           max-width: 380px;
+          padding: 1px;
+          border-radius: 17px;
+          background: linear-gradient(
+            145deg,
+            rgba(99,102,241,0.6) 0%,
+            rgba(139,92,246,0.4) 50%,
+            rgba(6,182,212,0.25) 100%
+          );
+          box-shadow:
+            0 0 40px rgba(99,102,241,0.18),
+            0 0 80px rgba(139,92,246,0.10),
+            0 24px 48px rgba(0,0,0,0.5);
+        }
+
+        .card {
           background: #18181b;
-          border: 1px solid #27272a;
           border-radius: 16px;
           padding: 36px 32px 32px;
         }
@@ -146,10 +164,10 @@ export default function LoginPage() {
         }
 
         .brand-logo {
-          width: 30px;
-          height: 30px;
-          border-radius: 7px;
-          object-fit: contain;
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
+          object-fit: cover;
         }
 
         .brand-name {
@@ -188,7 +206,7 @@ export default function LoginPage() {
           font-size: 15px;
           font-family: inherit;
           color: #fafafa;
-          transition: border-color 0.15s;
+          transition: border-color 0.15s, box-shadow 0.15s;
           outline: none;
         }
 
@@ -199,10 +217,7 @@ export default function LoginPage() {
           box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
         }
 
-        .field input:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
+        .field input:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .notice {
           font-size: 13px;
