@@ -1726,7 +1726,7 @@ ${table}
       )}
 
       {tab === 'home' && (
-        <div className="fade-in dashboard">
+        <div key="home" className="fade-in dashboard">
           <div className="dashboard-greeting">
             <div>
               <div className="dashboard-kicker">{new Date().toLocaleDateString('el-GR', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
@@ -1853,7 +1853,7 @@ ${table}
       )}
 
       {tab === 'scan' && (
-        <div className="fade-in">
+        <div key="scan" className="fade-in">
           {step===1 && (
             <div className="card">
               <div className="card-title">Φωτογράφισε το μηχάνημα</div>
@@ -2094,7 +2094,7 @@ ${table}
       )}
 
       {tab === 'inventory' && (
-        <div className="fade-in">
+        <div key="inventory" className="fade-in">
           {/* Desktop: table view */}
           <div className="desktop-only">
             <div className="warehouse-category-tabs">
@@ -2211,7 +2211,7 @@ ${table}
       )}
 
       {tab === 'warehouse' && (
-        <div className="fade-in">
+        <div key="warehouse" className="fade-in">
           <div className="warehouse-category-tabs">
             <button className={`warehouse-category-tab ${warehouseCategoryFilter === 'all' ? 'active' : ''}`} onClick={()=>setWarehouseCategoryFilter('all')}>Όλα</button>
             {MACHINE_CATEGORIES.map(cat => (
@@ -2541,7 +2541,7 @@ ${table}
       )}
 
       {tab === 'history' && (
-        <div className="fade-in">
+        <div key="history" className="fade-in">
           <div className="field-group">
             <label className="field-label">Αναζήτηση με Serial Number</label>
             <div style={{display:'flex',gap:'8px'}}>
@@ -2705,7 +2705,7 @@ ${table}
       )}
 
       {tab === 'settings' && (
-        <div className="fade-in">
+        <div key="settings" className="fade-in">
           <div className="card">
             <div className="card-title">📥 Εξαγωγή δεδομένων</div>
             <div className="card-sub">Κατέβασε τα δεδομένα σε Excel για να τα ανεβάσεις στο SharePoint</div>
@@ -4278,11 +4278,11 @@ ${table}
         /* ══════════════════════════
            ANIMATIONS
         ══════════════════════════ */
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(14px) scale(0.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes glowPulse { 0%,100% { box-shadow: 0 0 16px var(--glow); } 50% { box-shadow: 0 0 32px var(--glow), 0 0 48px rgba(124,58,237,0.15); } }
         @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
-        .fade-in { animation: fadeIn 0.22s cubic-bezier(0.4,0,0.2,1); }
+        .fade-in { animation: fadeIn 0.28s cubic-bezier(0.22,1,0.36,1); }
 
         /* ══════════════════════════
            LIGHT MODE
