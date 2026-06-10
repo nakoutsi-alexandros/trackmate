@@ -168,6 +168,8 @@ export default function LoginPage() {
           height: 32px;
           border-radius: 8px;
           object-fit: cover;
+          border: 1px solid #3f3f46;
+          box-shadow: 0 0 0 1px rgba(99,102,241,0.2);
         }
 
         .brand-name {
