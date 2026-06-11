@@ -443,6 +443,15 @@ export default function Home() {
     !!existingItem && normalizeAction(action) === 'Καινούριο Μηχάνημα'
   );
 
+  const isShipmentBlockedByWarehouse = () => {
+    const isShipment = ['Αποστολή σε κατάστημα', 'Αποστολή στα κεντρικά'].includes(normalizeAction(action));
+    if (!isShipment || !serialNumber) return false;
+    const sn = cleanSerial(serialNumber);
+    const existing = inventory.find(i => cleanSerial(i.serialNumber) === sn);
+    if (!existing) return true;
+    return normalizeAction(existing.action) !== 'Καινούριο Μηχάνημα';
+  };
+
   const handleScan = async () => {
     if (!imageBase64) return;
     setScanning(true);
@@ -634,6 +643,15 @@ ${table}
     if (duplicate && normalizeAction(action) === 'Καινούριο Μηχάνημα') {
       setExistingItem(duplicate);
       alert('Αυτό το serial υπάρχει ήδη. Δεν μπορεί να καταχωρηθεί ξανά ως Καινούριο Μηχάνημα. Επίλεξε άλλη κίνηση.');
+      return;
+    }
+    if (isShipmentBlockedByWarehouse()) {
+      const sn = cleanSerial(serialNumber);
+      const existing = inventory.find(i => cleanSerial(i.serialNumber) === sn);
+      const reason = !existing
+        ? 'το serial δεν βρέθηκε στην αποθήκη'
+        : `βρέθηκε ως "${normalizeAction(existing.action)}"`;
+      alert(`Δεν μπορεί να γίνει αποστολή: ${reason}. Μόνο μηχανήματα με κατάσταση "Καινούριο Μηχάνημα" μπορούν να αποσταλούν.`);
       return;
     }
     setSubmitting(true);
@@ -2072,7 +2090,9 @@ ${table}
                 <label className="field-label">📝 Σημειώσεις</label>
                 <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Οποιαδήποτε επιπλέον πληροφορία..." />
               </div>
-              <button className="btn-primary" onClick={handleSubmit} disabled={submitting || isDuplicateNewMachine()}>{submitting ? '⏳ Καταχώριση...' : isDuplicateNewMachine() ? '⚠️ Υπάρχει ήδη ως καινούριο' : '✅ Καταχώριση κίνησης'}</button>
+              <button className="btn-primary" onClick={handleSubmit} disabled={submitting || isDuplicateNewMachine() || isShipmentBlockedByWarehouse()}>
+                {submitting ? '⏳ Καταχώριση...' : isDuplicateNewMachine() ? '⚠️ Υπάρχει ήδη ως καινούριο' : isShipmentBlockedByWarehouse() ? '⚠️ Δεν βρίσκεται στην αποθήκη' : '✅ Καταχώριση κίνησης'}
+              </button>
               <button className="btn-ghost" onClick={handleReset}>← Πίσω</button>
             </div>
           )}
