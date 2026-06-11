@@ -1536,6 +1536,7 @@ ${table}
   }, [router.isReady, router.query.tab, router.query.serial]);
 
   const renderWarehouseActions = (item) => {
+    if (isViewer) return null;
     const action = normalizeAction(item.action);
     const isRepair = action === 'Εισαγωγή για επισκευή';
     const isAvailable = action === 'Καινούριο Μηχάνημα';
@@ -2581,9 +2582,9 @@ ${table}
                         </button>}
                       </div>
                     )}
-                    <div className="mobile-actions-row">
+                    {!isViewer && <div className="mobile-actions-row">
                       <button className="action-menu-btn" onClick={e=>{e.preventDefault();e.stopPropagation();setMobileSheet(item);setSwipedItemSynced(null);}}>⋯</button>
-                    </div>
+                    </div>}
                   </div>
                 </a>
                 </div>
@@ -2698,7 +2699,7 @@ ${table}
                     </div>
                     <div className="h-notes part-history-text">
                       <span>{part.code}{part.description ? ` · ${part.description}` : ''}</span>
-                      <button className="part-remove" onClick={()=>handleDeletePart(history[0]?.serialNumber, part)} title="Αφαίρεση ανταλλακτικού">×</button>
+                      {!isViewer && <button className="part-remove" onClick={()=>handleDeletePart(history[0]?.serialNumber, part)} title="Αφαίρεση ανταλλακτικού">×</button>}
                     </div>
                     <div className="h-meta">🧩 {part.createdAt}{part.createdBy ? ` · 👤 ${part.createdBy}` : ''}</div>
                   </div>
