@@ -2826,7 +2826,7 @@ ${table}
                     {!isViewer && item.timestamp && (
                       <button className="h-del-btn" title="Διαγραφή κίνησης" disabled={deletingMovement===item.timestamp}
                         onClick={e=>{e.stopPropagation();handleDeleteMovement(item);}}>
-                        {deletingMovement===item.timestamp ? '…' : '🗑'}
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                       </button>
                     )}
                   </div>
@@ -4140,12 +4140,15 @@ ${table}
         .h-action-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
         .h-action { font-size: 12px; font-weight: 700; color: var(--t1); }
         .h-del-btn {
-          border: none; background: transparent; cursor: pointer; padding: 2px 4px;
-          font-size: 13px; line-height: 1; border-radius: 6px; opacity: 0.45;
-          transition: opacity 0.15s, background 0.15s;
+          display: inline-flex; align-items: center; justify-content: center;
+          border: 1px solid var(--border2); background: var(--glass); cursor: pointer;
+          padding: 4px; border-radius: 7px; color: var(--t2);
+          transition: color 0.15s, background 0.15s, border-color 0.15s;
         }
-        .h-del-btn:hover:not(:disabled) { opacity: 1; background: rgba(239,68,68,0.12); }
-        .h-del-btn:disabled { opacity: 0.4; cursor: default; }
+        .h-del-btn svg { width: 15px; height: 15px; display: block; }
+        .h-del-btn:hover:not(:disabled) { color: #fff; background: #ef4444; border-color: #ef4444; }
+        .h-del-btn:disabled { opacity: 0.45; cursor: default; }
+        .light .h-del-btn { border-color: var(--border); color: var(--t2); }
         .h-meta { font-size: 10px; color: var(--t3); font-weight: 500; }
         .h-notes { font-size: 11px; color: var(--t3); margin-top: 4px; font-weight: 500; }
         .h-machine { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
