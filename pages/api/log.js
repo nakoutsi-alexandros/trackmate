@@ -10,8 +10,8 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Serial number και action είναι υποχρεωτικά' });
   }
 
-  // Παίρνουμε τον συνδεδεμένο χρήστη από το cookie
   const currentUser = getUserFromRequest(req);
+  if (currentUser?.role === 'viewer') return res.status(403).json({ error: 'Δεν έχεις δικαίωμα καταχώρισης' });
   const user = currentUser ? currentUser.fullName : '';
 
   try {

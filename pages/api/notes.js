@@ -24,6 +24,7 @@ export default async function handler(req, res) {
       if (!note || !note.trim()) return res.status(400).json({ error: 'Η σημείωση δεν μπορεί να είναι κενή' });
 
       const currentUser = getUserFromRequest(req);
+      if (currentUser?.role === 'viewer') return res.status(403).json({ error: 'Δεν έχεις δικαίωμα αλλαγών' });
       const createdBy = currentUser ? currentUser.fullName : '';
 
       await saveNote(serialNumber, note.trim(), createdBy);

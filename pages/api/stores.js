@@ -3,6 +3,7 @@
 // POST → προσθέτει νέο κατάστημα στο Sheet
 
 import { getStores, getStoreDetails, addStoreDetails, updateStoreDetails } from '../../lib/sheets';
+import { getUserFromRequest } from '../../lib/auth';
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
@@ -14,6 +15,11 @@ export default async function handler(req, res) {
       console.error('getStores error:', err);
       return res.status(500).json({ error: 'Σφάλμα φόρτωσης καταστημάτων' });
     }
+  }
+
+  if (req.method === 'POST' || req.method === 'PATCH') {
+    const cu = getUserFromRequest(req);
+    if (cu?.role === 'viewer') return res.status(403).json({ error: 'Δεν έχεις δικαίωμα αλλαγών' });
   }
 
   if (req.method === 'POST') {

@@ -18,8 +18,8 @@ export default async function handler(req, res) {
 
     // Dev bypass — only in development, no Google Sheets needed
     if (process.env.NODE_ENV === 'development' && username === 'dev' && password === 'dev') {
-      setAuthCookie(res, 'dev', 'Dev User');
-      return res.status(200).json({ success: true, user: { username: 'dev', fullName: 'Dev User' } });
+      setAuthCookie(res, 'dev', 'Dev User', 'admin');
+      return res.status(200).json({ success: true, user: { username: 'dev', fullName: 'Dev User', role: 'admin' } });
     }
 
     // Φέρνουμε όλους τους users από το Sheet
@@ -47,13 +47,15 @@ export default async function handler(req, res) {
     }
 
     // Επιτυχία - φτιάχνουμε cookie
-    setAuthCookie(res, user.username, user.fullName || user.username);
+    const role = (user.role || 'admin').toLowerCase().trim();
+    setAuthCookie(res, user.username, user.fullName || user.username, role);
 
     return res.status(200).json({
       success: true,
       user: {
         username: user.username,
         fullName: user.fullName || user.username,
+        role,
       },
     });
   } catch (err) {

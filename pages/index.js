@@ -85,6 +85,7 @@ const readInventoryCache = () => {
 export default function Home() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState(null);
+  const isViewer = currentUser?.role === 'viewer';
   const [darkMode, setDarkMode] = useState(true);
 
   const toggleDarkMode = () => {
@@ -1559,18 +1560,18 @@ ${table}
         </button>
         {openActionMenu === menuId && (
           <div className="action-menu">
-            <button className="action-menu-item" onClick={e=>runMenuAction(e, ()=>startNewAction(item.serialNumber,item.model))}>+ Νέα κίνηση</button>
-            {isAvailable && (
+            {!isViewer && <button className="action-menu-item" onClick={e=>runMenuAction(e, ()=>startNewAction(item.serialNumber,item.model))}>+ Νέα κίνηση</button>}
+            {!isViewer && isAvailable && (
               <button className="action-menu-item" onClick={e=>runMenuAction(e, ()=>handleMoveToRepair(item))}>Σε επισκευή</button>
             )}
-            {isRepair && (
+            {!isViewer && isRepair && (
               <button className="action-menu-item success" onClick={e=>runMenuAction(e, ()=>handleMarkRepaired(item))}>✓ Επισκευάστηκε</button>
             )}
-            {supportsSpareParts(item) && (
+            {!isViewer && supportsSpareParts(item) && (
               <button className="action-menu-item" onClick={e=>runMenuAction(e, ()=>openPartModal(item))}>Ανταλλακτικό</button>
             )}
-            <button className="action-menu-item" onClick={e=>runMenuAction(e, ()=>openLogLinkModal(item))}>{getLinkActionLabel(item)}</button>
-            <button className="action-menu-item danger" onClick={e=>runMenuAction(e, ()=>handleDeleteItem(item))}>✕ Διαγραφή</button>
+            {!isViewer && <button className="action-menu-item" onClick={e=>runMenuAction(e, ()=>openLogLinkModal(item))}>{getLinkActionLabel(item)}</button>}
+            {!isViewer && <button className="action-menu-item danger" onClick={e=>runMenuAction(e, ()=>handleDeleteItem(item))}>✕ Διαγραφή</button>}
           </div>
         )}
       </div>
@@ -1697,19 +1698,19 @@ ${table}
         <div className="store-detail-grid">
           <div className="store-detail-field wide">
             <span>Όνομα καταστήματος</span>
-            <input className="text-input store-detail-input" value={storeDetailsDraft.name} onChange={e=>updateStoreDetailsDraft('name', e.target.value)} />
+            <input className="text-input store-detail-input" value={storeDetailsDraft.name} onChange={e=>updateStoreDetailsDraft('name', e.target.value)} readOnly={isViewer} />
           </div>
           <div className="store-detail-field">
             <span>ΑΦΜ</span>
-            <input className="text-input store-detail-input" value={storeDetailsDraft.vat} onChange={e=>updateStoreDetailsDraft('vat', e.target.value)} />
+            <input className="text-input store-detail-input" value={storeDetailsDraft.vat} onChange={e=>updateStoreDetailsDraft('vat', e.target.value)} readOnly={isViewer} />
           </div>
           <div className="store-detail-field">
             <span>Τηλέφωνο</span>
-            <input className="text-input store-detail-input" value={storeDetailsDraft.phone} onChange={e=>updateStoreDetailsDraft('phone', e.target.value)} />
+            <input className="text-input store-detail-input" value={storeDetailsDraft.phone} onChange={e=>updateStoreDetailsDraft('phone', e.target.value)} readOnly={isViewer} />
           </div>
           <div className="store-detail-field wide">
             <span>Διεύθυνση</span>
-            <input className="text-input store-detail-input" value={storeDetailsDraft.address} onChange={e=>updateStoreDetailsDraft('address', e.target.value)} />
+            <input className="text-input store-detail-input" value={storeDetailsDraft.address} onChange={e=>updateStoreDetailsDraft('address', e.target.value)} readOnly={isViewer} />
           </div>
         </div>
 
@@ -1720,6 +1721,7 @@ ${table}
                 type="checkbox"
                 checked={hasContract}
                 onChange={e=>updateStoreDetailsDraft('contract', e.target.checked ? 'yes' : '')}
+                disabled={isViewer}
               />
               <span>Έχει σύμβαση</span>
             </label>
@@ -1742,12 +1744,12 @@ ${table}
         )}
 
         {storeDetailsMsg && <div className={storeDetailsMsg.type==='success'?'banner-success':'error-banner'} style={{marginTop:'10px'}}>{storeDetailsMsg.type==='success'?'✅ ':'⚠️ '}{storeDetailsMsg.text}</div>}
-        <div className="store-detail-actions">
+        {!isViewer && <div className="store-detail-actions">
           <button className="btn-note-cancel" onClick={()=>openStoreDetails(selectedStoreDetails)} disabled={savingStoreDetails}>Επαναφορά</button>
           <button className="btn-primary" onClick={handleSaveStoreDetails} disabled={savingStoreDetails || !storeDetailsDraft.name.trim()}>
             {savingStoreDetails ? 'Αποθήκευση...' : 'Αποθήκευση αλλαγών'}
           </button>
-        </div>
+        </div>}
       </div>
     );
   };
@@ -1770,10 +1772,10 @@ ${table}
               <div className="greeting-name">Γεια σου, {currentUser?.fullName || currentUser?.username || 'χρήστη'}</div>
             </div>
             <div className="quick-actions">
-              <button className="quick-action-btn" onClick={()=>handleTabClick('scan')}>
+              {!isViewer && <button className="quick-action-btn" onClick={()=>handleTabClick('scan')}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6.5 6.5h.01M17.5 6.5h.01M6.5 17.5h.01M17.5 17.5h.01M3 7V5a2 2 0 012-2h2M3 17v2a2 2 0 002 2h2m10-16h2a2 2 0 012 2v2m0 10v2a2 2 0 01-2 2h-2M12 12h.01"/></svg>
                 Scan
-              </button>
+              </button>}
               <button className="quick-action-btn" onClick={()=>openWarehouseFilter('all')}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
                 Αποθήκη
@@ -2496,9 +2498,10 @@ ${table}
                             onClick={()=>{setEditingStore(null);setEditStoreSearch('');}}>Άκυρο</button>
                         </div>
                       ) : (
-                        <span className="machine-store" onClick={()=>setEditingStore(item.serialNumber)}
-                          style={{cursor:'pointer'}}>
-                          🏪 {displayStore(item)} ✏️
+                        <span className="machine-store"
+                          onClick={!isViewer ? ()=>setEditingStore(item.serialNumber) : undefined}
+                          style={{cursor: isViewer ? 'default' : 'pointer'}}>
+                          🏪 {displayStore(item)}{!isViewer && ' ✏️'}
                         </span>
                       )}
                       {editingDate === item.serialNumber ? (
@@ -2514,7 +2517,11 @@ ${table}
                           <button className="date-cancel-btn" onClick={cancelEditingDate}>×</button>
                         </span>
                       ) : (
-                        <span className="machine-date" onClick={()=>startEditingDate(item)} style={{cursor:'pointer'}}>📅 {item.date} ✏️</span>
+                        <span className="machine-date"
+                          onClick={!isViewer ? ()=>startEditingDate(item) : undefined}
+                          style={{cursor: isViewer ? 'default' : 'pointer'}}>
+                          📅 {item.date}{!isViewer && ' ✏️'}
+                        </span>
                       )}
                     </div>
                     {badge && <div className={`repair-badge repair-badge-${badge.type}`}>{badge.type==='danger'?'🔴':'🟡'} Σε επισκευή {badge.label}</div>}
@@ -2569,9 +2576,9 @@ ${table}
                         ) : (
                           <span className="note-empty">+ Προσθήκη σημείωσης</span>
                         )}
-                        <button className="note-add-btn" style={{marginTop:'6px',width:'100%'}} onClick={()=>{setEditingNote(item.serialNumber);setNoteInput('');}}>
+                        {!isViewer && <button className="note-add-btn" style={{marginTop:'6px',width:'100%'}} onClick={()=>{setEditingNote(item.serialNumber);setNoteInput('');}}>
                           + Νέα σημείωση
-                        </button>
+                        </button>}
                       </div>
                     )}
                     <div className="mobile-actions-row">
@@ -2736,7 +2743,7 @@ ${table}
                   <div className="h-machine">
                     <span className="h-machine-model">{item.model || '—'}</span>
                     <span className="h-machine-serial">{item.serialNumber}</span>
-                    <button className="btn-quick-action" style={{marginLeft:'auto'}} onClick={e=>{e.stopPropagation();startNewAction(item.serialNumber,item.model);}}>+ Νέα κίνηση</button>
+                    {!isViewer && <button className="btn-quick-action" style={{marginLeft:'auto'}} onClick={e=>{e.stopPropagation();startNewAction(item.serialNumber,item.model);}}>+ Νέα κίνηση</button>}
                   </div>
                 )}
                 <div className="h-meta">🏪 {item.store} · 📅 {item.date}{item.user ? ` · 👤 ${item.user}` : ''}</div>
@@ -2765,7 +2772,7 @@ ${table}
               📥 Κατέβασε Excel
             </button>
           </div>
-          <div className="card">
+          {!isViewer && <div className="card">
             <div className="card-title">Ρυθμίσεις</div>
             <div className="card-sub">Διαχείριση καταστημάτων</div>
             <div className="section-label">Προσθήκη νέου καταστήματος</div>
@@ -2789,7 +2796,7 @@ ${table}
             </div>
             {addStoreMsg && <div className={addStoreMsg.type==='success'?'banner-success':'error-banner'} style={{marginBottom:'12px'}}>{addStoreMsg.type==='success'?'✅ ':'⚠️ '}{addStoreMsg.text}</div>}
             <button className="btn-primary" onClick={handleAddStore} disabled={addingStore||!newStoreName.trim()}>{addingStore?'⏳ Προσθήκη...':'➕ Προσθήκη καταστήματος'}</button>
-          </div>
+          </div>}
           <div className="card">
             <div className="section-label">Λίστα καταστημάτων ({filteredStoreRows.length}/{storesList.length})</div>
             <div className="settings-store-search">
@@ -2861,10 +2868,10 @@ ${table}
               <span className="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg></span>
               Αρχική
             </button>
-            <button className={`sb-item ${tab==='scan'?'active':''}`} onClick={()=>handleTabClick('scan')}>
+            {!isViewer && <button className={`sb-item ${tab==='scan'?'active':''}`} onClick={()=>handleTabClick('scan')}>
               <span className="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6.5 6.5h.01M17.5 6.5h.01M6.5 17.5h.01M17.5 17.5h.01M3 7V5a2 2 0 012-2h2M3 17v2a2 2 0 002 2h2m10-16h2a2 2 0 012 2v2m0 10v2a2 2 0 01-2 2h-2M12 12h.01"/></svg></span>
               Scan
-            </button>
+            </button>}
             <button className={`sb-item ${tab==='inventory'?'active':''}`} onClick={()=>handleTabClick('inventory')}>
               <span className="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></span>
               Κινήσεις
@@ -2912,7 +2919,7 @@ ${table}
                     {f}
                   </button>
                 ))}
-                <button className="btn-new" onClick={()=>handleTabClick('scan')}>+ Νέα καταχώρηση</button>
+                {!isViewer && <button className="btn-new" onClick={()=>handleTabClick('scan')}>+ Νέα καταχώρηση</button>}
               </div>
             )}
           </div>
@@ -2952,10 +2959,10 @@ ${table}
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg>
               <span>Αρχική</span>
             </button>
-            <button className={`mob-nav-btn ${tab==='scan'?'active':''}`} onClick={()=>handleTabClick('scan')}>
+            {!isViewer && <button className={`mob-nav-btn ${tab==='scan'?'active':''}`} onClick={()=>handleTabClick('scan')}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6.5 6.5h.01M17.5 6.5h.01M6.5 17.5h.01M17.5 17.5h.01M3 7V5a2 2 0 012-2h2M3 17v2a2 2 0 002 2h2m10-16h2a2 2 0 012 2v2m0 10v2a2 2 0 01-2 2h-2M12 12h.01"/></svg>
               <span>Scan</span>
-            </button>
+            </button>}
             <button className={`mob-nav-btn ${tab==='inventory'?'active':''}`} onClick={()=>handleTabClick('inventory')}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
               <span>Κινήσεις</span>
@@ -3005,23 +3012,23 @@ ${table}
               <div className="mob-sheet-title">{mobileSheet.model || 'Χωρίς κωδικό'}</div>
               <div className="mob-sheet-sub">{mobileSheet.serialNumber}</div>
               <div className="mob-sheet-actions">
-                <button className="mob-sheet-btn" onClick={()=>{close();startNewAction(mobileSheet.serialNumber,mobileSheet.model);}}>
+                {!isViewer && <button className="mob-sheet-btn" onClick={()=>{close();startNewAction(mobileSheet.serialNumber,mobileSheet.model);}}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                   Νέα κίνηση
-                </button>
-                {isAvailable && (
+                </button>}
+                {!isViewer && isAvailable && (
                   <button className="mob-sheet-btn" onClick={()=>{close();handleMoveToRepair(mobileSheet);}}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
                     Σε επισκευή
                   </button>
                 )}
-                {isRepair && (
+                {!isViewer && isRepair && (
                   <button className="mob-sheet-btn success" onClick={()=>{close();handleMarkRepaired(mobileSheet);}}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                     Επισκευάστηκε
                   </button>
                 )}
-                {supportsSpareParts(mobileSheet) && (
+                {!isViewer && supportsSpareParts(mobileSheet) && (
                   <button className="mob-sheet-btn" onClick={()=>{close();openPartModal(mobileSheet);}}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
                     Ανταλλακτικό
@@ -3031,10 +3038,10 @@ ${table}
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
                   {getLinkActionLabel(mobileSheet)}
                 </button>
-                <button className="mob-sheet-btn danger" onClick={()=>{close();handleDeleteItem(mobileSheet);}}>
+                {!isViewer && <button className="mob-sheet-btn danger" onClick={()=>{close();handleDeleteItem(mobileSheet);}}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                   Διαγραφή
-                </button>
+                </button>}
               </div>
             </div>
           </div>

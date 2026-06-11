@@ -30,6 +30,7 @@ export default async function handler(req, res) {
       if (!code || !code.trim()) return res.status(400).json({ error: 'Κωδικός ανταλλακτικού υποχρεωτικός' });
 
       const currentUser = getUserFromRequest(req);
+      if (currentUser?.role === 'viewer') return res.status(403).json({ error: 'Δεν έχεις δικαίωμα αλλαγών' });
       const savedPart = await saveMachinePart({
         serialNumber,
         code: code.trim(),
@@ -51,6 +52,8 @@ export default async function handler(req, res) {
       if (!serialNumber) return res.status(400).json({ error: 'Serial number υποχρεωτικό' });
       if (!code) return res.status(400).json({ error: 'Κωδικός ανταλλακτικού υποχρεωτικός' });
 
+      const currentUserDel = getUserFromRequest(req);
+      if (currentUserDel?.role === 'viewer') return res.status(403).json({ error: 'Δεν έχεις δικαίωμα αλλαγών' });
       await deleteMachinePart({ serialNumber, code, createdAt });
       return res.status(200).json({ success: true });
     } catch (err) {
