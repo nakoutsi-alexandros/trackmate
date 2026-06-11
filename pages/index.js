@@ -135,6 +135,8 @@ export default function Home() {
   const [shipmentMethod, setShipmentMethod] = useState('ours');
   const [shipmentCourier, setShipmentCourier] = useState('');
   const [shipmentItemDescription, setShipmentItemDescription] = useState('');
+  const [shipmentPrice, setShipmentPrice] = useState('');
+  const [shipmentPurpose, setShipmentPurpose] = useState('');
   const [shipmentNotes, setShipmentNotes] = useState('');
   const [copiedShipmentEmail, setCopiedShipmentEmail] = useState(false);
 
@@ -573,7 +575,10 @@ ${table}
   };
 
   const getShipmentRows = (destination = getSelectedStoreDetails()) => {
-    const rows = [
+    const methodLabel = shipmentMethod === 'courier' && shipmentCourier.trim()
+      ? `Courier (${shipmentCourier.trim()})`
+      : getShipmentMethodLabel();
+    return [
       ['Επωνυμία Πελάτη', destination.name || store || '—'],
       ['ΑΦΜ', destination.vat || '—'],
       ['Υποκατάστημα', destination.address || '—'],
@@ -581,13 +586,11 @@ ${table}
       ['Περιγραφή Είδους', shipmentItemDescription || '—'],
       ['Σειριακός', serialNumber || '—'],
       ['Ποσότητα', '1'],
-      ['Τρόπος αποστολής', getShipmentMethodLabel()],
+      ['Τιμή', shipmentPrice.trim() || '—'],
+      ['Σκοπός Διακίνησης', shipmentPurpose.trim() || '—'],
+      ['Τρόπος Αποστολής', methodLabel],
+      ['Παρατηρήσεις', shipmentNotes.trim() || '—'],
     ];
-    if (shipmentMethod === 'courier') {
-      rows.push(['Courier', shipmentCourier || '—']);
-    }
-    if (shipmentNotes.trim()) rows.push(['Σημειώσεις', shipmentNotes.trim()]);
-    return rows;
   };
 
   const copyShipmentEmail = async () => {
@@ -653,7 +656,7 @@ ${table}
     setStore(''); setStoreSearch(''); setStoreChain('all'); setShowStorePicker(false);
     setDate(new Date().toISOString().split('T')[0]);
     setProblem(''); setNotes('');
-    setShipmentMethod('ours'); setShipmentCourier(''); setShipmentItemDescription(''); setShipmentNotes(''); setCopiedShipmentEmail(false);
+    setShipmentMethod('ours'); setShipmentCourier(''); setShipmentItemDescription(''); setShipmentPrice(''); setShipmentPurpose(''); setShipmentNotes(''); setCopiedShipmentEmail(false);
     setExistingItem(null);
   };
 
@@ -2043,7 +2046,15 @@ ${table}
                     <textarea value={shipmentItemDescription} onChange={e=>setShipmentItemDescription(e.target.value)} placeholder={`Περιγραφή είδους ${machineCategory}...`} />
                   </div>
                   <div className="field-group">
-                    <label className="field-label">Σημειώσεις αποστολής</label>
+                    <label className="field-label">Τιμή</label>
+                    <input className="text-input" value={shipmentPrice} onChange={e=>setShipmentPrice(e.target.value)} placeholder="π.χ. 0,00 €" />
+                  </div>
+                  <div className="field-group">
+                    <label className="field-label">Σκοπός Διακίνησης</label>
+                    <input className="text-input" value={shipmentPurpose} onChange={e=>setShipmentPurpose(e.target.value)} placeholder="π.χ. Επισκευή, Αντικατάσταση, Πώληση..." />
+                  </div>
+                  <div className="field-group">
+                    <label className="field-label">Παρατηρήσεις</label>
                     <textarea value={shipmentNotes} onChange={e=>setShipmentNotes(e.target.value)} placeholder="π.χ. Να παραδοθεί πρωί, εύθραυστο, παραλαβή από Χάρη..." />
                   </div>
                 </div>
