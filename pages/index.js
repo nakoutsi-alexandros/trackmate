@@ -2187,7 +2187,7 @@ ${table}
                     <a className="dt-row row-link" href={historyHref(item.serialNumber)} onClick={e=>handleHistoryLinkClick(e, item.serialNumber)}>
                       <div className="dt-td">
                         <span className="dt-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
-                        <div><div className="dt-model">{item.model || '—'}</div><div className="dt-serial">{item.serialNumber}</div></div>
+                        <div><div className="dt-model">{item.model || '—'}</div><div className="dt-serial"><span className="sn-label">S/N:</span> {item.serialNumber}</div></div>
                       </div>
                       <div className="dt-td dt-muted">{displayStore(item)}</div>
                       <div className="dt-td"><span className={`status-pill ${STATUS_PILL[normalizeAction(item.action)]?.cls||'pill-gray'}`}>{STATUS_PILL[normalizeAction(item.action)]?.label||normalizeAction(item.action)}</span></div>
@@ -2242,7 +2242,7 @@ ${table}
                     <div className="machine-name">{item.model || 'Άγνωστος κωδικός είδους'}</div>
                     <span className={`status-pill ${STATUS_PILL[normalizeAction(item.action)]?.cls||'pill-gray'}`}>{STATUS_PILL[normalizeAction(item.action)]?.label||normalizeAction(item.action)}</span>
                   </div>
-                  <div className="machine-serial">{item.serialNumber}</div>
+                  <div className="machine-serial"><span className="sn-label">S/N:</span> {item.serialNumber}</div>
                   <div className="machine-bottom">
                     <span className="machine-store">🏪 {displayStore(item)}</span>
                     <span className="machine-date">📅 {item.date}</span>
@@ -2299,7 +2299,7 @@ ${table}
                         <span className="dt-dot" style={{background:STATUS_COLOR[normalizeAction(item.action)]||'#888'}} />
                         <div>
                           <div className="dt-model">{item.model || '—'}</div>
-                          <div className="dt-serial">{item.serialNumber}</div>
+                          <div className="dt-serial"><span className="sn-label">S/N:</span> {item.serialNumber}</div>
                         </div>
                         {badge && <span className={`repair-badge repair-badge-${badge.type}`}>{badge.type==='danger'?'🔴':'🟡'} {badge.label}</span>}
                       </div>
@@ -2488,7 +2488,7 @@ ${table}
                       <div className="machine-name">{item.model || 'Άγνωστος κωδικός είδους'}</div>
                       <span className={`status-pill ${STATUS_PILL[normalizeAction(item.action)]?.cls||'pill-gray'}`}>{STATUS_PILL[normalizeAction(item.action)]?.label||normalizeAction(item.action)}</span>
                     </div>
-                    <div className="machine-serial">{item.serialNumber}</div>
+                    <div className="machine-serial"><span className="sn-label">S/N:</span> {item.serialNumber}</div>
                     <div className="machine-bottom" onClick={e=>{e.preventDefault();e.stopPropagation();}}>
                       {editingStore === item.serialNumber ? (
                         <div style={{width:'100%'}}>
@@ -3695,6 +3695,7 @@ ${table}
         .dt-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
         .dt-model { font-size: 12px; font-weight: 600; color: var(--t1); }
         .dt-serial { font-family: var(--mono); font-size: 10px; color: var(--t2); margin-top: 2px; letter-spacing: 0.03em; font-weight: 600; }
+        .sn-label { font-family: var(--sans); font-size: 9px; font-weight: 700; color: var(--t3); letter-spacing: 0.06em; text-transform: uppercase; margin-right: 1px; }
         .dt-note-row { padding: 5px 14px 8px; background: rgba(8,8,16,0.4); border-bottom: 1px solid var(--border); }
 
         /* ══════════════════════════
