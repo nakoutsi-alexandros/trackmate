@@ -1,4 +1,4 @@
-import { updateStore, updateItemDate, deleteItem } from '../../lib/sheets';
+import { updateStore, updateItemDate, deleteItem, deleteItemCompletely } from '../../lib/sheets';
 import { getUserFromRequest } from '../../lib/auth';
 
 export default async function handler(req, res) {
@@ -25,11 +25,15 @@ export default async function handler(req, res) {
 
   if (req.method === 'DELETE') {
     try {
-      const { serialNumber, model, store, category } = req.body;
+      const { serialNumber, model, store, category, deleteAll } = req.body;
       if (!serialNumber) {
         return res.status(400).json({ error: 'Serial number υποχρεωτικό' });
       }
-      await deleteItem({ serialNumber, model, store, user: userName, category });
+      if (deleteAll) {
+        await deleteItemCompletely(serialNumber);
+      } else {
+        await deleteItem({ serialNumber, model, store, user: userName, category });
+      }
       return res.status(200).json({ success: true });
     } catch (err) {
       console.error('deleteItem error:', err);

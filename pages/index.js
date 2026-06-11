@@ -139,6 +139,7 @@ export default function Home() {
   const [shipmentPurpose, setShipmentPurpose] = useState('');
   const [shipmentNotes, setShipmentNotes] = useState('');
   const [copiedShipmentEmail, setCopiedShipmentEmail] = useState(false);
+  const [deleteConfirmItem, setDeleteConfirmItem] = useState(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [inventory, setInventory] = useState(() => readInventoryCache());
@@ -741,13 +742,18 @@ ${table}
     }
   };
 
-  const handleDeleteItem = async (item) => {
-    if (!confirm(`Διαγραφή "${item.model || item.serialNumber}" από την αποθήκη;\n\nΤο ιστορικό θα παραμείνει.`)) return;
+  const handleDeleteItem = (item) => {
+    setDeleteConfirmItem(item);
+  };
+
+  const confirmDelete = async (deleteAll) => {
+    const item = deleteConfirmItem;
+    setDeleteConfirmItem(null);
     try {
       const res = await fetch('/api/warehouse', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ serialNumber: item.serialNumber, model: item.model, store: item.store, category: getMachineCategory(item) }),
+        body: JSON.stringify({ serialNumber: item.serialNumber, model: item.model, store: item.store, category: getMachineCategory(item), deleteAll }),
       });
       if (!res.ok) throw new Error();
       loadInventory();
@@ -3035,6 +3041,35 @@ ${table}
         );
       })()}
 
+      {deleteConfirmItem && (
+        <div className="modal-backdrop" onClick={() => setDeleteConfirmItem(null)}>
+          <div className="delete-modal" onClick={e => e.stopPropagation()}>
+            <div className="delete-modal-title">Διαγραφή μηχανήματος</div>
+            <div className="delete-modal-sub">
+              <strong>{deleteConfirmItem.model || deleteConfirmItem.serialNumber}</strong>
+              {deleteConfirmItem.model && <span> · {deleteConfirmItem.serialNumber}</span>}
+            </div>
+            <div className="delete-modal-options">
+              <button className="delete-opt-btn" onClick={() => confirmDelete(false)}>
+                <div className="delete-opt-icon">🗂️</div>
+                <div>
+                  <div className="delete-opt-label">Διαγραφή από αποθήκη</div>
+                  <div className="delete-opt-desc">Το ιστορικό κινήσεων παραμένει</div>
+                </div>
+              </button>
+              <button className="delete-opt-btn danger" onClick={() => confirmDelete(true)}>
+                <div className="delete-opt-icon">🗑️</div>
+                <div>
+                  <div className="delete-opt-label">Ολοκληρωτική διαγραφή</div>
+                  <div className="delete-opt-desc">Σβήνει ιστορικό, σημειώσεις και ανταλλακτικά</div>
+                </div>
+              </button>
+            </div>
+            <button className="delete-opt-cancel" onClick={() => setDeleteConfirmItem(null)}>Ακύρωση</button>
+          </div>
+        </div>
+      )}
+
       {partModalItem && (
         <div className="modal-backdrop" onClick={closePartModal}>
           <div className="part-modal" onClick={e=>e.stopPropagation()}>
@@ -4178,6 +4213,37 @@ ${table}
           background: rgba(4,4,10,0.68);
           backdrop-filter: blur(10px);
         }
+        .delete-modal {
+          width: min(360px, 100%);
+          background: var(--bg3);
+          border: 1px solid var(--border2);
+          border-radius: var(--r-lg);
+          padding: 20px;
+          display: flex; flex-direction: column; gap: 16px;
+        }
+        .delete-modal-title { font-size: 16px; font-weight: 600; color: var(--t1); }
+        .delete-modal-sub { font-size: 13px; color: var(--t2); }
+        .delete-modal-options { display: flex; flex-direction: column; gap: 8px; }
+        .delete-opt-btn {
+          display: flex; align-items: center; gap: 12px;
+          background: var(--bg2); border: 1px solid var(--border2);
+          border-radius: var(--r); padding: 12px 14px;
+          cursor: pointer; text-align: left; width: 100%;
+          transition: border-color 0.15s, background 0.15s;
+        }
+        .delete-opt-btn:hover { border-color: var(--acc); background: var(--glass); }
+        .delete-opt-btn.danger { border-color: rgba(239,68,68,0.3); }
+        .delete-opt-btn.danger:hover { border-color: #ef4444; background: rgba(239,68,68,0.08); }
+        .delete-opt-icon { font-size: 22px; flex-shrink: 0; }
+        .delete-opt-label { font-size: 14px; font-weight: 500; color: var(--t1); margin-bottom: 2px; }
+        .delete-opt-btn.danger .delete-opt-label { color: #f87171; }
+        .delete-opt-desc { font-size: 12px; color: var(--t3); }
+        .delete-opt-cancel {
+          background: none; border: none; color: var(--t3);
+          font-size: 13px; cursor: pointer; padding: 4px; text-align: center;
+        }
+        .delete-opt-cancel:hover { color: var(--t2); }
+
         .part-modal {
           width: min(560px, 100%);
           max-height: min(680px, 92vh);
