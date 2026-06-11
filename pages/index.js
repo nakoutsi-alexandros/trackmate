@@ -578,10 +578,15 @@ ${table}
     const methodLabel = shipmentMethod === 'courier' && shipmentCourier.trim()
       ? `Courier (${shipmentCourier.trim()})`
       : getShipmentMethodLabel();
+    const isMcD = machineCategory === "McDonald's";
+    const eponymia = isMcD ? 'Premiere Capital Ελλάς' : (destination.name || store || '—');
+    const branch = isMcD
+      ? [destination.name || store, destination.address].filter(Boolean).join(' (') + (destination.address ? ')' : '')
+      : (destination.address || '—');
     return [
-      ['Επωνυμία Πελάτη', destination.name || store || '—'],
+      ['Επωνυμία Πελάτη', eponymia],
       ['ΑΦΜ', destination.vat || '—'],
-      ['Υποκατάστημα', destination.address || '—'],
+      ['Υποκατάστημα', branch],
       ['Κωδικός Είδους', model || '—'],
       ['Περιγραφή Είδους', shipmentItemDescription || '—'],
       ['Σειριακός', serialNumber || '—'],
