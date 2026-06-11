@@ -2444,10 +2444,10 @@ ${table}
               const isSwiped = swipedItem === item.serialNumber;
               return (
                 <div key={i} className="swipe-container"
-                  onTouchStart={e=>onSwipeStart(e, item.serialNumber)}
-                  onTouchEnd={onSwipeEnd}
+                  onTouchStart={!isViewer ? e=>onSwipeStart(e, item.serialNumber) : undefined}
+                  onTouchEnd={!isViewer ? onSwipeEnd : undefined}
                 >
-                  {isSwiped && (() => {
+                  {!isViewer && isSwiped && (() => {
                     const sw = (fn) => { setSwipedItemSynced(null); fn(); };
                     const act = normalizeAction(item.action);
                     return (
