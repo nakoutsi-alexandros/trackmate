@@ -564,7 +564,7 @@ ${table}
         <table cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:1px solid #7f7f7f;font-family:Arial, sans-serif;font-size:14px;color:#000;">
           <tr>
             <th style="border:1px solid #7f7f7f;background:#c9c1ff;padding:7px 8px;width:42px;text-align:left;">A/A</th>
-            <th style="border:1px solid #7f7f7f;background:#c9c1ff;padding:7px 8px;text-align:left;">CashDro</th>
+            <th style="border:1px solid #7f7f7f;background:#c9c1ff;padding:7px 8px;text-align:left;">CashDro &amp; McDonald's</th>
             <th style="border:1px solid #7f7f7f;background:#c9c1ff;padding:7px 8px;text-align:center;">Εξαγωγή ειδών</th>
           </tr>
           ${bodyRows}
@@ -2088,7 +2088,7 @@ ${table}
                   <div className="shipment-table-preview">
                     <div className="shipment-table-top">
                       <div>A/A</div>
-                      <div>CashDro</div>
+                      <div>CashDro &amp; McDonald's</div>
                       <div>Εξαγωγή ειδών</div>
                     </div>
                     <div className="shipment-table-body">
