@@ -817,6 +817,30 @@ ${table}
     }
   };
 
+  const [deletingMovement, setDeletingMovement] = useState(null); // timestamp που σβήνεται
+
+  const handleDeleteMovement = async (item) => {
+    if (!item.timestamp) { alert('Η κίνηση δεν έχει χρονοσήμανση και δεν μπορεί να διαγραφεί.'); return; }
+    const label = `${normalizeAction(item.action)} · 🏪 ${item.store || '—'} · 📅 ${item.date || '—'}`;
+    if (!confirm(`Διαγραφή αυτής της κίνησης;\n\n${label}\n\nΘα μεταφερθεί στον Κάδο και μπορεί να επαναφερθεί.`)) return;
+    setDeletingMovement(item.timestamp);
+    try {
+      const res = await fetch('/api/movement', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serialNumber: item.serialNumber, timestamp: item.timestamp, action: item.action }),
+      });
+      if (!res.ok) throw new Error();
+      if (historySerial) loadHistory(historySerial, '');
+      else if (historyStore) loadHistory('', historyStore);
+      loadInventory();
+    } catch (e) {
+      alert('Σφάλμα διαγραφής κίνησης.');
+    } finally {
+      setDeletingMovement(null);
+    }
+  };
+
   // Quick mark as repaired - άμεση καταχώρηση χωρίς φόρμα
   const handleExportExcel = async () => {
     try {
@@ -2797,7 +2821,15 @@ ${table}
               <div className="h-card">
                 <div className="h-action-row">
                   <div className="h-action">{normalizeAction(item.action)}</div>
-                  <span className={`status-pill ${STATUS_PILL[normalizeAction(item.action)]?.cls||'pill-gray'}`}>{STATUS_PILL[normalizeAction(item.action)]?.label||normalizeAction(item.action)}</span>
+                  <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
+                    <span className={`status-pill ${STATUS_PILL[normalizeAction(item.action)]?.cls||'pill-gray'}`}>{STATUS_PILL[normalizeAction(item.action)]?.label||normalizeAction(item.action)}</span>
+                    {!isViewer && item.timestamp && (
+                      <button className="h-del-btn" title="Διαγραφή κίνησης" disabled={deletingMovement===item.timestamp}
+                        onClick={e=>{e.stopPropagation();handleDeleteMovement(item);}}>
+                        {deletingMovement===item.timestamp ? '…' : '🗑'}
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {!historySerial && (
                   <div className="h-machine">
@@ -4107,6 +4139,13 @@ ${table}
         .h-card:hover { border-color: var(--border2); }
         .h-action-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
         .h-action { font-size: 12px; font-weight: 700; color: var(--t1); }
+        .h-del-btn {
+          border: none; background: transparent; cursor: pointer; padding: 2px 4px;
+          font-size: 13px; line-height: 1; border-radius: 6px; opacity: 0.45;
+          transition: opacity 0.15s, background 0.15s;
+        }
+        .h-del-btn:hover:not(:disabled) { opacity: 1; background: rgba(239,68,68,0.12); }
+        .h-del-btn:disabled { opacity: 0.4; cursor: default; }
         .h-meta { font-size: 10px; color: var(--t3); font-weight: 500; }
         .h-notes { font-size: 11px; color: var(--t3); margin-top: 4px; font-weight: 500; }
         .h-machine { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
