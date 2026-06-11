@@ -174,6 +174,9 @@ export default function Home() {
   const [savingStoreDetails, setSavingStoreDetails] = useState(false);
   const [storeDetailsMsg, setStoreDetailsMsg] = useState(null);
   const [settingsStoreSearch, setSettingsStoreSearch] = useState('');
+  const [trashItems, setTrashItems] = useState([]);
+  const [loadingTrash, setLoadingTrash] = useState(false);
+  const [trashBusy, setTrashBusy] = useState(null); // batchId που γίνεται restore/purge
   const [warehouseNotes, setWarehouseNotes] = useState({});
   const [editingNote, setEditingNote] = useState(null);
   const [noteInput, setNoteInput] = useState('');
@@ -217,6 +220,57 @@ export default function Home() {
       const data = await res.json();
       setWarehouseNotes(data.notes || {});
     } catch (e) {}
+  };
+
+  const loadTrash = async () => {
+    setLoadingTrash(true);
+    try {
+      const res = await fetch('/api/trash');
+      const data = await res.json();
+      setTrashItems(data.items || []);
+    } catch (e) {
+      setTrashItems([]);
+    } finally {
+      setLoadingTrash(false);
+    }
+  };
+
+  const restoreTrashItem = async (batchId) => {
+    setTrashBusy(batchId);
+    try {
+      const res = await fetch('/api/trash', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ batchId }),
+      });
+      if (!res.ok) throw new Error();
+      await loadTrash();
+      loadInventory();
+      loadNotes();
+      loadParts();
+    } catch (e) {
+      alert('Σφάλμα επαναφοράς.');
+    } finally {
+      setTrashBusy(null);
+    }
+  };
+
+  const purgeTrashItem = async (batchId) => {
+    if (!confirm('Οριστική διαγραφή; Δεν θα μπορεί να γίνει επαναφορά.')) return;
+    setTrashBusy(batchId);
+    try {
+      const res = await fetch('/api/trash', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ batchId }),
+      });
+      if (!res.ok) throw new Error();
+      await loadTrash();
+    } catch (e) {
+      alert('Σφάλμα οριστικής διαγραφής.');
+    } finally {
+      setTrashBusy(null);
+    }
   };
 
   const loadItems = async () => {
@@ -1375,7 +1429,7 @@ ${table}
       loadParts();
       loadLogLinks();
     }
-    if (t === 'settings') loadStores();
+    if (t === 'settings') { loadStores(); loadTrash(); }
     router.push(
       { pathname: router.pathname, query: t === 'home' ? {} : { tab: t } },
       undefined,
@@ -1532,7 +1586,7 @@ ${table}
     if (nextTab === 'history' && querySerial && querySerial !== historySerial) {
       loadHistory(querySerial);
     }
-    if (nextTab === 'settings') loadStores();
+    if (nextTab === 'settings') { loadStores(); loadTrash(); }
   }, [router.isReady, router.query.tab, router.query.serial]);
 
   const renderWarehouseActions = (item) => {
@@ -2837,6 +2891,38 @@ ${table}
             </div>
             <button className="btn-ghost" style={{marginTop:'12px'}} onClick={loadStores}>🔄 Ανανέωση</button>
           </div>
+          {!isViewer && (
+            <div className="card">
+              <div className="section-label">🗑️ Κάδος διαγραμμένων{trashItems.length > 0 ? ` (${trashItems.length})` : ''}</div>
+              <div className="card-sub">Τα ολοκληρωτικά διαγραμμένα μηχανήματα αρχειοθετούνται εδώ και μπορούν να επαναφερθούν.</div>
+              {loadingTrash ? (
+                <div className="trash-empty">Φόρτωση...</div>
+              ) : trashItems.length === 0 ? (
+                <div className="trash-empty">Ο κάδος είναι άδειος.</div>
+              ) : (
+                <div className="trash-list">
+                  {trashItems.map(t => (
+                    <div key={t.batchId} className="trash-item">
+                      <div className="trash-info">
+                        <div className="trash-model">{t.model || t.serialNumber}</div>
+                        <div className="trash-serial"><span className="sn-label">S/N:</span> {t.serialNumber}</div>
+                        <div className="trash-meta">🗓️ {t.deletedAt}{t.deletedBy ? ` · 👤 ${t.deletedBy}` : ''} · {t.total} εγγραφές</div>
+                      </div>
+                      <div className="trash-actions">
+                        <button className="trash-restore" disabled={trashBusy===t.batchId} onClick={()=>restoreTrashItem(t.batchId)}>
+                          {trashBusy===t.batchId ? '...' : '↩ Επαναφορά'}
+                        </button>
+                        <button className="trash-purge" disabled={trashBusy===t.batchId} onClick={()=>purgeTrashItem(t.batchId)}>
+                          Οριστική
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button className="btn-ghost" style={{marginTop:'12px'}} onClick={loadTrash}>🔄 Ανανέωση</button>
+            </div>
+          )}
         </div>
       )}
     </>
@@ -3074,7 +3160,7 @@ ${table}
                 <div className="delete-opt-icon">🗑️</div>
                 <div>
                   <div className="delete-opt-label">Ολοκληρωτική διαγραφή</div>
-                  <div className="delete-opt-desc">Σβήνει ιστορικό, σημειώσεις και ανταλλακτικά</div>
+                  <div className="delete-opt-desc">Ιστορικό, σημειώσεις & ανταλλακτικά → Κάδος (επαναφέρσιμο)</div>
                 </div>
               </button>
             </div>
@@ -4257,6 +4343,33 @@ ${table}
           font-size: 13px; cursor: pointer; padding: 4px; text-align: center;
         }
         .delete-opt-cancel:hover { color: var(--t2); }
+
+        .trash-empty { font-size: 13px; color: var(--t3); padding: 12px 0; }
+        .trash-list { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+        .trash-item {
+          display: flex; align-items: center; justify-content: space-between; gap: 12px;
+          padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--r-lg);
+          background: var(--glass);
+        }
+        .trash-info { min-width: 0; }
+        .trash-model { font-size: 14px; font-weight: 600; color: var(--t1); }
+        .trash-serial { font-family: var(--mono); font-size: 10px; color: var(--t2); margin-top: 1px; letter-spacing: 0.03em; }
+        .trash-meta { font-size: 11px; color: var(--t3); margin-top: 3px; }
+        .trash-actions { display: flex; gap: 6px; flex-shrink: 0; }
+        .trash-restore {
+          padding: 7px 12px; border-radius: 8px; border: 1px solid var(--acc);
+          background: var(--glow2); color: var(--acc); font-size: 12px; font-weight: 600; cursor: pointer;
+          white-space: nowrap; transition: background 0.15s, opacity 0.15s;
+        }
+        .trash-restore:hover:not(:disabled) { background: var(--acc); color: #fff; }
+        .trash-restore:disabled { opacity: 0.5; cursor: default; }
+        .trash-purge {
+          padding: 7px 12px; border-radius: 8px; border: 1px solid var(--border2);
+          background: transparent; color: var(--t3); font-size: 12px; cursor: pointer;
+          white-space: nowrap; transition: color 0.15s, border-color 0.15s;
+        }
+        .trash-purge:hover:not(:disabled) { color: #f87171; border-color: rgba(239,68,68,0.4); }
+        .trash-purge:disabled { opacity: 0.5; cursor: default; }
 
         .part-modal {
           width: min(560px, 100%);

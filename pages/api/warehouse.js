@@ -31,7 +31,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Serial number υποχρεωτικό' });
       }
       if (deleteAll) {
-        await deleteItemCompletely(serialNumber);
+        await deleteItemCompletely(serialNumber, { user: userName, model });
       } else {
         await deleteItem({ serialNumber, model, store, user: userName, category });
       }
