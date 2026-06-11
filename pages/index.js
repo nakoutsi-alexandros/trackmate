@@ -1655,12 +1655,12 @@ ${table}
           </div>
         )}
         <div className="machine-card-actions">
-          {suggested.map(cat => (
+          {!isViewer && suggested.map(cat => (
             <button key={cat.id} className="btn-quick-action" onClick={()=>useAsMovement(cat.id)}>{cat.label}</button>
           ))}
-          <button className="note-add-btn" onClick={()=>handleQuickSaveNote(serial)}>+ Νέα σημείωση</button>
-          {supportsSpareParts(item) && <button className="note-add-btn" onClick={()=>openPartModal(item)}>Ανταλλακτικό</button>}
-          <button className="note-add-btn" onClick={()=>openLogLinkModal(item)}>{getLinkActionLabel(item)}</button>
+          {!isViewer && <button className="note-add-btn" onClick={()=>handleQuickSaveNote(serial)}>+ Νέα σημείωση</button>}
+          {!isViewer && supportsSpareParts(item) && <button className="note-add-btn" onClick={()=>openPartModal(item)}>Ανταλλακτικό</button>}
+          {!isViewer && <button className="note-add-btn" onClick={()=>openLogLinkModal(item)}>{getLinkActionLabel(item)}</button>}
           {options.showHistoryButton && (
             <a className="btn-quick-action row-link" href={historyHref(serial)} onClick={e=>handleHistoryLinkClick(e, serial)}>Ιστορικό</a>
           )}
@@ -2334,9 +2334,11 @@ ${table}
                             </button>
                           </div>
                         ) : (
-                          <span className="store-edit-display dt-muted" onClick={()=>setEditingStore(item.serialNumber)}
-                            title="Κλικ για αλλαγή καταστήματος">
-                            {displayStore(item)} ✏️
+                          <span className="store-edit-display dt-muted"
+                            onClick={!isViewer ? ()=>setEditingStore(item.serialNumber) : undefined}
+                            style={{cursor: isViewer ? 'default' : 'pointer'}}
+                            title={isViewer ? undefined : 'Κλικ για αλλαγή καταστήματος'}>
+                            {displayStore(item)}{!isViewer && ' ✏️'}
                           </span>
                         )}
                       </div>
@@ -2355,8 +2357,11 @@ ${table}
                             <button className="date-cancel-btn" onClick={cancelEditingDate}>×</button>
                           </div>
                         ) : (
-                          <span className="date-edit-display" onClick={()=>startEditingDate(item)} title="Κλικ για αλλαγή ημερομηνίας">
-                            {item.date || '—'} ✏️
+                          <span className="date-edit-display"
+                            onClick={!isViewer ? ()=>startEditingDate(item) : undefined}
+                            style={{cursor: isViewer ? 'default' : 'pointer'}}
+                            title={isViewer ? undefined : 'Κλικ για αλλαγή ημερομηνίας'}>
+                            {item.date || '—'}{!isViewer && ' ✏️'}
                           </span>
                         )}
                       </div>
