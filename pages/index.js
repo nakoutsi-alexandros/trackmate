@@ -1319,6 +1319,21 @@ ${table}
     if (historyStoreCategoryFilter === 'CashDro') return true;
     return false;
   });
+  // Κατάσταση συμβολαίου: { daysLeft, level } όπου level = expired | soon (≤60μ) | ok.
+  // Επιστρέφει null αν το κατάστημα δεν έχει σύμβαση ή έγκυρη ημ/νία λήξης.
+  const getContractStatus = (store) => {
+    if (!store || store.contract !== 'yes' || !store.contractEnd) return null;
+    const end = new Date(store.contractEnd);
+    if (Number.isNaN(end.getTime())) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+    const daysLeft = Math.round((end - today) / 86400000);
+    if (daysLeft < 0) return { daysLeft, level: 'expired' };
+    if (daysLeft <= 60) return { daysLeft, level: 'soon' };
+    return { daysLeft, level: 'ok' };
+  };
+
   const missingNoteItems = warehouseItems.filter(item => !(warehouseNotes[item.serialNumber] || []).length);
   const homeMissingNoteItems = homeWarehouseItems.filter(item => !(warehouseNotes[item.serialNumber] || []).length);
   const incompleteStoreRows = storeRows.filter(store => !store.phone || !store.address || !store.vat);
@@ -1326,8 +1341,17 @@ ${table}
     if (homeCategoryFilter === 'all') return true;
     return matchesStoreMachineCategory(store.name, homeCategoryFilter);
   });
-  const attentionCount = attentionRepairItems.length + missingNoteItems.length + incompleteStoreRows.length;
-  const homeAttentionCount = homeAttentionRepairItems.length + homeMissingNoteItems.length + homeIncompleteStoreRows.length;
+  // Συμβόλαια που λήγουν: status με βάση το contractEnd (μόνο stores με σύμβαση)
+  const expiringContracts = storeRows.filter(store => {
+    const st = getContractStatus(store);
+    return st && st.level !== 'ok';
+  });
+  const homeExpiringContracts = expiringContracts.filter(store => {
+    if (homeCategoryFilter === 'all') return true;
+    return matchesStoreMachineCategory(store.name, homeCategoryFilter);
+  });
+  const attentionCount = attentionRepairItems.length + missingNoteItems.length + incompleteStoreRows.length + expiringContracts.length;
+  const homeAttentionCount = homeAttentionRepairItems.length + homeMissingNoteItems.length + homeIncompleteStoreRows.length + homeExpiringContracts.length;
   const recentMovements = sortItems(inventory).slice(0, 5);
   const homeRecentMovements = sortItems(homeInventory).slice(0, 5);
   const countOrDash = (value) => inventorySnapshotReady ? value : '—';
@@ -1816,6 +1840,12 @@ ${table}
                 </div>
                 <div className="store-contract-duration">
                   Διάρκεια: <strong>{contractDuration || 'συμπλήρωσε ημερομηνίες'}</strong>
+                  {(() => {
+                    const cs = getContractStatus(storeDetailsDraft);
+                    if (!cs) return null;
+                    if (cs.level === 'expired') return <span className="contract-inline expired"> · Έληξε πριν {Math.abs(cs.daysLeft)} ημέρες</span>;
+                    return <span className={`contract-inline ${cs.level}`}> · Λήγει σε {cs.daysLeft} ημέρες</span>;
+                  })()}
                 </div>
               </div>
             )}
@@ -1938,6 +1968,10 @@ ${table}
               <button className="attention-row" onClick={()=>handleTabClick('settings')}>
                 <span>Καταστήματα με ελλιπή στοιχεία</span>
                 <strong style={inventorySnapshotReady && homeIncompleteStoreRows.length > 0 ? {color:'var(--orange)'} : {}}>{countOrDash(homeIncompleteStoreRows.length)}</strong>
+              </button>
+              <button className="attention-row" onClick={()=>handleTabClick('settings')}>
+                <span>Συμβόλαια που λήγουν (≤60 ημέρες)</span>
+                <strong style={inventorySnapshotReady && homeExpiringContracts.length > 0 ? {color:'var(--orange)'} : {}}>{countOrDash(homeExpiringContracts.length)}</strong>
               </button>
             </section>
           </div>
@@ -2904,6 +2938,7 @@ ${table}
               <div className="settings-store-list">
                 {filteredStoreRows.map((store,i) => {
                   const isIncomplete = !store.phone || !store.address || !store.vat;
+                  const cs = getContractStatus(store);
                   return (
                     <button
                       key={`${store.name}-${i}`}
@@ -2911,7 +2946,9 @@ ${table}
                       onClick={()=>openStoreDetails(store)}
                     >
                       {isIncomplete && <span className="store-incomplete-dot" title="Ελλιπή στοιχεία" />}
-                      {store.name}
+                      <span className="settings-store-name">{store.name}</span>
+                      {cs && cs.level === 'expired' && <span className="contract-badge expired" title={`Έληξε πριν ${Math.abs(cs.daysLeft)} ημέρες`}>Έληξε</span>}
+                      {cs && cs.level === 'soon' && <span className="contract-badge soon" title={`Λήγει σε ${cs.daysLeft} ημέρες`}>{cs.daysLeft}η</span>}
                     </button>
                   );
                 })}
@@ -4529,6 +4566,14 @@ ${table}
         .settings-store-item.incomplete { color: var(--orange); }
         .settings-store-item.incomplete.active { color: var(--orange); }
         .store-incomplete-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--orange); flex-shrink: 0; }
+        .settings-store-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .contract-badge { flex-shrink: 0; font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 999px; letter-spacing: 0.02em; }
+        .contract-badge.soon { color: #f59e0b; background: rgba(245,158,11,0.14); border: 1px solid rgba(245,158,11,0.35); }
+        .contract-badge.expired { color: #f87171; background: rgba(239,68,68,0.14); border: 1px solid rgba(239,68,68,0.4); }
+        .contract-inline { font-weight: 800; }
+        .contract-inline.ok { color: var(--t2); }
+        .contract-inline.soon { color: #f59e0b; }
+        .contract-inline.expired { color: #f87171; }
         .settings-store-empty { padding: 14px 12px; color: var(--t3); font-size: 12px; font-weight: 600; text-align: center; }
         .store-detail-card { border: 1px solid var(--border2); border-radius: var(--r-lg); background: var(--glass2); padding: 14px; box-shadow: 0 0 18px var(--glow2); }
         .store-detail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
