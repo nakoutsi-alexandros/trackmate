@@ -5,13 +5,17 @@
  *  1. βρίσκει τα αδιάβαστα emails
  *  2. κρατάει μόνο όσα έρχονται από τα καταστήματα της λίστας STORES
  *  3. τα στέλνει στο TrackMate (/api/tickets/inbound)
- *  4. απαντάει στο ίδιο thread με το κείμενο που επιστρέφει το TrackMate
+ *  4. αν λείπουν στοιχεία από τη φόρμα, στέλνει ειδοποίηση σε ΕΜΑΣ (NOTIFY_EMAIL)
+ *     — στο κατάστημα δεν στέλνεται ποτέ τίποτα
  *
  * Εγκατάσταση: δες τα βήματα στο README ή στη συνομιλία.
  */
 
 // ── ΡΥΘΜΙΣΕΙΣ ─────────────────────────────────────────────
 const TRACKMATE_URL = 'https://trackmate-lake.vercel.app/api/tickets/inbound';
+
+// Πού έρχεται η ειδοποίηση όταν λείπουν στοιχεία (μπορούν να είναι πολλά, χωρισμένα με κόμμα)
+const NOTIFY_EMAIL = 'to-email-sas@example.gr';
 
 // Whitelist 1 — συγκεκριμένα emails: email → όνομα καταστήματος (όπως είναι στο TrackMate)
 // Το υποκατάστημα συμπληρώνεται αυτόματα.
@@ -21,7 +25,7 @@ const STORES = {
 
 // Whitelist 2 — ολόκληρα domains αλυσίδων: domain → όνομα αλυσίδας (όπως είναι στο TrackMate)
 // Δέχεται ΟΠΟΙΟΔΗΠΟΤΕ email του domain. Αν το υποκατάστημα φαίνεται στο κείμενο ή
-// στην υπογραφή, το TrackMate το βάζει στο ticket· αλλιώς το ζητάει στην απάντηση.
+// στη φόρμα, το TrackMate το ταιριάζει με τα καταστήματα της αλυσίδας.
 // Δέχεται και ολόκληρη διεύθυνση (π.χ. για δοκιμή: 'to-email-mou@gmail.com': 'ΑΛΥΣΙΔΑ').
 const DOMAINS = {
   // 'johndoe.gr': 'ΑΛΥΣΙΔΑ',
@@ -145,16 +149,16 @@ function sendToTrackMate_(msg, thread, fromEmail, store, chain, secret) {
   }
 
   const data = JSON.parse(res.getContentText());
-  if (data.shouldReply && data.reply) {
+  if (data.notify && NOTIFY_EMAIL && NOTIFY_EMAIL.indexOf('example') === -1) {
     try {
-      msg.reply(data.reply);
+      GmailApp.sendEmail(NOTIFY_EMAIL, data.notify.subject, data.notify.body);
     } catch (e) {
-      Logger.log('Αποτυχία αποστολής απάντησης για ' + data.ticketId + ': ' + e + ' — νέα προσπάθεια σε 5 λεπτά');
-      return false; // μένει αδιάβαστο → το TrackMate θα ξαναστείλει την ίδια απάντηση
+      Logger.log('Αποτυχία ειδοποίησης για ' + data.ticketId + ': ' + e + ' — νέα προσπάθεια σε 5 λεπτά');
+      return false; // μένει αδιάβαστο → το TrackMate θα ξαναδώσει την ίδια ειδοποίηση
     }
   }
   msg.markRead();
-  Logger.log('Ticket ' + data.ticketId + ' → ' + data.status);
+  Logger.log('Ticket ' + data.ticketId + ' → ' + data.status + (data.missing ? ' (λείπουν: ' + data.missing + ')' : ''));
   return true;
 }
 

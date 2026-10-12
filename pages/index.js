@@ -2954,7 +2954,7 @@ ${table}
 
       {tab === 'tickets' && (() => {
         const STATUS_PILL = { 'Νέο': 'pill-blue', 'Ελλιπές': 'pill-amber', 'Σε εξέλιξη': 'pill-purple', 'Κλειστό': 'pill-gray' };
-        const MISSING_LABEL = { store: 'Υποκατάστημα', contactName: 'Όνομα', contactPhone: 'Τηλέφωνο', problem: 'Πρόβλημα', serialNumber: 'Serial' };
+        const MISSING_LABEL = { store: 'Υποκατάστημα', address: 'Διεύθυνση', postalCode: 'Τ.Κ.', contactName: 'Υπεύθυνος', contactPhone: 'Τηλέφωνο', problem: 'Πρόβλημα' };
         const isOpenStatus = s => s !== 'Κλειστό';
         const visible = tickets.filter(t =>
           ticketFilter === 'all' ? true :
@@ -3016,13 +3016,21 @@ ${table}
                       <div className="ticket-grid">
                         <div><span>Υπεύθυνος</span>{t.contactName || '—'}</div>
                         <div><span>Τηλέφωνο</span>{t.contactPhone ? <a className="ticket-tel" href={`tel:${t.contactPhone.replace(/[^\d+]/g,'')}`}>{t.contactPhone}</a> : '—'}</div>
+                        <div><span>Διεύθυνση</span>{[t.address, t.postalCode].filter(Boolean).join(', ') || '—'}</div>
+                        <div><span>IP Cashdro</span>{t.ip || '—'}</div>
+                        <div><span>Μεταφορική</span>{t.courier || '—'}</div>
                         <div><span>Από</span>{t.from || '—'}</div>
                         <div><span>Θέμα</span>{t.subject || '—'}</div>
-                        <div><span>Serial</span>{t.serialNumber || '—'}</div>
-                        <div><span>Μοντέλο</span>{t.model || '—'}</div>
+                        <div><span>Σειριακός Cashdro</span>{t.serialNumber || '—'}</div>
                         <div><span>Δημιουργήθηκε</span>{fmt(t.createdAt)}</div>
                         <div><span>Τελευταία αλλαγή</span>{fmt(t.updatedAt)}{t.updatedBy ? ` · ${t.updatedBy}` : ''}</div>
                       </div>
+                      {t.storeRemarks && (
+                        <>
+                          <div className="section-label" style={{marginTop:'12px'}}>Παρατηρήσεις καταστήματος</div>
+                          <div className="ticket-message">{t.storeRemarks}</div>
+                        </>
+                      )}
                       {t.lastMessage && (
                         <>
                           <div className="section-label" style={{marginTop:'12px'}}>Τελευταίο μήνυμα</div>

@@ -45,8 +45,9 @@ export default async function handler(req, res) {
     return res.status(200).json({
       ticketId: result.ticket.ticketId,
       status: result.ticket.status,
-      shouldReply: result.shouldReply,
-      reply: result.reply || '',
+      missing: result.ticket.missing || '',
+      // Στο κατάστημα δεν απαντάμε ποτέ· μόνο ειδοποίηση σε εμάς όταν λείπει κάτι
+      notify: result.notify || null,
       duplicate: !!result.duplicate,
     });
   } catch (err) {
