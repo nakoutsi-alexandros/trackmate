@@ -18,8 +18,9 @@ const STORES = {
   'katastima@example.gr': 'ΟΝΟΜΑ ΚΑΤΑΣΤΗΜΑΤΟΣ',
 };
 
-const LABEL_DONE    = 'TrackMate';
-const LABEL_IGNORED = 'TrackMate/Αγνοήθηκε';
+// Λατινικά ονόματα: το Gmail κάποιες φορές δεν βρίσκει υπο-ετικέτες με ελληνικά
+const LABEL_DONE    = 'TrackMate-Tickets';
+const LABEL_IGNORED = 'TrackMate-Ignored';
 const MAX_IMAGE_BYTES = 1.5 * 1024 * 1024; // ανά εικόνα
 const MAX_IMAGES = 2;
 // ──────────────────────────────────────────────────────────
@@ -60,8 +61,6 @@ function processInbox() {
     const whitelist = {};
     Object.keys(STORES).forEach(k => { whitelist[k.trim().toLowerCase()] = STORES[k]; });
 
-    const doneLabel = getOrCreateLabel_(LABEL_DONE);
-    const ignoredLabel = getOrCreateLabel_(LABEL_IGNORED);
     const threads = GmailApp.search('in:inbox is:unread newer_than:7d', 0, 30);
 
     threads.forEach(thread => {
@@ -70,25 +69,34 @@ function processInbox() {
         const msg = messages[i];
         if (!msg.isUnread()) continue;
 
-        const fromEmail = extractEmail_(msg.getFrom());
+        let step = 'ανάγνωση αποστολέα';
+        try {
+          const fromEmail = extractEmail_(msg.getFrom());
 
-        // Δικά μας μηνύματα ή αυτόματα (auto-reply, noreply, bounce) → χωρίς απάντηση
-        if (fromEmail === me || isAutomated_(msg, fromEmail)) {
-          msg.markRead();
-          continue;
+          // Δικά μας μηνύματα ή αυτόματα (auto-reply, noreply, bounce) → χωρίς απάντηση
+          step = 'έλεγχος αυτόματου μηνύματος';
+          if (fromEmail === me || isAutomated_(msg, fromEmail)) {
+            msg.markRead();
+            continue;
+          }
+
+          const store = whitelist[fromEmail];
+          if (!store) {
+            // Όχι από κατάστημα της λίστας → καμία απάντηση, μόνο ετικέτα
+            step = 'σήμανση αγνοημένου';
+            msg.markRead();
+            addLabelSafe_(thread, LABEL_IGNORED);
+            continue;
+          }
+
+          step = 'αποστολή στο TrackMate';
+          const ok = sendToTrackMate_(msg, thread, fromEmail, store, secret);
+          if (!ok) break; // αφήνουμε αδιάβαστο για να ξαναδοκιμάσει σε 5 λεπτά
+          addLabelSafe_(thread, LABEL_DONE);
+        } catch (e) {
+          Logger.log('Σφάλμα (' + step + ') στο "' + msg.getSubject() + '": ' + e);
+          break; // μένει αδιάβαστο, νέα προσπάθεια στην επόμενη εκτέλεση
         }
-
-        const store = whitelist[fromEmail];
-        if (!store) {
-          // Όχι από κατάστημα της λίστας → καμία απάντηση, μόνο ετικέτα
-          msg.markRead();
-          thread.addLabel(ignoredLabel);
-          continue;
-        }
-
-        const ok = sendToTrackMate_(msg, thread, fromEmail, store, secret);
-        if (!ok) break; // αφήνουμε αδιάβαστο για να ξαναδοκιμάσει σε 5 λεπτά
-        thread.addLabel(doneLabel);
       }
     });
   } finally {
@@ -124,7 +132,12 @@ function sendToTrackMate_(msg, thread, fromEmail, store, secret) {
 
   const data = JSON.parse(res.getContentText());
   if (data.shouldReply && data.reply) {
-    msg.reply(data.reply);
+    try {
+      msg.reply(data.reply);
+    } catch (e) {
+      Logger.log('Αποτυχία αποστολής απάντησης για ' + data.ticketId + ': ' + e + ' — νέα προσπάθεια σε 5 λεπτά');
+      return false; // μένει αδιάβαστο → το TrackMate θα ξαναστείλει την ίδια απάντηση
+    }
   }
   msg.markRead();
   Logger.log('Ticket ' + data.ticketId + ' → ' + data.status);
@@ -148,11 +161,13 @@ function collectImages_(msg) {
 
 function isAutomated_(msg, fromEmail) {
   if (/(no-?reply|mailer-daemon|postmaster)/i.test(fromEmail)) return true;
-  const auto = (msg.getHeader('Auto-Submitted') || '').toLowerCase();
+  const header = name => {
+    try { return String(msg.getHeader(name) || '').toLowerCase(); } catch (e) { return ''; }
+  };
+  const auto = header('Auto-Submitted');
   if (auto && auto !== 'no') return true;
-  const prec = (msg.getHeader('Precedence') || '').toLowerCase();
-  if (['bulk', 'list', 'junk', 'auto_reply'].indexOf(prec) !== -1) return true;
-  if (msg.getHeader('X-Autoreply') || msg.getHeader('X-Autorespond')) return true;
+  if (['bulk', 'list', 'junk', 'auto_reply'].indexOf(header('Precedence')) !== -1) return true;
+  if (header('X-Autoreply') || header('X-Autorespond')) return true;
   return false;
 }
 
@@ -164,5 +179,15 @@ function extractEmail_(from) {
 
 
 function getOrCreateLabel_(name) {
-  return GmailApp.getUserLabelByName(name) || GmailApp.createLabel(name);
+  const found = GmailApp.getUserLabels().filter(l => l.getName() === name)[0];
+  return found || GmailApp.createLabel(name);
+}
+
+// Οι ετικέτες είναι μόνο για ευκολία· ένα σφάλμα εδώ δεν σταματά τίποτα
+function addLabelSafe_(thread, name) {
+  try {
+    thread.addLabel(getOrCreateLabel_(name));
+  } catch (e) {
+    Logger.log('Δεν μπήκε η ετικέτα ' + name + ': ' + e);
+  }
 }
