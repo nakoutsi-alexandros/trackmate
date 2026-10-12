@@ -48,7 +48,7 @@ export default async function handler(req, res) {
       duplicate: !!result.duplicate,
     });
   } catch (err) {
-    console.error('tickets/inbound error:', err);
+    console.error('tickets/inbound error:', err?.status || '', err?.error?.error?.message || err?.message || err);
     // 503 → το script αφήνει το email αδιάβαστο και ξαναδοκιμάζει στην επόμενη εκτέλεση
     return res.status(503).json({ error: 'Προσωρινό σφάλμα, θα γίνει νέα προσπάθεια' });
   }
