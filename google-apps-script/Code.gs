@@ -17,8 +17,8 @@ const TRACKMATE_URL = 'https://trackmate-lake.vercel.app/api/tickets/inbound';
 // Πού έρχεται η ειδοποίηση όταν λείπουν στοιχεία (μπορούν να είναι πολλά, χωρισμένα με κόμμα)
 const NOTIFY_EMAIL = 'to-email-sas@example.gr';
 
-// Whitelist 1 — συγκεκριμένα emails: email → όνομα καταστήματος (όπως είναι στο TrackMate)
-// Το υποκατάστημα συμπληρώνεται αυτόματα.
+// Whitelist 1 — συγκεκριμένα emails που επιτρέπεται να στέλνουν φόρμα: email → όνομα (για αναγνώριση)
+// Το υποκατάστημα διαβάζεται πάντα από τη φόρμα.
 const STORES = {
   'katastima@example.gr': 'ΟΝΟΜΑ ΚΑΤΑΣΤΗΜΑΤΟΣ',
 };
