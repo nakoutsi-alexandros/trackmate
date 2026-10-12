@@ -21,7 +21,8 @@ const STORES = {
 
 // Whitelist 2 — ολόκληρα domains αλυσίδων: domain → όνομα αλυσίδας (όπως είναι στο TrackMate)
 // Δέχεται ΟΠΟΙΟΔΗΠΟΤΕ email του domain. Αν το υποκατάστημα φαίνεται στο κείμενο ή
-// στην υπογραφή, το TrackMate το βάζει στο ticket· αλλιώς μένει το όνομα της αλυσίδας.
+// στην υπογραφή, το TrackMate το βάζει στο ticket· αλλιώς το ζητάει στην απάντηση.
+// Δέχεται και ολόκληρη διεύθυνση (π.χ. για δοκιμή: 'to-email-mou@gmail.com': 'ΑΛΥΣΙΔΑ').
 const DOMAINS = {
   // 'johndoe.gr': 'ΑΛΥΣΙΔΑ',
 };
@@ -91,7 +92,7 @@ function processInbox() {
           }
 
           const store = whitelist[fromEmail] || '';
-          const chain = store ? '' : (domainList[fromEmail.split('@')[1] || ''] || '');
+          const chain = store ? '' : (domainList[fromEmail] || domainList[fromEmail.split('@')[1] || ''] || '');
           if (!store && !chain) {
             // Όχι από κατάστημα της λίστας → καμία απάντηση, μόνο ετικέτα
             step = 'σήμανση αγνοημένου';

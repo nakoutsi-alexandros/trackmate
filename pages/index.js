@@ -2954,7 +2954,7 @@ ${table}
 
       {tab === 'tickets' && (() => {
         const STATUS_PILL = { 'Νέο': 'pill-blue', 'Ελλιπές': 'pill-amber', 'Σε εξέλιξη': 'pill-purple', 'Κλειστό': 'pill-gray' };
-        const MISSING_LABEL = { contactName: 'Όνομα', contactPhone: 'Τηλέφωνο', problem: 'Πρόβλημα', serialNumber: 'Serial' };
+        const MISSING_LABEL = { store: 'Υποκατάστημα', contactName: 'Όνομα', contactPhone: 'Τηλέφωνο', problem: 'Πρόβλημα', serialNumber: 'Serial' };
         const isOpenStatus = s => s !== 'Κλειστό';
         const visible = tickets.filter(t =>
           ticketFilter === 'all' ? true :
