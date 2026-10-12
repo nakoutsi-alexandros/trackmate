@@ -68,7 +68,7 @@ const STORE_CHAINS = [
 // Width of the swipe-reveal action tray in px (module-level so it's never recreated)
 const SWIPE_W = 200;
 
-const TAB_IDS = ['home', 'scan', 'inventory', 'warehouse', 'history', 'settings'];
+const TAB_IDS = ['home', 'scan', 'inventory', 'warehouse', 'history', 'tickets', 'settings'];
 const INVENTORY_CACHE_KEY = 'trackmate_inventory_cache_v1';
 const MACHINE_CATEGORIES = ['CashDro', "McDonald's"];
 
@@ -175,6 +175,14 @@ export default function Home() {
   const [storeDetailsMsg, setStoreDetailsMsg] = useState(null);
   const [settingsStoreSearch, setSettingsStoreSearch] = useState('');
   const [trashItems, setTrashItems] = useState([]);
+  // ── Tickets (από email) ──
+  const [tickets, setTickets] = useState([]);
+  const [loadingTickets, setLoadingTickets] = useState(false);
+  const [ticketsError, setTicketsError] = useState('');
+  const [ticketFilter, setTicketFilter] = useState('open'); // open | Νέο | Ελλιπές | Σε εξέλιξη | Κλειστό | all
+  const [openTicketId, setOpenTicketId] = useState(null);
+  const [ticketNoteDraft, setTicketNoteDraft] = useState('');
+  const [savingTicketId, setSavingTicketId] = useState(null);
   const [loadingTrash, setLoadingTrash] = useState(false);
   const [trashBusy, setTrashBusy] = useState(null); // batchId που γίνεται restore/purge
   const [warehouseNotes, setWarehouseNotes] = useState({});
@@ -1109,6 +1117,64 @@ ${table}
     handleTabClick('scan');
   };
 
+  // ── Tickets ──
+  const loadTickets = async () => {
+    setLoadingTickets(true);
+    setTicketsError('');
+    try {
+      const res = await fetch('/api/tickets');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Σφάλμα');
+      setTickets(data.tickets || []);
+    } catch (e) {
+      setTicketsError('Δεν φορτώθηκαν τα tickets. Δοκίμασε ξανά.');
+    } finally {
+      setLoadingTickets(false);
+    }
+  };
+
+  const updateTicket = async (ticketId, fields) => {
+    setSavingTicketId(ticketId);
+    try {
+      const res = await fetch('/api/tickets', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticketId, ...fields }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setTickets(prev => prev.map(t => t.ticketId === ticketId ? { ...t, ...data.ticket } : t));
+      return true;
+    } catch (e) {
+      alert(e.message || 'Σφάλμα ενημέρωσης ticket.');
+      return false;
+    } finally {
+      setSavingTicketId(null);
+    }
+  };
+
+  const openTicket = (t) => {
+    if (openTicketId === t.ticketId) { setOpenTicketId(null); return; }
+    setOpenTicketId(t.ticketId);
+    setTicketNoteDraft(t.notes || '');
+  };
+
+  // Ticket → φόρμα κίνησης (Εισαγωγή για επισκευή) με προσυμπληρωμένα στοιχεία
+  const ticketToMovement = (t) => {
+    const source = findExistingSerial(t.serialNumber);
+    handleReset();
+    setSerialNumber(t.serialNumber || '');
+    setModel(t.model || '');
+    setMachineCategory(getMachineCategory(source));
+    setStore(t.store || '');
+    setProblem(t.problem || '');
+    setNotes(`Ticket ${t.ticketId}`);
+    selectActionById('repair-in');
+    setStep(2);
+    handleTabClick('scan');
+    if (t.status === 'Νέο') updateTicket(t.ticketId, { status: 'Σε εξέλιξη' });
+  };
+
   const loadInventory = async () => {
     const requestId = inventoryRequestRef.current + 1;
     inventoryRequestRef.current = requestId;
@@ -1478,6 +1544,7 @@ ${table}
       loadLogLinks();
     }
     if (t === 'settings') { loadStores(); loadTrash(); }
+    if (t === 'tickets') loadTickets();
     router.push(
       { pathname: router.pathname, query: t === 'home' ? {} : { tab: t } },
       undefined,
@@ -1635,6 +1702,7 @@ ${table}
       loadHistory(querySerial);
     }
     if (nextTab === 'settings') { loadStores(); loadTrash(); }
+    if (nextTab === 'tickets') loadTickets();
   }, [router.isReady, router.query.tab, router.query.serial]);
 
   const renderWarehouseActions = (item) => {
@@ -2884,6 +2952,108 @@ ${table}
         </div>
       )}
 
+      {tab === 'tickets' && (() => {
+        const STATUS_PILL = { 'Νέο': 'pill-blue', 'Ελλιπές': 'pill-amber', 'Σε εξέλιξη': 'pill-purple', 'Κλειστό': 'pill-gray' };
+        const MISSING_LABEL = { serialNumber: 'Serial', problem: 'Πρόβλημα' };
+        const isOpenStatus = s => s !== 'Κλειστό';
+        const visible = tickets.filter(t =>
+          ticketFilter === 'all' ? true :
+          ticketFilter === 'open' ? isOpenStatus(t.status) :
+          t.status === ticketFilter
+        );
+        const fmt = iso => { const d = new Date(iso); return isNaN(d) ? (iso || '') : d.toLocaleString('el-GR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }); };
+        const count = s => tickets.filter(t => t.status === s).length;
+        return (
+          <div key="tickets" className="fade-in">
+            <div className="card">
+              <div className="ticket-toolbar">
+                <div>
+                  <div className="card-title">Tickets από email</div>
+                  <div className="card-sub" style={{marginBottom:0}}>Δημιουργούνται αυτόματα από τα emails του καταστήματος</div>
+                </div>
+                <button className="filter-pill" onClick={loadTickets} disabled={loadingTickets}>{loadingTickets ? 'Φόρτωση...' : '↻ Ανανέωση'}</button>
+              </div>
+              <div className="ticket-filters">
+                {[['open','Ανοιχτά'],['Νέο',`Νέα (${count('Νέο')})`],['Ελλιπές',`Ελλιπή (${count('Ελλιπές')})`],['Σε εξέλιξη',`Σε εξέλιξη (${count('Σε εξέλιξη')})`],['Κλειστό','Κλειστά'],['all','Όλα']].map(([id,label]) => (
+                  <button key={id} className={`filter-pill ${ticketFilter===id?'active':''}`} onClick={()=>setTicketFilter(id)}>{label}</button>
+                ))}
+              </div>
+            </div>
+
+            {ticketsError && <div className="error-banner">⚠️ {ticketsError}</div>}
+            {!loadingTickets && !ticketsError && visible.length === 0 && (
+              <div className="card ticket-empty">Δεν υπάρχουν tickets σε αυτή την κατηγορία.</div>
+            )}
+
+            {visible.map(t => {
+              const isOpen = openTicketId === t.ticketId;
+              const missing = (t.missing || '').split(',').map(x => x.trim()).filter(Boolean);
+              return (
+                <div key={t.ticketId} className={`card ticket-card ${isOpen?'open':''}`}>
+                  <button className="ticket-head" onClick={()=>openTicket(t)}>
+                    <div className="ticket-head-main">
+                      <div className="ticket-id-row">
+                        <span className="ticket-id">{t.ticketId}</span>
+                        <span className={`status-pill ${STATUS_PILL[t.status] || 'pill-gray'}`}>{t.status || '—'}</span>
+                      </div>
+                      <div className="ticket-store">{t.store || t.from}</div>
+                      <div className="ticket-problem">{t.problem || t.subject || 'Χωρίς περιγραφή'}</div>
+                      {missing.length > 0 && (
+                        <div className="ticket-missing">Λείπει: {missing.map(m => MISSING_LABEL[m] || m).join(', ')}</div>
+                      )}
+                    </div>
+                    <div className="ticket-meta">
+                      {t.serialNumber && <div className="ticket-serial">{t.serialNumber}</div>}
+                      <div className="ticket-date">{fmt(t.updatedAt || t.createdAt)}</div>
+                    </div>
+                  </button>
+
+                  {isOpen && (
+                    <div className="ticket-body">
+                      <div className="ticket-grid">
+                        <div><span>Από</span>{t.from || '—'}</div>
+                        <div><span>Θέμα</span>{t.subject || '—'}</div>
+                        <div><span>Serial</span>{t.serialNumber || '—'}</div>
+                        <div><span>Μοντέλο</span>{t.model || '—'}</div>
+                        <div><span>Δημιουργήθηκε</span>{fmt(t.createdAt)}</div>
+                        <div><span>Τελευταία αλλαγή</span>{fmt(t.updatedAt)}{t.updatedBy ? ` · ${t.updatedBy}` : ''}</div>
+                      </div>
+                      {t.lastMessage && (
+                        <>
+                          <div className="section-label" style={{marginTop:'12px'}}>Τελευταίο μήνυμα</div>
+                          <div className="ticket-message">{t.lastMessage}</div>
+                        </>
+                      )}
+                      {!isViewer && (
+                        <>
+                          <div className="section-label" style={{marginTop:'12px'}}>Κατάσταση</div>
+                          <div className="ticket-filters" style={{marginTop:0}}>
+                            {['Νέο','Ελλιπές','Σε εξέλιξη','Κλειστό'].map(s => (
+                              <button key={s} className={`filter-pill ${t.status===s?'active':''}`} disabled={savingTicketId===t.ticketId}
+                                onClick={()=>t.status!==s && updateTicket(t.ticketId, { status: s })}>{s}</button>
+                            ))}
+                          </div>
+                          <div className="section-label" style={{marginTop:'12px'}}>Εσωτερικές σημειώσεις</div>
+                          <textarea className="text-input" rows={3} value={ticketNoteDraft} onChange={e=>setTicketNoteDraft(e.target.value)} placeholder="Δεν στέλνονται στο κατάστημα" />
+                          <div className="ticket-actions">
+                            <button className="btn-note-cancel" disabled={savingTicketId===t.ticketId || ticketNoteDraft===(t.notes||'')}
+                              onClick={()=>updateTicket(t.ticketId, { notes: ticketNoteDraft })}>Αποθήκευση σημείωσης</button>
+                            <button className="btn-primary ticket-move-btn" disabled={!t.serialNumber} onClick={()=>ticketToMovement(t)}
+                              title={t.serialNumber ? '' : 'Χρειάζεται serial number'}>
+                              🔧 Καταχώρηση για επισκευή
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
+
       {tab === 'settings' && (
         <div key="settings" className="fade-in">
           <div className="card">
@@ -3045,6 +3215,10 @@ ${table}
               <span className="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></span>
               Ιστορικό
             </button>
+            <button className={`sb-item ${tab==='tickets'?'active':''}`} onClick={()=>handleTabClick('tickets')}>
+              <span className="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8l9 6 9-6"/><rect x="3" y="5" width="18" height="14" rx="2"/></svg></span>
+              Tickets
+            </button>
             <div className="sb-section" style={{marginTop:'12px'}}>Διαχείριση</div>
             <button className={`sb-item ${tab==='settings'?'active':''}`} onClick={()=>handleTabClick('settings')}>
               <span className="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg></span>
@@ -3070,7 +3244,7 @@ ${table}
         <div className="desktop-main">
           <div className="desktop-header">
             <div className="desktop-title">
-              {tab==='home'?'Αρχική':tab==='scan'?'Scan':tab==='inventory'?'Κινήσεις':tab==='warehouse'?'Αποθήκη':tab==='history'?'Ιστορικό':'Ρυθμίσεις'}
+              {tab==='home'?'Αρχική':tab==='scan'?'Scan':tab==='inventory'?'Κινήσεις':tab==='warehouse'?'Αποθήκη':tab==='history'?'Ιστορικό':tab==='tickets'?'Tickets':'Ρυθμίσεις'}
             </div>
             {(tab==='inventory' || tab==='warehouse') && (
               <div className="desktop-header-actions">
@@ -3135,6 +3309,10 @@ ${table}
             <button className={`mob-nav-btn ${tab==='history'?'active':''}`} onClick={()=>handleTabClick('history')}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
               <span>Ιστορικό</span>
+            </button>
+            <button className={`mob-nav-btn ${tab==='tickets'?'active':''}`} onClick={()=>handleTabClick('tickets')}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8l9 6 9-6"/><rect x="3" y="5" width="18" height="14" rx="2"/></svg>
+              <span>Tickets</span>
             </button>
             <button className={`mob-nav-btn ${tab==='settings'?'active':''}`} onClick={()=>handleTabClick('settings')}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
@@ -4678,6 +4856,32 @@ ${table}
         .light .stat-label { color: var(--t3); }
         .light .stat-val { color: var(--t1); }
         .light .stat-sub { color: var(--t3); }
+        /* ══════════════════════════
+           TICKETS
+        ══════════════════════════ */
+        .ticket-toolbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+        .ticket-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+        .ticket-empty { color: var(--t3); font-size: 13px; text-align: center; }
+        .ticket-card { padding: 0; overflow: hidden; }
+        .ticket-head { width: 100%; display: flex; justify-content: space-between; gap: 12px; padding: 14px 16px; background: none; border: none; text-align: left; cursor: pointer; color: inherit; font-family: var(--font); }
+        .ticket-head-main { min-width: 0; flex: 1; }
+        .ticket-id-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+        .ticket-id { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--acc); }
+        .ticket-store { font-size: 13px; font-weight: 700; color: var(--t1); }
+        .ticket-problem { font-size: 12px; color: var(--t2); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .ticket-missing { font-size: 11px; color: var(--orange); margin-top: 4px; font-weight: 600; }
+        .ticket-meta { text-align: right; flex-shrink: 0; }
+        .ticket-serial { font-family: var(--mono); font-size: 11px; color: var(--t1); font-weight: 600; }
+        .ticket-date { font-size: 10px; color: var(--t3); margin-top: 3px; }
+        .ticket-body { padding: 0 16px 16px; border-top: 1px solid var(--border); }
+        .ticket-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; margin-top: 12px; font-size: 12px; color: var(--t1); word-break: break-word; }
+        .ticket-grid span { display: block; font-size: 9px; font-weight: 700; color: var(--t4); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 2px; }
+        .ticket-message { white-space: pre-wrap; font-size: 12px; color: var(--t2); background: var(--glass2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; max-height: 220px; overflow-y: auto; }
+        .ticket-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 10px; }
+        .ticket-move-btn { width: auto; }
+        @media (max-width: 600px) { .ticket-grid { grid-template-columns: 1fr; } }
+        .light .ticket-message { background: rgba(255,255,255,0.7); }
+
         .light .card { background: rgba(255,255,255,0.9); border-color: var(--border); }
         .light .card-title { color: var(--t1); }
         .light .card-sub { color: var(--t3); }

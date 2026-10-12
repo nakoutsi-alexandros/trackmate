@@ -46,6 +46,7 @@ export async function middleware(request) {
     '/api/auth/login',
     '/api/auth/logout',
     '/api/auth/me',
+    '/api/tickets/inbound', // καλείται από Gmail Apps Script, έχει δικό του μυστικό κλειδί
   ];
 
   // Static files και Next.js internals - τα αφήνουμε να περάσουν
