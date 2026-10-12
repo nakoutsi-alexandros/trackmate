@@ -13,9 +13,17 @@
 // ── ΡΥΘΜΙΣΕΙΣ ─────────────────────────────────────────────
 const TRACKMATE_URL = 'https://trackmate-lake.vercel.app/api/tickets/inbound';
 
-// Whitelist: email καταστήματος → όνομα καταστήματος (όπως είναι στο TrackMate)
+// Whitelist 1 — συγκεκριμένα emails: email → όνομα καταστήματος (όπως είναι στο TrackMate)
+// Το υποκατάστημα συμπληρώνεται αυτόματα.
 const STORES = {
   'katastima@example.gr': 'ΟΝΟΜΑ ΚΑΤΑΣΤΗΜΑΤΟΣ',
+};
+
+// Whitelist 2 — ολόκληρα domains αλυσίδων: domain → όνομα αλυσίδας (όπως είναι στο TrackMate)
+// Δέχεται ΟΠΟΙΟΔΗΠΟΤΕ email του domain. Αν το υποκατάστημα φαίνεται στο κείμενο ή
+// στην υπογραφή, το TrackMate το βάζει στο ticket· αλλιώς μένει το όνομα της αλυσίδας.
+const DOMAINS = {
+  // 'johndoe.gr': 'ΑΛΥΣΙΔΑ',
 };
 
 // Λατινικά ονόματα: το Gmail κάποιες φορές δεν βρίσκει υπο-ετικέτες με ελληνικά
@@ -60,6 +68,8 @@ function processInbox() {
     const me = Session.getEffectiveUser().getEmail().toLowerCase();
     const whitelist = {};
     Object.keys(STORES).forEach(k => { whitelist[k.trim().toLowerCase()] = STORES[k]; });
+    const domainList = {};
+    Object.keys(DOMAINS).forEach(k => { domainList[k.trim().toLowerCase().replace(/^@/, '')] = DOMAINS[k]; });
 
     const threads = GmailApp.search('in:inbox is:unread newer_than:7d', 0, 30);
 
@@ -80,8 +90,9 @@ function processInbox() {
             continue;
           }
 
-          const store = whitelist[fromEmail];
-          if (!store) {
+          const store = whitelist[fromEmail] || '';
+          const chain = store ? '' : (domainList[fromEmail.split('@')[1] || ''] || '');
+          if (!store && !chain) {
             // Όχι από κατάστημα της λίστας → καμία απάντηση, μόνο ετικέτα
             step = 'σήμανση αγνοημένου';
             msg.markRead();
@@ -90,7 +101,7 @@ function processInbox() {
           }
 
           step = 'αποστολή στο TrackMate';
-          const ok = sendToTrackMate_(msg, thread, fromEmail, store, secret);
+          const ok = sendToTrackMate_(msg, thread, fromEmail, store, chain, secret);
           if (!ok) break; // αφήνουμε αδιάβαστο για να ξαναδοκιμάσει σε 5 λεπτά
           addLabelSafe_(thread, LABEL_DONE);
         } catch (e) {
@@ -105,12 +116,14 @@ function processInbox() {
 }
 
 
-function sendToTrackMate_(msg, thread, fromEmail, store, secret) {
+function sendToTrackMate_(msg, thread, fromEmail, store, chain, secret) {
   const payload = {
     threadId: thread.getId(),
     messageId: msg.getId(),
     from: fromEmail,
+    fromName: extractName_(msg.getFrom()),
     store: store,
+    chain: chain,
     subject: msg.getSubject(),
     body: msg.getPlainBody(),
     images: collectImages_(msg),
@@ -169,6 +182,12 @@ function isAutomated_(msg, fromEmail) {
   if (['bulk', 'list', 'junk', 'auto_reply'].indexOf(header('Precedence')) !== -1) return true;
   if (header('X-Autoreply') || header('X-Autorespond')) return true;
   return false;
+}
+
+
+function extractName_(from) {
+  const m = String(from || '').match(/^\s*"?([^"<]+?)"?\s*</);
+  return m ? m[1].trim() : '';
 }
 
 

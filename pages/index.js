@@ -2954,7 +2954,7 @@ ${table}
 
       {tab === 'tickets' && (() => {
         const STATUS_PILL = { 'Νέο': 'pill-blue', 'Ελλιπές': 'pill-amber', 'Σε εξέλιξη': 'pill-purple', 'Κλειστό': 'pill-gray' };
-        const MISSING_LABEL = { serialNumber: 'Serial', problem: 'Πρόβλημα' };
+        const MISSING_LABEL = { contactName: 'Όνομα', contactPhone: 'Τηλέφωνο', problem: 'Πρόβλημα', serialNumber: 'Serial' };
         const isOpenStatus = s => s !== 'Κλειστό';
         const visible = tickets.filter(t =>
           ticketFilter === 'all' ? true :
@@ -2997,6 +2997,9 @@ ${table}
                         <span className={`status-pill ${STATUS_PILL[t.status] || 'pill-gray'}`}>{t.status || '—'}</span>
                       </div>
                       <div className="ticket-store">{t.store || t.from}</div>
+                      {(t.contactName || t.contactPhone) && (
+                        <div className="ticket-contact">{[t.contactName, t.contactPhone].filter(Boolean).join(' · ')}</div>
+                      )}
                       <div className="ticket-problem">{t.problem || t.subject || 'Χωρίς περιγραφή'}</div>
                       {missing.length > 0 && (
                         <div className="ticket-missing">Λείπει: {missing.map(m => MISSING_LABEL[m] || m).join(', ')}</div>
@@ -3011,6 +3014,8 @@ ${table}
                   {isOpen && (
                     <div className="ticket-body">
                       <div className="ticket-grid">
+                        <div><span>Υπεύθυνος</span>{t.contactName || '—'}</div>
+                        <div><span>Τηλέφωνο</span>{t.contactPhone ? <a className="ticket-tel" href={`tel:${t.contactPhone.replace(/[^\d+]/g,'')}`}>{t.contactPhone}</a> : '—'}</div>
                         <div><span>Από</span>{t.from || '—'}</div>
                         <div><span>Θέμα</span>{t.subject || '—'}</div>
                         <div><span>Serial</span>{t.serialNumber || '—'}</div>
@@ -4869,6 +4874,8 @@ ${table}
         .ticket-id { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--acc); }
         .ticket-store { font-size: 13px; font-weight: 700; color: var(--t1); }
         .ticket-problem { font-size: 12px; color: var(--t2); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .ticket-contact { font-size: 11px; color: var(--t3); margin-top: 2px; }
+        .ticket-tel { color: var(--acc); text-decoration: none; font-weight: 600; }
         .ticket-missing { font-size: 11px; color: var(--orange); margin-top: 4px; font-weight: 600; }
         .ticket-meta { text-align: right; flex-shrink: 0; }
         .ticket-serial { font-family: var(--mono); font-size: 11px; color: var(--t1); font-weight: 600; }

@@ -24,7 +24,7 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const { threadId, messageId, from, store, subject, body, images } = req.body || {};
+  const { threadId, messageId, from, fromName, store, chain, subject, body, images } = req.body || {};
   if (!threadId || !messageId) {
     return res.status(400).json({ error: 'threadId και messageId είναι υποχρεωτικά' });
   }
@@ -34,7 +34,9 @@ export default async function handler(req, res) {
       threadId: String(threadId),
       messageId: String(messageId),
       from: String(from || ''),
+      fromName: String(fromName || ''),
       store: String(store || ''),
+      chain: String(chain || ''),
       subject: String(subject || ''),
       body: String(body || ''),
       images: Array.isArray(images) ? images : [],
