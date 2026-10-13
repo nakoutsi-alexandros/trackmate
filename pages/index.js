@@ -3716,7 +3716,7 @@ ${table}
           </button>
           {currentUser && (
             <div className="sb-footer">
-              <div className="sb-avatar">{currentUser.fullName.slice(0,2).toUpperCase()}</div>
+              <div className="sb-avatar">{currentUser.fullName.slice(0,2).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()}</div>
               <div className="sb-username">{currentUser.fullName}</div>
               <button className="sb-dark-btn" onClick={toggleDarkMode} title={darkMode?'Light mode':'Dark mode'}>
                 {darkMode
