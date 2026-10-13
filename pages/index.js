@@ -4076,6 +4076,7 @@ ${table}
           --r:        10px;
           --r-sm:     6px;
           --r-lg:     14px;
+          --topbar-h: 64px;
           /* Χρώματα γραφημάτων (ελεγμένα: φωτεινότητα, αχρωματοψία, αντίθεση) */
           --c-avail:   #3b82f6;
           --c-repair:  #ea580c;
@@ -4139,7 +4140,7 @@ ${table}
         }
 
         /* Logo */
-        .sb-logo { padding: 22px 18px 18px; border-bottom: 1px solid var(--border); }
+        .sb-logo { height: var(--topbar-h); box-sizing: border-box; padding: 0 14px; display: flex; align-items: center; border-bottom: 1px solid var(--border); flex-shrink: 0; }
         .sb-logo-mark { display: flex; align-items: center; gap: 12px; }
         .sb-logo-icon {
           width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
@@ -4227,7 +4228,7 @@ ${table}
         .sidebar.collapsed .sb-label,
         .sidebar.collapsed .sb-section,
         .sidebar.collapsed .sb-username { display: none; }
-        .sidebar.collapsed .sb-logo { padding: 18px 0 14px; display: flex; justify-content: center; }
+        .sidebar.collapsed .sb-logo { padding: 0; justify-content: center; }
         .sidebar.collapsed .sb-nav { padding: 12px 10px; overflow: visible; }
         .sidebar.collapsed .sb-item,
         .sidebar.collapsed .sb-toggle { justify-content: center; padding: 10px 0; }
@@ -4248,7 +4249,9 @@ ${table}
         ══════════════════════════ */
         .desktop-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
         .desktop-header {
-          padding: 15px 24px;
+          /* Ίδιο ύψος με το logo του μενού, ώστε οι δύο γραμμές να ενώνονται */
+          height: var(--topbar-h); box-sizing: border-box; flex-shrink: 0;
+          padding: 0 24px;
           background: rgba(8,8,16,0.85);
           backdrop-filter: blur(20px);
           border-bottom: 1px solid var(--border);
