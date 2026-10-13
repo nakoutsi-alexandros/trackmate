@@ -20,6 +20,10 @@ const TRACKMATE_URL = 'https://trackmate-lake.vercel.app/api/tickets/inbound';
 // Για έλεγχο: τρέξε τη συνάρτηση testNotify — στέλνει δοκιμαστικό email εδώ.
 const NOTIFY_EMAIL = 'to-email-sas@example.gr';
 
+// false = απλό κείμενο (περνάει τα φίλτρα του Outlook/Microsoft 365)
+// true  = μορφοποιημένο email με κουμπί (μόνο αν ο διαχειριστής έχει επιτρέψει τον αποστολέα)
+const NOTIFY_HTML = false;
+
 // Whitelist 1 — συγκεκριμένα emails που επιτρέπεται να στέλνουν φόρμα.
 // Αρκεί το email· το όνομα δίπλα είναι προαιρετικό (μπορεί να μείνει '').
 // Το υποκατάστημα διαβάζεται πάντα από τη φόρμα.
@@ -164,10 +168,7 @@ function sendToTrackMate_(msg, thread, fromEmail, store, chain, secret) {
     Logger.log('⚠️ Ticket ' + data.ticketId + ' ελλιπές, αλλά ΔΕΝ στάλθηκε ειδοποίηση: συμπλήρωσε σωστά το NOTIFY_EMAIL στην κορυφή του script');
   } else {
     try {
-      GmailApp.sendEmail(notifyList_(), data.notify.subject, data.notify.body, {
-        htmlBody: data.notify.html || undefined,
-        name: 'TrackMate',
-      });
+      sendNotify_(data.notify);
       Logger.log('✉️ Ειδοποίηση για ' + data.ticketId + ' στάλθηκε σε: ' + notifyList_());
     } catch (e) {
       Logger.log('Αποτυχία ειδοποίησης για ' + data.ticketId + ': ' + e + ' — νέα προσπάθεια σε 5 λεπτά');
@@ -216,6 +217,27 @@ function testNotify() {
   GmailApp.sendEmail(notifyList_(), 'TrackMate: δοκιμαστική ειδοποίηση',
     'Αν βλέπεις αυτό το email, οι ειδοποιήσεις για ελλιπή tickets λειτουργούν.', { name: 'TrackMate' });
   Logger.log('✉️ Στάλθηκε δοκιμαστικό email σε: ' + notifyList_() + ' (κοίτα και στα Ανεπιθύμητα)');
+}
+
+/** Στέλνει μια ειδοποίηση ίδια με αυτή ενός πραγματικού ελλιπούς ticket (για δοκιμή). */
+function testNotifyTicket() {
+  if (!notifyConfigured_()) {
+    Logger.log('⚠️ Το NOTIFY_EMAIL δεν είναι σωστό: "' + NOTIFY_EMAIL + '".');
+    return;
+  }
+  sendNotify_({
+    subject: 'Ελλιπές ticket TM-TEST · ΔΟΚΙΜΗ',
+    body: 'Ελλιπές ticket TM-TEST\nΔΟΚΙΜΗ\n\nΛείπουν: Τηλέφωνο επικοινωνίας\n\nΣτοιχεία φόρμας\n  Υποκατάστημα: ΔΟΚΙΜΗ\n  Τηλέφωνο επικοινωνίας: [ΛΕΙΠΕΙ]\n\n' +
+          'Άνοιγμα στο TrackMate:\nhttps://trackmate-lake.vercel.app/?tab=tickets\n\nΑυτό είναι δοκιμαστικό μήνυμα.',
+    html: '<p><b>Ελλιπές ticket TM-TEST</b></p><p>Αυτό είναι δοκιμαστικό μήνυμα.</p>',
+  });
+  Logger.log('✉️ Στάλθηκε δοκιμαστική ειδοποίηση ticket (' + (NOTIFY_HTML ? 'HTML' : 'απλό κείμενο') + ') σε: ' + notifyList_());
+}
+
+function sendNotify_(notify) {
+  const opts = { name: 'TrackMate' };
+  if (NOTIFY_HTML && notify.html) opts.htmlBody = notify.html;
+  GmailApp.sendEmail(notifyList_(), notify.subject, notify.body, opts);
 }
 
 function notifyList_() {
