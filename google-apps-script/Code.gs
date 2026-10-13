@@ -23,7 +23,8 @@ const NOTIFY_EMAIL = 'to-email-sas@example.gr';
 // Μορφή ειδοποίησης:
 //   'text'  = απλό κείμενο
 //   'table' = απλός πίνακας με τα πεδία (χωρίς κουμπί)
-//   'full'  = μορφοποιημένο email με κουμπί
+//   'design'= η μορφοποιημένη εμφάνιση, χωρίς το κουμπί
+//   'full'  = μορφοποιημένο email με κουμπί (όπως ήταν αρχικά)
 // Για να δεις ποια περνάει τα φίλτρα του Outlook: τρέξε testNotifyFormats.
 const NOTIFY_FORMAT = 'text';
 
@@ -241,12 +242,13 @@ function sendNotify_(notify, format) {
   const fmt = format || NOTIFY_FORMAT;
   const opts = { name: 'TrackMate' };
   if (fmt === 'table' && notify.htmlTable) opts.htmlBody = notify.htmlTable;
+  if (fmt === 'design' && notify.htmlNoButton) opts.htmlBody = notify.htmlNoButton;
   if (fmt === 'full' && notify.html) opts.htmlBody = notify.html;
   GmailApp.sendEmail(notifyList_(), notify.subject, notify.body, opts);
 }
 
 /**
- * Στέλνει 3 δοκιμαστικές ειδοποιήσεις, μία σε κάθε μορφή (text / table / full).
+ * Στέλνει 4 δοκιμαστικές ειδοποιήσεις, μία σε κάθε μορφή (text / table / design / full).
  * Δες στο Outlook ποιες έφτασαν και βάλε αυτή που σου αρέσει στο NOTIFY_FORMAT.
  */
 function testNotifyFormats() {
@@ -265,11 +267,11 @@ function testNotifyFormats() {
     return;
   }
   const sample = JSON.parse(res.getContentText()).notify;
-  ['text', 'table', 'full'].forEach(fmt => {
-    sendNotify_({ subject: '[' + fmt + '] ' + sample.subject, body: sample.body, html: sample.html, htmlTable: sample.htmlTable }, fmt);
+  ['text', 'table', 'design', 'full'].forEach(fmt => {
+    sendNotify_({ subject: '[' + fmt + '] ' + sample.subject, body: sample.body, html: sample.html, htmlTable: sample.htmlTable, htmlNoButton: sample.htmlNoButton }, fmt);
     Logger.log('✉️ Στάλθηκε δοκιμή μορφής "' + fmt + '"');
   });
-  Logger.log('Δες στο Outlook ποια από τα [text] / [table] / [full] έφτασαν.');
+  Logger.log('Δες στο Outlook ποια από τα [text] / [table] / [design] / [full] έφτασαν.');
 }
 
 function notifyList_() {
