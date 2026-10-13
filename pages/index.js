@@ -237,6 +237,14 @@ export default function Home() {
   const [currentUser, setCurrentUser] = useState(null);
   const isViewer = currentUser?.role === 'viewer';
   const [darkMode, setDarkMode] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const toggleSidebar = () => {
+    setSidebarCollapsed(prev => {
+      const next = !prev;
+      try { localStorage.setItem('trackmate_sidebar', next ? 'collapsed' : 'open'); } catch (e) {}
+      return next;
+    });
+  };
 
   const toggleDarkMode = () => {
     setDarkMode(prev => {
@@ -593,6 +601,7 @@ export default function Home() {
     const saved = localStorage.getItem('trackmate_dark');
     if (saved === '1') setDarkMode(true);
     if (saved === '0') setDarkMode(false); // κρατάει και την επιλογή φωτεινού θέματος
+    try { if (localStorage.getItem('trackmate_sidebar') === 'collapsed') setSidebarCollapsed(true); } catch (e) {}
 
     fetch('/api/auth/me')
       .then(res => res.ok ? res.json() : null)
@@ -3659,47 +3668,52 @@ ${table}
 
       {/* ─── DESKTOP LAYOUT ─── */}
       <div className={`desktop-layout${darkMode?'':' light'}`}>
-        <aside className="sidebar">
+        <aside className={`sidebar${sidebarCollapsed ? ' collapsed' : ''}`}>
           <div className="sb-logo" onClick={()=>handleTabClick('home')} style={{cursor:'pointer'}}>
             <div className="sb-logo-mark">
               <div className="sb-logo-icon">
                 <img src="/icon-192-v2.png" alt="" />
               </div>
-              <span className="sb-logo-text">Track<span>Mate</span></span>
+              <span className="sb-logo-text sb-label">Track<span>Mate</span></span>
             </div>
           </div>
           <nav className="sb-nav">
             <div className="sb-section">Κύριο μενού</div>
-            <button className={`sb-item ${tab==='home'?'active':''}`} onClick={()=>handleTabClick('home')}>
+            <button className={`sb-item ${tab==='home'?'active':''}`} onClick={()=>handleTabClick('home')} data-tip="Αρχική" aria-label="Αρχική">
               <span className="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg></span>
-              Αρχική
+              <span className="sb-label">Αρχική</span>
             </button>
-            {!isViewer && <button className={`sb-item ${tab==='scan'?'active':''}`} onClick={()=>handleTabClick('scan')}>
+            {!isViewer && <button className={`sb-item ${tab==='scan'?'active':''}`} onClick={()=>handleTabClick('scan')} data-tip="Scan" aria-label="Scan">
               <span className="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6.5 6.5h.01M17.5 6.5h.01M6.5 17.5h.01M17.5 17.5h.01M3 7V5a2 2 0 012-2h2M3 17v2a2 2 0 002 2h2m10-16h2a2 2 0 012 2v2m0 10v2a2 2 0 01-2 2h-2M12 12h.01"/></svg></span>
-              Scan
+              <span className="sb-label">Scan</span>
             </button>}
-            <button className={`sb-item ${tab==='inventory'?'active':''}`} onClick={()=>handleTabClick('inventory')}>
+            <button className={`sb-item ${tab==='inventory'?'active':''}`} onClick={()=>handleTabClick('inventory')} data-tip="Κινήσεις" aria-label="Κινήσεις">
               <span className="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></span>
-              Κινήσεις
+              <span className="sb-label">Κινήσεις</span>
             </button>
-            <button className={`sb-item ${tab==='warehouse'?'active':''}`} onClick={()=>handleTabClick('warehouse')}>
+            <button className={`sb-item ${tab==='warehouse'?'active':''}`} onClick={()=>handleTabClick('warehouse')} data-tip="Αποθήκη" aria-label="Αποθήκη">
               <span className="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg></span>
-              Αποθήκη
+              <span className="sb-label">Αποθήκη</span>
             </button>
-            <button className={`sb-item ${tab==='history'?'active':''}`} onClick={()=>handleTabClick('history')}>
+            <button className={`sb-item ${tab==='history'?'active':''}`} onClick={()=>handleTabClick('history')} data-tip="Ιστορικό" aria-label="Ιστορικό">
               <span className="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></span>
-              Ιστορικό
+              <span className="sb-label">Ιστορικό</span>
             </button>
-            <button className={`sb-item ${tab==='tickets'?'active':''}`} onClick={()=>handleTabClick('tickets')}>
+            <button className={`sb-item ${tab==='tickets'?'active':''}`} onClick={()=>handleTabClick('tickets')} data-tip="Tickets" aria-label="Tickets">
               <span className="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8l9 6 9-6"/><rect x="3" y="5" width="18" height="14" rx="2"/></svg></span>
-              Tickets
+              <span className="sb-label">Tickets</span>
+              {openTicketsCount > 0 && <span className="sb-badge">{openTicketsCount}</span>}
             </button>
             <div className="sb-section" style={{marginTop:'12px'}}>Διαχείριση</div>
-            <button className={`sb-item ${tab==='settings'?'active':''}`} onClick={()=>handleTabClick('settings')}>
+            <button className={`sb-item ${tab==='settings'?'active':''}`} onClick={()=>handleTabClick('settings')} data-tip="Ρυθμίσεις" aria-label="Ρυθμίσεις">
               <span className="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg></span>
-              Ρυθμίσεις
+              <span className="sb-label">Ρυθμίσεις</span>
             </button>
           </nav>
+          <button className="sb-toggle" onClick={toggleSidebar} data-tip={sidebarCollapsed ? 'Άνοιγμα μενού' : 'Σύμπτυξη μενού'} aria-label={sidebarCollapsed ? 'Άνοιγμα μενού' : 'Σύμπτυξη μενού'} aria-expanded={!sidebarCollapsed}>
+            <span className="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="M15.5 10l-2 2 2 2"/></svg></span>
+            <span className="sb-label">Σύμπτυξη</span>
+          </button>
           {currentUser && (
             <div className="sb-footer">
               <div className="sb-avatar">{currentUser.fullName.slice(0,2).toUpperCase()}</div>
@@ -4200,6 +4214,35 @@ ${table}
         }
         .sb-logout:hover { color: var(--red); }
 
+
+        /* Σύμπτυξη μενού */
+        .sidebar { transition: width .2s ease; }
+        .sb-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .sb-item { position: relative; }
+        .sb-badge { margin-left: auto; min-width: 20px; padding: 1px 7px; border-radius: 999px; background: var(--obg); color: var(--orange); border: 1px solid var(--og); font-size: 10px; font-weight: 700; text-align: center; }
+        .sb-toggle { display: flex; align-items: center; gap: 10px; margin: 0 8px 8px; padding: 9px 12px; border: 1px solid transparent; border-radius: var(--r-sm); background: transparent; color: var(--t4); font: 500 12px var(--font); cursor: pointer; position: relative; text-align: left; }
+        .sb-toggle:hover { background: var(--glass2); color: var(--t2); border-color: var(--border); }
+        .sb-toggle .sb-icon { opacity: .7; }
+        .sidebar.collapsed { width: 68px; }
+        .sidebar.collapsed .sb-label,
+        .sidebar.collapsed .sb-section,
+        .sidebar.collapsed .sb-username { display: none; }
+        .sidebar.collapsed .sb-logo { padding: 18px 0 14px; display: flex; justify-content: center; }
+        .sidebar.collapsed .sb-nav { padding: 12px 10px; overflow: visible; }
+        .sidebar.collapsed .sb-item,
+        .sidebar.collapsed .sb-toggle { justify-content: center; padding: 10px 0; }
+        .sidebar.collapsed .sb-toggle { margin: 0 10px 8px; }
+        .sidebar.collapsed .sb-toggle svg { transform: scaleX(-1); }
+        .sidebar.collapsed .sb-badge { position: absolute; top: 4px; right: 8px; min-width: 0; width: 8px; height: 8px; padding: 0; font-size: 0; border: none; background: var(--orange); }
+        .sidebar.collapsed .sb-footer { flex-direction: column; padding: 12px 0; gap: 10px; }
+        .sidebar.collapsed .sb-item:hover::after,
+        .sidebar.collapsed .sb-toggle:hover::after,
+        .sidebar.collapsed .sb-item:focus-visible::after {
+          content: attr(data-tip); position: absolute; left: calc(100% + 12px); top: 50%; transform: translateY(-50%);
+          padding: 6px 10px; border-radius: 7px; background: var(--bg2); color: var(--t1);
+          border: 1px solid var(--border2); font-size: 12px; font-weight: 600; white-space: nowrap;
+          box-shadow: 0 8px 20px rgba(0,0,0,.3); z-index: 50; pointer-events: none;
+        }
         /* ══════════════════════════
            DESKTOP MAIN
         ══════════════════════════ */
