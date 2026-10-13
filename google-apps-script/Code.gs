@@ -20,9 +20,12 @@ const TRACKMATE_URL = 'https://trackmate-lake.vercel.app/api/tickets/inbound';
 // Για έλεγχο: τρέξε τη συνάρτηση testNotify — στέλνει δοκιμαστικό email εδώ.
 const NOTIFY_EMAIL = 'to-email-sas@example.gr';
 
-// false = απλό κείμενο (περνάει τα φίλτρα του Outlook/Microsoft 365)
-// true  = μορφοποιημένο email με κουμπί (μόνο αν ο διαχειριστής έχει επιτρέψει τον αποστολέα)
-const NOTIFY_HTML = false;
+// Μορφή ειδοποίησης:
+//   'text'  = απλό κείμενο
+//   'table' = απλός πίνακας με τα πεδία (χωρίς κουμπί)
+//   'full'  = μορφοποιημένο email με κουμπί
+// Για να δεις ποια περνάει τα φίλτρα του Outlook: τρέξε testNotifyFormats.
+const NOTIFY_FORMAT = 'text';
 
 // Whitelist 1 — συγκεκριμένα emails που επιτρέπεται να στέλνουν φόρμα.
 // Αρκεί το email· το όνομα δίπλα είναι προαιρετικό (μπορεί να μείνει '').
@@ -231,13 +234,42 @@ function testNotifyTicket() {
           'Άνοιγμα στο TrackMate:\nhttps://trackmate-lake.vercel.app/?tab=tickets\n\nΑυτό είναι δοκιμαστικό μήνυμα.',
     html: '<p><b>Ελλιπές ticket TM-TEST</b></p><p>Αυτό είναι δοκιμαστικό μήνυμα.</p>',
   });
-  Logger.log('✉️ Στάλθηκε δοκιμαστική ειδοποίηση ticket (' + (NOTIFY_HTML ? 'HTML' : 'απλό κείμενο') + ') σε: ' + notifyList_());
+  Logger.log('✉️ Στάλθηκε δοκιμαστική ειδοποίηση ticket (' + NOTIFY_FORMAT + ') σε: ' + notifyList_());
 }
 
-function sendNotify_(notify) {
+function sendNotify_(notify, format) {
+  const fmt = format || NOTIFY_FORMAT;
   const opts = { name: 'TrackMate' };
-  if (NOTIFY_HTML && notify.html) opts.htmlBody = notify.html;
+  if (fmt === 'table' && notify.htmlTable) opts.htmlBody = notify.htmlTable;
+  if (fmt === 'full' && notify.html) opts.htmlBody = notify.html;
   GmailApp.sendEmail(notifyList_(), notify.subject, notify.body, opts);
+}
+
+/**
+ * Στέλνει 3 δοκιμαστικές ειδοποιήσεις, μία σε κάθε μορφή (text / table / full).
+ * Δες στο Outlook ποιες έφτασαν και βάλε αυτή που σου αρέσει στο NOTIFY_FORMAT.
+ */
+function testNotifyFormats() {
+  if (!notifyConfigured_()) {
+    Logger.log('⚠️ Το NOTIFY_EMAIL δεν είναι σωστό: "' + NOTIFY_EMAIL + '".');
+    return;
+  }
+  const secret = PropertiesService.getScriptProperties().getProperty('TRACKMATE_SECRET');
+  const res = UrlFetchApp.fetch(TRACKMATE_URL, {
+    method: 'post', contentType: 'application/json',
+    headers: { 'x-trackmate-secret': secret },
+    payload: JSON.stringify({ sample: true }), muteHttpExceptions: true,
+  });
+  if (res.getResponseCode() !== 200) {
+    Logger.log('TrackMate απάντησε ' + res.getResponseCode() + ': ' + res.getContentText().slice(0, 200));
+    return;
+  }
+  const sample = JSON.parse(res.getContentText()).notify;
+  ['text', 'table', 'full'].forEach(fmt => {
+    sendNotify_({ subject: '[' + fmt + '] ' + sample.subject, body: sample.body, html: sample.html, htmlTable: sample.htmlTable }, fmt);
+    Logger.log('✉️ Στάλθηκε δοκιμή μορφής "' + fmt + '"');
+  });
+  Logger.log('Δες στο Outlook ποια από τα [text] / [table] / [full] έφτασαν.');
 }
 
 function notifyList_() {

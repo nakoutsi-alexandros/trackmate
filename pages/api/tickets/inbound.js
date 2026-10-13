@@ -4,7 +4,7 @@
 // (header x-trackmate-secret === env TICKETS_INBOUND_SECRET).
 
 import { timingSafeEqual } from 'crypto';
-import { processInboundEmail } from '../../../lib/emailTickets';
+import { processInboundEmail, sampleNotification } from '../../../lib/emailTickets';
 
 // Το Vercel δέχεται έως ~4.5MB ανά request· το script στέλνει μικρές εικόνες μόνο
 export const config = { api: { bodyParser: { sizeLimit: '4mb' } } };
@@ -22,6 +22,11 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   if (!secretMatches(req.headers['x-trackmate-secret'])) {
     return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  // Δοκιμή μορφής ειδοποίησης από το script (δεν δημιουργεί ticket)
+  if (req.body && req.body.sample) {
+    return res.status(200).json({ notify: sampleNotification() });
   }
 
   const { threadId, messageId, from, fromName, store, chain, subject, body, images } = req.body || {};
