@@ -17,7 +17,8 @@ const TRACKMATE_URL = 'https://trackmate-lake.vercel.app/api/tickets/inbound';
 // Πού έρχεται η ειδοποίηση όταν λείπουν στοιχεία (μπορούν να είναι πολλά, χωρισμένα με κόμμα)
 const NOTIFY_EMAIL = 'to-email-sas@example.gr';
 
-// Whitelist 1 — συγκεκριμένα emails που επιτρέπεται να στέλνουν φόρμα: email → όνομα (για αναγνώριση)
+// Whitelist 1 — συγκεκριμένα emails που επιτρέπεται να στέλνουν φόρμα.
+// Αρκεί το email· το όνομα δίπλα είναι προαιρετικό (μπορεί να μείνει '').
 // Το υποκατάστημα διαβάζεται πάντα από τη φόρμα.
 const STORES = {
   'katastima@example.gr': 'ΟΝΟΜΑ ΚΑΤΑΣΤΗΜΑΤΟΣ',
@@ -95,9 +96,14 @@ function processInbox() {
             continue;
           }
 
-          const store = whitelist[fromEmail] || '';
-          const chain = store ? '' : (domainList[fromEmail] || domainList[fromEmail.split('@')[1] || ''] || '');
-          if (!store && !chain) {
+          // Μετράει μόνο αν το email/domain ΥΠΑΡΧΕΙ στη λίστα — όχι αν έχει όνομα δίπλα
+          const has = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+          const domain = fromEmail.split('@')[1] || '';
+          const byEmail = has(whitelist, fromEmail);
+          const domainKey = has(domainList, fromEmail) ? fromEmail : (has(domainList, domain) ? domain : null);
+          const store = byEmail ? (whitelist[fromEmail] || '') : '';
+          const chain = !byEmail && domainKey ? (domainList[domainKey] || '') : '';
+          if (!byEmail && !domainKey) {
             // Όχι από κατάστημα της λίστας → καμία απάντηση, μόνο ετικέτα
             step = 'σήμανση αγνοημένου';
             msg.markRead();
