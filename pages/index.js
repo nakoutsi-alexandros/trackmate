@@ -4217,7 +4217,8 @@ ${table}
 
 
         /* Σύμπτυξη μενού */
-        .sidebar { transition: width .2s ease; }
+        /* z-index: το μενού (και τα tooltips του) πάντα πάνω από το περιεχόμενο της σελίδας */
+        .sidebar { transition: width .2s ease; z-index: 40; }
         .sb-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .sb-item { position: relative; }
         .sb-badge { margin-left: auto; min-width: 20px; padding: 1px 7px; border-radius: 999px; background: var(--obg); color: var(--orange); border: 1px solid var(--og); font-size: 10px; font-weight: 700; text-align: center; }
