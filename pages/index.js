@@ -55,6 +55,9 @@ const LEGACY_ACTION_LABELS = {
 
 const normalizeAction = (action) => LEGACY_ACTION_LABELS[action] || action;
 
+// Αναζήτηση χωρίς τόνους / κεφαλαία
+const normalizeSearch = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
 const STORE_CHAINS = [
   { id: 'all', label: 'Όλα' },
   { id: 'ΚΩΤΣΟΒΟΛΟΣ', label: 'ΚΩΤΣΟΒΟΛΟΣ' },
@@ -180,6 +183,7 @@ export default function Home() {
   const [loadingTickets, setLoadingTickets] = useState(false);
   const [ticketsError, setTicketsError] = useState('');
   const [ticketFilter, setTicketFilter] = useState('open'); // open | Νέο | Ελλιπές | Σε εξέλιξη | Κλειστό | all
+  const [ticketSearch, setTicketSearch] = useState('');
   const [openTicketId, setOpenTicketId] = useState(null);
   const [ticketNoteDraft, setTicketNoteDraft] = useState('');
   const [editingTicketId, setEditingTicketId] = useState(null);
@@ -3010,142 +3014,258 @@ ${table}
       )}
 
       {tab === 'tickets' && (() => {
-        const STATUS_PILL = { 'Νέο': 'pill-blue', 'Ελλιπές': 'pill-amber', 'Σε εξέλιξη': 'pill-purple', 'Κλειστό': 'pill-gray' };
+        const STATUS_META = {
+          'Νέο':        { cls: 'st-new',      label: 'Νέο' },
+          'Ελλιπές':    { cls: 'st-missing',  label: 'Ελλιπές' },
+          'Σε εξέλιξη': { cls: 'st-progress', label: 'Σε εξέλιξη' },
+          'Κλειστό':    { cls: 'st-closed',   label: 'Κλειστό' },
+        };
+        const STATUS_ORDER = ['Νέο', 'Ελλιπές', 'Σε εξέλιξη', 'Κλειστό'];
         const MISSING_LABEL = { store: 'Υποκατάστημα', address: 'Διεύθυνση', postalCode: 'Τ.Κ.', contactName: 'Υπεύθυνος', contactPhone: 'Τηλέφωνο', problem: 'Πρόβλημα' };
-        const isOpenStatus = s => s !== 'Κλειστό';
-        const visible = tickets.filter(t =>
-          ticketFilter === 'all' ? true :
-          ticketFilter === 'open' ? isOpenStatus(t.status) :
-          t.status === ticketFilter
-        );
-        const fmt = iso => { const d = new Date(iso); return isNaN(d) ? (iso || '') : d.toLocaleString('el-GR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }); };
+        const missingOf = t => (t.missing || '').split(',').map(x => x.trim()).filter(Boolean);
         const count = s => tickets.filter(t => t.status === s).length;
-        return (
-          <div key="tickets" className="fade-in">
-            <div className="card">
-              <div className="ticket-toolbar">
-                <div>
-                  <div className="card-title">Tickets από email</div>
-                  <div className="card-sub" style={{marginBottom:0}}>Δημιουργούνται αυτόματα από τα emails του καταστήματος</div>
+
+        const q = normalizeSearch(ticketSearch);
+        const visible = tickets.filter(t => {
+          if (ticketFilter === 'open' && t.status === 'Κλειστό') return false;
+          if (ticketFilter !== 'open' && ticketFilter !== 'all' && t.status !== ticketFilter) return false;
+          if (!q) return true;
+          return normalizeSearch([t.ticketId, t.store, t.contactName, t.contactPhone, t.serialNumber, t.problem, t.from].join(' ')).includes(q);
+        });
+
+        const fmtFull = iso => { const d = new Date(iso); return isNaN(d) ? (iso || '—') : d.toLocaleString('el-GR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }); };
+        const ago = iso => {
+          const d = new Date(iso); if (isNaN(d)) return '';
+          const m = Math.round((Date.now() - d.getTime()) / 60000);
+          if (m < 1) return 'μόλις τώρα';
+          if (m < 60) return `πριν ${m}′`;
+          const h = Math.round(m / 60);
+          if (h < 24) return `πριν ${h} ώρ${h === 1 ? 'α' : 'ες'}`;
+          const days = Math.round(h / 24);
+          if (days === 1) return 'χθες';
+          if (days < 7) return `πριν ${days} μέρες`;
+          return d.toLocaleDateString('el-GR', { day:'2-digit', month:'2-digit' });
+        };
+        const telHref = p => `tel:${String(p || '').replace(/[^\d+]/g, '')}`;
+        const selected = tickets.find(t => t.ticketId === openTicketId) || null;
+
+        const Field = ({ label, value, required, mono, children }) => (
+          <div className="tk-field">
+            <span className="tk-field-label">{label}</span>
+            {children || (value
+              ? <span className={`tk-field-value ${mono ? 'mono' : ''}`}>{value}</span>
+              : required
+                ? <span className="tk-field-missing">Λείπει</span>
+                : <span className="tk-field-empty">—</span>)}
+          </div>
+        );
+
+        const renderDetail = (t) => {
+          const missing = missingOf(t);
+          const busy = savingTicketId === t.ticketId;
+          const editing = editingTicketId === t.ticketId;
+          const meta = STATUS_META[t.status] || { cls: 'st-closed', label: t.status || '—' };
+
+          return (
+            <div className="tk-detail">
+              <div className="tk-detail-head">
+                <div className="tk-detail-titles">
+                  <div className="tk-detail-id-row">
+                    <span className="tk-id">{t.ticketId}</span>
+                    <span className={`tk-status ${meta.cls}`}>{meta.label}</span>
+                  </div>
+                  <div className="tk-detail-store">{t.store || 'Χωρίς υποκατάστημα'}</div>
+                  <div className="tk-detail-sub">Παραλήφθηκε {ago(t.createdAt)} · {t.from || '—'}</div>
                 </div>
-                <button className="filter-pill" onClick={loadTickets} disabled={loadingTickets}>{loadingTickets ? 'Φόρτωση...' : '↻ Ανανέωση'}</button>
+                <button className="tk-close desktop-split-hide" onClick={()=>openTicket(t)} aria-label="Κλείσιμο">×</button>
               </div>
-              <div className="ticket-filters">
-                {[['open','Ανοιχτά'],['Νέο',`Νέα (${count('Νέο')})`],['Ελλιπές',`Ελλιπή (${count('Ελλιπές')})`],['Σε εξέλιξη',`Σε εξέλιξη (${count('Σε εξέλιξη')})`],['Κλειστό','Κλειστά'],['all','Όλα']].map(([id,label]) => (
-                  <button key={id} className={`filter-pill ${ticketFilter===id?'active':''}`} onClick={()=>setTicketFilter(id)}>{label}</button>
-                ))}
+
+              {editing ? (
+                <>
+                  <div className="tk-edit-grid">
+                    {TICKET_EDIT_FIELDS.map(f => (
+                      <label key={f.key} className={`tk-edit-field ${f.multiline ? 'wide' : ''}`}>
+                        <span className="tk-field-label">{f.label}{['store','address','postalCode','contactName','contactPhone','problem'].includes(f.key) ? ' *' : ''}</span>
+                        {f.multiline
+                          ? <textarea className="text-input" rows={3} value={ticketDraft[f.key] || ''} onChange={e=>setTicketDraft(d=>({...d,[f.key]:e.target.value}))} />
+                          : <input className="text-input" value={ticketDraft[f.key] || ''} onChange={e=>setTicketDraft(d=>({...d,[f.key]:e.target.value}))} />}
+                      </label>
+                    ))}
+                  </div>
+                  <div className="tk-edit-actions">
+                    <button className="tk-btn" onClick={()=>setEditingTicketId(null)} disabled={busy}>Άκυρο</button>
+                    <button className="tk-btn primary" onClick={()=>saveTicketEdit(t)} disabled={busy}>{busy ? 'Αποθήκευση...' : 'Αποθήκευση αλλαγών'}</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {missing.length > 0 && (
+                    <div className="tk-missing-banner">
+                      <div>
+                        <strong>Λείπουν στοιχεία:</strong> {missing.map(m => MISSING_LABEL[m] || m).join(', ')}
+                      </div>
+                      {!isViewer && <button className="tk-btn small" onClick={()=>startEditTicket(t)}>Συμπλήρωση</button>}
+                    </div>
+                  )}
+
+                  <div className="tk-quick">
+                    <a className={`tk-btn ${t.contactPhone ? '' : 'disabled'}`} href={t.contactPhone ? telHref(t.contactPhone) : undefined}>📞 Κλήση</a>
+                    <a className={`tk-btn ${t.from ? '' : 'disabled'}`} href={t.from ? `mailto:${t.from}?subject=${encodeURIComponent(`${t.ticketId} — ${t.subject || 'Αίτημα'}`)}` : undefined}>✉️ Email</a>
+                    {!isViewer && <button className="tk-btn" onClick={()=>startEditTicket(t)}>✏️ Επεξεργασία</button>}
+                    {!isViewer && <button className="tk-btn primary" disabled={!t.serialNumber} onClick={()=>ticketToMovement(t)} title={t.serialNumber ? '' : 'Χρειάζεται σειριακός Cashdro'}>🔧 Καταχώρηση επισκευής</button>}
+                  </div>
+
+                  {!isViewer && (
+                    <div className="tk-segment" role="group" aria-label="Κατάσταση">
+                      {STATUS_ORDER.map(s => (
+                        <button key={s} className={`tk-seg ${STATUS_META[s].cls} ${t.status===s?'active':''}`} disabled={busy}
+                          onClick={()=>t.status!==s && updateTicket(t.ticketId, { status: s })}>{s}</button>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="tk-problem">
+                    <span className="tk-field-label">Περιγραφή προβλήματος</span>
+                    {t.problem ? <p>{t.problem}</p> : <span className="tk-field-missing">Λείπει</span>}
+                  </div>
+
+                  <div className="tk-sections">
+                    <section className="tk-section">
+                      <div className="tk-section-title">Κατάστημα</div>
+                      <Field label="Υποκατάστημα" value={t.store} required />
+                      <Field label="Διεύθυνση" value={t.address} required />
+                      <Field label="Τ.Κ." value={t.postalCode} required />
+                    </section>
+                    <section className="tk-section">
+                      <div className="tk-section-title">Επικοινωνία</div>
+                      <Field label="Υπεύθυνος" value={t.contactName} required />
+                      <Field label="Τηλέφωνο" required>
+                        {t.contactPhone
+                          ? <a className="tk-link mono" href={telHref(t.contactPhone)}>{t.contactPhone}</a>
+                          : <span className="tk-field-missing">Λείπει</span>}
+                      </Field>
+                      <Field label="Email">
+                        {t.from ? <a className="tk-link" href={`mailto:${t.from}`}>{t.from}</a> : <span className="tk-field-empty">—</span>}
+                      </Field>
+                    </section>
+                    <section className="tk-section">
+                      <div className="tk-section-title">Μηχάνημα</div>
+                      <Field label="Σειριακός Cashdro" value={t.serialNumber} mono />
+                      <Field label="IP" value={t.ip} mono />
+                      <Field label="Μεταφορική" value={t.courier} />
+                    </section>
+                  </div>
+
+                  {t.storeRemarks && (
+                    <div className="tk-block">
+                      <span className="tk-field-label">Παρατηρήσεις καταστήματος</span>
+                      <p>{t.storeRemarks}</p>
+                    </div>
+                  )}
+
+                  {!isViewer && (
+                    <div className="tk-block">
+                      <span className="tk-field-label">Εσωτερικές σημειώσεις <em>(δεν στέλνονται στο κατάστημα)</em></span>
+                      <textarea className="text-input" rows={2} value={ticketNoteDraft} onChange={e=>setTicketNoteDraft(e.target.value)} placeholder="Γράψε μια σημείωση…" />
+                      {ticketNoteDraft !== (t.notes || '') && (
+                        <div className="tk-note-actions">
+                          <button className="tk-btn small" onClick={()=>setTicketNoteDraft(t.notes || '')} disabled={busy}>Άκυρο</button>
+                          <button className="tk-btn small primary" onClick={()=>updateTicket(t.ticketId, { notes: ticketNoteDraft })} disabled={busy}>Αποθήκευση</button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {isViewer && t.notes && (
+                    <div className="tk-block"><span className="tk-field-label">Εσωτερικές σημειώσεις</span><p>{t.notes}</p></div>
+                  )}
+
+                  {t.lastMessage && (
+                    <details className="tk-original">
+                      <summary>Αρχικό email{t.subject ? ` — ${t.subject}` : ''}</summary>
+                      <pre>{t.lastMessage}</pre>
+                    </details>
+                  )}
+
+                  <div className="tk-footer">
+                    <span>Δημιουργήθηκε {fmtFull(t.createdAt)} · Αλλαγή {fmtFull(t.updatedAt)}{t.updatedBy ? ` (${t.updatedBy})` : ''}</span>
+                    {!isViewer && <button className="tk-delete" onClick={()=>setTicketDeleteConfirm(t)} disabled={busy}>Διαγραφή</button>}
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        };
+
+        return (
+          <div key="tickets" className="fade-in tk-page">
+            <div className="tk-header">
+              <div>
+                <div className="tk-title">Tickets</div>
+                <div className="tk-subtitle">Αιτήματα από τις φόρμες των καταστημάτων</div>
+              </div>
+              <button className="tk-btn" onClick={loadTickets} disabled={loadingTickets}>{loadingTickets ? 'Φόρτωση…' : '↻ Ανανέωση'}</button>
+            </div>
+
+            <div className="tk-stats">
+              {STATUS_ORDER.map(s => (
+                <button key={s} className={`tk-stat ${STATUS_META[s].cls} ${ticketFilter===s?'active':''}`}
+                  onClick={()=>setTicketFilter(ticketFilter===s ? 'open' : s)}>
+                  <span className="tk-stat-num">{count(s)}</span>
+                  <span className="tk-stat-label">{s === 'Κλειστό' ? 'Κλειστά' : s === 'Νέο' ? 'Νέα' : s === 'Ελλιπές' ? 'Ελλιπή' : s}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="tk-toolbar">
+              <input className="text-input tk-search" placeholder="🔍 Αναζήτηση: αριθμός, κατάστημα, υπεύθυνος, σειριακός…" value={ticketSearch} onChange={e=>setTicketSearch(e.target.value)} />
+              <div className="tk-scope">
+                <button className={ticketFilter!=='all'?'active':''} onClick={()=>setTicketFilter('open')}>Ανοιχτά</button>
+                <button className={ticketFilter==='all'?'active':''} onClick={()=>setTicketFilter('all')}>Όλα</button>
               </div>
             </div>
 
             {ticketsError && <div className="error-banner">⚠️ {ticketsError}</div>}
-            {!loadingTickets && !ticketsError && visible.length === 0 && (
-              <div className="card ticket-empty">Δεν υπάρχουν tickets σε αυτή την κατηγορία.</div>
-            )}
 
-            {visible.map(t => {
-              const isOpen = openTicketId === t.ticketId;
-              const missing = (t.missing || '').split(',').map(x => x.trim()).filter(Boolean);
-              return (
-                <div key={t.ticketId} className={`card ticket-card ${isOpen?'open':''}`}>
-                  <button className="ticket-head" onClick={()=>openTicket(t)}>
-                    <div className="ticket-head-main">
-                      <div className="ticket-id-row">
-                        <span className="ticket-id">{t.ticketId}</span>
-                        <span className={`status-pill ${STATUS_PILL[t.status] || 'pill-gray'}`}>{t.status || '—'}</span>
-                      </div>
-                      <div className="ticket-store">{t.store || t.from}</div>
-                      {(t.contactName || t.contactPhone) && (
-                        <div className="ticket-contact">{[t.contactName, t.contactPhone].filter(Boolean).join(' · ')}</div>
-                      )}
-                      <div className="ticket-problem">{t.problem || t.subject || 'Χωρίς περιγραφή'}</div>
-                      {missing.length > 0 && (
-                        <div className="ticket-missing">Λείπει: {missing.map(m => MISSING_LABEL[m] || m).join(', ')}</div>
-                      )}
+            <div className={`tk-layout ${selected ? 'has-selection' : ''}`}>
+              <div className="tk-list">
+                {loadingTickets && tickets.length === 0 && <div className="tk-empty">Φόρτωση…</div>}
+                {!loadingTickets && !ticketsError && visible.length === 0 && (
+                  <div className="tk-empty">
+                    {q ? 'Κανένα ticket δεν ταιριάζει στην αναζήτηση.' : 'Δεν υπάρχουν tickets εδώ.'}
+                  </div>
+                )}
+                {visible.map(t => {
+                  const isOpen = openTicketId === t.ticketId;
+                  const missing = missingOf(t);
+                  const meta = STATUS_META[t.status] || { cls: 'st-closed', label: t.status || '—' };
+                  return (
+                    <div key={t.ticketId} className="tk-item-wrap">
+                      <button className={`tk-item ${meta.cls} ${isOpen ? 'selected' : ''}`} onClick={()=>openTicket(t)}>
+                        <div className="tk-item-top">
+                          <span className="tk-id">{t.ticketId}</span>
+                          <span className={`tk-status ${meta.cls}`}>{meta.label}</span>
+                          <span className="tk-ago">{ago(t.createdAt)}</span>
+                        </div>
+                        <div className="tk-item-store">{t.store || t.from || 'Χωρίς υποκατάστημα'}</div>
+                        <div className="tk-item-problem">{t.problem || <em>Χωρίς περιγραφή</em>}</div>
+                        <div className="tk-item-meta">
+                          {t.contactName && <span>👤 {t.contactName}</span>}
+                          {t.contactPhone && <span>📞 {t.contactPhone}</span>}
+                          {t.serialNumber && <span className="mono">#{t.serialNumber}</span>}
+                          {missing.length > 0 && <span className="tk-chip-missing">Λείπουν {missing.length}</span>}
+                        </div>
+                      </button>
+                      {isOpen && <div className="tk-inline">{renderDetail(t)}</div>}
                     </div>
-                    <div className="ticket-meta">
-                      {t.serialNumber && <div className="ticket-serial">{t.serialNumber}</div>}
-                      <div className="ticket-date">{fmt(t.updatedAt || t.createdAt)}</div>
-                    </div>
-                  </button>
-
-                  {isOpen && editingTicketId === t.ticketId && (
-                    <div className="ticket-body">
-                      <div className="section-label" style={{marginTop:'12px'}}>Επεξεργασία στοιχείων</div>
-                      <div className="ticket-edit-grid">
-                        {TICKET_EDIT_FIELDS.map(f => (
-                          <label key={f.key} className={`ticket-edit-field ${f.multiline ? 'wide' : ''}`}>
-                            <span>{f.label}</span>
-                            {f.multiline
-                              ? <textarea className="text-input" rows={3} value={ticketDraft[f.key] || ''} onChange={e=>setTicketDraft(d=>({...d,[f.key]:e.target.value}))} />
-                              : <input className="text-input" value={ticketDraft[f.key] || ''} onChange={e=>setTicketDraft(d=>({...d,[f.key]:e.target.value}))} />}
-                          </label>
-                        ))}
-                      </div>
-                      <div className="ticket-actions">
-                        <button className="btn-note-cancel" onClick={()=>setEditingTicketId(null)} disabled={savingTicketId===t.ticketId}>Άκυρο</button>
-                        <button className="btn-primary ticket-move-btn" onClick={()=>saveTicketEdit(t)} disabled={savingTicketId===t.ticketId}>
-                          {savingTicketId===t.ticketId ? 'Αποθήκευση...' : 'Αποθήκευση αλλαγών'}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {isOpen && editingTicketId !== t.ticketId && (
-                    <div className="ticket-body">
-                      <div className="ticket-grid">
-                        <div><span>Υπεύθυνος</span>{t.contactName || '—'}</div>
-                        <div><span>Τηλέφωνο</span>{t.contactPhone ? <a className="ticket-tel" href={`tel:${t.contactPhone.replace(/[^\d+]/g,'')}`}>{t.contactPhone}</a> : '—'}</div>
-                        <div><span>Διεύθυνση</span>{[t.address, t.postalCode].filter(Boolean).join(', ') || '—'}</div>
-                        <div><span>IP Cashdro</span>{t.ip || '—'}</div>
-                        <div><span>Μεταφορική</span>{t.courier || '—'}</div>
-                        <div><span>Από</span>{t.from || '—'}</div>
-                        <div><span>Θέμα</span>{t.subject || '—'}</div>
-                        <div><span>Σειριακός Cashdro</span>{t.serialNumber || '—'}</div>
-                        <div><span>Δημιουργήθηκε</span>{fmt(t.createdAt)}</div>
-                        <div><span>Τελευταία αλλαγή</span>{fmt(t.updatedAt)}{t.updatedBy ? ` · ${t.updatedBy}` : ''}</div>
-                      </div>
-                      {t.storeRemarks && (
-                        <>
-                          <div className="section-label" style={{marginTop:'12px'}}>Παρατηρήσεις καταστήματος</div>
-                          <div className="ticket-message">{t.storeRemarks}</div>
-                        </>
-                      )}
-                      {t.lastMessage && (
-                        <>
-                          <div className="section-label" style={{marginTop:'12px'}}>Τελευταίο μήνυμα</div>
-                          <div className="ticket-message">{t.lastMessage}</div>
-                        </>
-                      )}
-                      {!isViewer && (
-                        <>
-                          <div className="section-label" style={{marginTop:'12px'}}>Κατάσταση</div>
-                          <div className="ticket-filters" style={{marginTop:0}}>
-                            {['Νέο','Ελλιπές','Σε εξέλιξη','Κλειστό'].map(s => (
-                              <button key={s} className={`filter-pill ${t.status===s?'active':''}`} disabled={savingTicketId===t.ticketId}
-                                onClick={()=>t.status!==s && updateTicket(t.ticketId, { status: s })}>{s}</button>
-                            ))}
-                          </div>
-                          <div className="section-label" style={{marginTop:'12px'}}>Εσωτερικές σημειώσεις</div>
-                          <textarea className="text-input" rows={3} value={ticketNoteDraft} onChange={e=>setTicketNoteDraft(e.target.value)} placeholder="Δεν στέλνονται στο κατάστημα" />
-                          <div className="ticket-actions">
-                            <button className="btn-note-cancel" disabled={savingTicketId===t.ticketId || ticketNoteDraft===(t.notes||'')}
-                              onClick={()=>updateTicket(t.ticketId, { notes: ticketNoteDraft })}>Αποθήκευση σημείωσης</button>
-                          </div>
-                          <div className="ticket-actions ticket-actions-main">
-                            <button className="ticket-delete-btn" onClick={()=>setTicketDeleteConfirm(t)} disabled={savingTicketId===t.ticketId}>🗑 Διαγραφή</button>
-                            <button className="btn-note-cancel" onClick={()=>startEditTicket(t)} disabled={savingTicketId===t.ticketId}>✏️ Επεξεργασία</button>
-                            <button className="btn-primary ticket-move-btn" disabled={!t.serialNumber} onClick={()=>ticketToMovement(t)}
-                              title={t.serialNumber ? '' : 'Χρειάζεται serial number'}>
-                              🔧 Καταχώρηση για επισκευή
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+              <div className="tk-panel">
+                {selected
+                  ? renderDetail(selected)
+                  : <div className="tk-panel-empty">Επίλεξε ένα ticket για να δεις τα στοιχεία του.</div>}
+              </div>
+            </div>
           </div>
         );
       })()}
@@ -4977,39 +5097,145 @@ ${table}
         /* ══════════════════════════
            TICKETS
         ══════════════════════════ */
-        .ticket-toolbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-        .ticket-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
-        .ticket-empty { color: var(--t3); font-size: 13px; text-align: center; }
-        .ticket-card { padding: 0; overflow: hidden; }
-        .ticket-head { width: 100%; display: flex; justify-content: space-between; gap: 12px; padding: 14px 16px; background: none; border: none; text-align: left; cursor: pointer; color: inherit; font-family: var(--font); }
-        .ticket-head-main { min-width: 0; flex: 1; }
-        .ticket-id-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
-        .ticket-id { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--acc); }
-        .ticket-store { font-size: 13px; font-weight: 700; color: var(--t1); }
-        .ticket-problem { font-size: 12px; color: var(--t2); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-        .ticket-contact { font-size: 11px; color: var(--t3); margin-top: 2px; }
-        .ticket-tel { color: var(--acc); text-decoration: none; font-weight: 600; }
-        .ticket-missing { font-size: 11px; color: var(--orange); margin-top: 4px; font-weight: 600; }
-        .ticket-meta { text-align: right; flex-shrink: 0; }
-        .ticket-serial { font-family: var(--mono); font-size: 11px; color: var(--t1); font-weight: 600; }
-        .ticket-date { font-size: 10px; color: var(--t3); margin-top: 3px; }
-        .ticket-body { padding: 0 16px 16px; border-top: 1px solid var(--border); }
-        .ticket-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; margin-top: 12px; font-size: 12px; color: var(--t1); word-break: break-word; }
-        .ticket-grid span { display: block; font-size: 9px; font-weight: 700; color: var(--t4); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 2px; }
-        .ticket-message { white-space: pre-wrap; font-size: 12px; color: var(--t2); background: var(--glass2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; max-height: 220px; overflow-y: auto; }
-        .ticket-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 10px; }
-        .ticket-move-btn { width: auto; }
-        .ticket-actions-main { justify-content: space-between; border-top: 1px solid var(--border); padding-top: 12px; margin-top: 14px; }
-        .ticket-actions-main .ticket-delete-btn { margin-right: auto; }
-        .ticket-delete-btn { padding: 8px 14px; border-radius: var(--r); border: 1px solid rgba(239,68,68,0.3); background: transparent; color: #f87171; font-size: 12px; font-weight: 600; font-family: var(--font); cursor: pointer; }
-        .ticket-delete-btn:hover { border-color: #ef4444; background: rgba(239,68,68,0.08); }
-        .ticket-edit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; }
-        .ticket-edit-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-        .ticket-edit-field.wide { grid-column: 1 / -1; }
-        .ticket-edit-field span { font-size: 9px; font-weight: 700; color: var(--t4); text-transform: uppercase; letter-spacing: 0.12em; }
-        @media (max-width: 600px) { .ticket-edit-grid { grid-template-columns: 1fr; } }
-        @media (max-width: 600px) { .ticket-grid { grid-template-columns: 1fr; } }
-        .light .ticket-message { background: rgba(255,255,255,0.7); }
+        .tk-page { --tk-new: var(--blue); --tk-missing: var(--orange); --tk-progress: var(--acc); --tk-closed: var(--t4); }
+        .tk-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+        .tk-title { font-size: 20px; font-weight: 800; color: var(--t1); letter-spacing: -0.01em; }
+        .tk-subtitle { font-size: 12px; color: var(--t3); margin-top: 2px; }
+
+        /* Στατιστικά = φίλτρα */
+        .tk-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+        .tk-stat {
+          --c: var(--tk-closed);
+          display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+          padding: 12px 14px; border-radius: var(--r-lg); cursor: pointer; text-align: left;
+          background: var(--glass); border: 1px solid var(--border); font-family: var(--font);
+          border-top: 3px solid var(--c); transition: border-color .15s, background .15s, transform .15s;
+        }
+        .tk-stat:hover { transform: translateY(-1px); border-color: var(--border2); }
+        .tk-stat.active { background: color-mix(in srgb, var(--c) 12%, transparent); border-color: var(--c); }
+        .tk-stat-num { font-size: 22px; font-weight: 800; color: var(--t1); line-height: 1.1; font-variant-numeric: tabular-nums; }
+        .tk-stat-label { font-size: 11px; font-weight: 600; color: var(--t3); }
+        .tk-stat.st-new { --c: var(--tk-new); } .tk-stat.st-missing { --c: var(--tk-missing); }
+        .tk-stat.st-progress { --c: var(--tk-progress); } .tk-stat.st-closed { --c: var(--tk-closed); }
+
+        .tk-toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+        .tk-search { flex: 1; min-width: 0; }
+        .tk-scope { display: flex; padding: 3px; border-radius: var(--r); background: var(--glass); border: 1px solid var(--border); flex-shrink: 0; }
+        .tk-scope button { padding: 7px 12px; border: none; border-radius: 7px; background: transparent; color: var(--t3); font: 600 12px var(--font); cursor: pointer; }
+        .tk-scope button.active { background: var(--glass2); color: var(--t1); box-shadow: 0 1px 0 var(--border2) inset; }
+
+        /* Κατάσταση */
+        .tk-status { --c: var(--tk-closed); display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); white-space: nowrap; }
+        .tk-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--c); }
+        .st-new { --c: var(--tk-new); } .st-missing { --c: var(--tk-missing); } .st-progress { --c: var(--tk-progress); } .st-closed { --c: var(--tk-closed); }
+        .tk-id { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--acc); }
+
+        /* Λίστα */
+        .tk-layout { display: block; }
+        .tk-list { display: flex; flex-direction: column; gap: 8px; }
+        .tk-panel { display: none; }
+        .tk-item {
+          --c: var(--tk-closed);
+          width: 100%; display: flex; flex-direction: column; gap: 4px; text-align: left; cursor: pointer;
+          padding: 12px 14px 12px 16px; border-radius: var(--r-lg); position: relative; overflow: hidden;
+          background: var(--glass); border: 1px solid var(--border); color: inherit; font-family: var(--font);
+          transition: border-color .15s, background .15s;
+        }
+        .tk-item::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--c); }
+        .tk-item:hover { border-color: var(--border2); }
+        .tk-item.selected { border-color: var(--acc); background: var(--glow2); }
+        .tk-item-top { display: flex; align-items: center; gap: 8px; }
+        .tk-ago { margin-left: auto; font-size: 11px; color: var(--t4); white-space: nowrap; }
+        .tk-item-store { font-size: 14px; font-weight: 700; color: var(--t1); }
+        .tk-item-problem { font-size: 12px; color: var(--t2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .tk-item-problem em { color: var(--t4); }
+        .tk-item-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; color: var(--t3); margin-top: 2px; }
+        .tk-item-meta .mono { font-family: var(--mono); }
+        .tk-chip-missing { color: var(--orange); font-weight: 700; }
+        .tk-empty, .tk-panel-empty { padding: 28px 16px; text-align: center; color: var(--t3); font-size: 13px; border: 1px dashed var(--border2); border-radius: var(--r-lg); }
+        .tk-inline { margin-top: 6px; }
+
+        /* Λεπτομέρειες */
+        .tk-detail { background: var(--glass); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+        .tk-detail-head { display: flex; justify-content: space-between; gap: 10px; }
+        .tk-detail-id-row { display: flex; align-items: center; gap: 8px; }
+        .tk-detail-store { font-size: 18px; font-weight: 800; color: var(--t1); margin-top: 4px; }
+        .tk-detail-sub { font-size: 11px; color: var(--t4); margin-top: 2px; word-break: break-all; }
+        .tk-close { width: 30px; height: 30px; flex-shrink: 0; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--t3); font-size: 18px; cursor: pointer; }
+        .tk-missing-banner { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: var(--r); background: var(--obg); border: 1px solid var(--og); color: var(--orange); font-size: 12px; }
+        .tk-missing-banner strong { font-weight: 700; }
+
+        .tk-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 12px; border-radius: var(--r); border: 1px solid var(--border2); background: var(--glass2); color: var(--t1); font: 600 12px var(--font); cursor: pointer; text-decoration: none; white-space: nowrap; transition: border-color .15s, background .15s; }
+        .tk-btn:hover:not(:disabled):not(.disabled) { border-color: var(--acc); }
+        .tk-btn.primary { background: linear-gradient(135deg, var(--acc), var(--acc2)); border-color: transparent; color: #fff; }
+        .tk-btn.small { padding: 5px 10px; font-size: 11px; }
+        .tk-btn:disabled, .tk-btn.disabled { opacity: .45; cursor: not-allowed; pointer-events: none; }
+        .tk-quick { display: flex; flex-wrap: wrap; gap: 6px; }
+        .tk-quick .primary { margin-left: auto; }
+
+        .tk-segment { display: grid; grid-template-columns: repeat(4, 1fr); padding: 3px; gap: 3px; border-radius: var(--r); background: var(--bg3); border: 1px solid var(--border); }
+        .tk-seg { padding: 7px 4px; border: none; border-radius: 7px; background: transparent; color: var(--t3); font: 600 11px var(--font); cursor: pointer; }
+        .tk-seg:hover:not(.active) { color: var(--t1); }
+        .tk-seg.active { background: color-mix(in srgb, var(--c) 18%, transparent); color: var(--c); box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 45%, transparent) inset; }
+
+        .tk-field-label { display: block; font-size: 9px; font-weight: 700; color: var(--t4); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 3px; }
+        .tk-field-label em { text-transform: none; letter-spacing: 0; font-weight: 500; font-style: normal; }
+        .tk-problem { padding: 12px 14px; border-radius: var(--r); background: var(--bg3); border-left: 3px solid var(--acc); }
+        .tk-problem p { margin: 0; font-size: 14px; color: var(--t1); line-height: 1.5; white-space: pre-wrap; }
+
+        .tk-sections { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+        .tk-section { padding: 12px; border-radius: var(--r); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 9px; min-width: 0; }
+        .tk-section-title { font-size: 11px; font-weight: 700; color: var(--acc); }
+        .tk-field { min-width: 0; }
+        .tk-field-value { font-size: 13px; color: var(--t1); word-break: break-word; }
+        .tk-field-value.mono, .tk-link.mono { font-family: var(--mono); }
+        .tk-field-missing { font-size: 12px; font-weight: 700; color: var(--orange); }
+        .tk-field-empty { font-size: 13px; color: var(--t4); }
+        .tk-link { font-size: 13px; color: var(--acc); text-decoration: none; font-weight: 600; word-break: break-all; }
+        .tk-link:hover { text-decoration: underline; }
+
+        .tk-block p { margin: 0; font-size: 13px; color: var(--t2); white-space: pre-wrap; }
+        .tk-note-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 6px; }
+        .tk-original { border: 1px solid var(--border); border-radius: var(--r); }
+        .tk-original summary { padding: 9px 12px; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--t3); }
+        .tk-original pre { margin: 0; padding: 0 12px 12px; white-space: pre-wrap; font: 12px/1.5 var(--font); color: var(--t2); max-height: 260px; overflow-y: auto; }
+        .tk-footer { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 10px; color: var(--t4); }
+        .tk-delete { border: none; background: none; color: var(--red); font: 600 12px var(--font); cursor: pointer; padding: 4px 6px; border-radius: 6px; }
+        .tk-delete:hover { background: var(--rbg); }
+
+        .tk-edit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; }
+        .tk-edit-field { display: flex; flex-direction: column; min-width: 0; }
+        .tk-edit-field.wide { grid-column: 1 / -1; }
+        .tk-edit-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+        /* Desktop: λίστα αριστερά, λεπτομέρειες δεξιά */
+        @media (min-width: 1100px) {
+          .tk-layout { display: grid; grid-template-columns: minmax(320px, 400px) minmax(0, 1fr); gap: 14px; align-items: start; }
+          .tk-list { max-height: calc(100vh - 290px); overflow-y: auto; padding-right: 4px; }
+          .tk-inline { display: none; }
+          .tk-panel { display: block; position: sticky; top: 0; max-height: calc(100vh - 290px); overflow-y: auto; }
+          .desktop-split-hide { display: none; }
+        }
+        @media (min-width: 768px) {
+          .tk-title { display: none; } /* υπάρχει ήδη στην κεφαλίδα της σελίδας */
+          .tk-subtitle { margin-top: 0; font-size: 13px; }
+        }
+        @media (max-width: 760px) {
+          .tk-sections { grid-template-columns: 1fr; }
+          .tk-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 600px) {
+          .tk-edit-grid { grid-template-columns: 1fr; }
+          .tk-toolbar { flex-direction: column; align-items: stretch; }
+          .tk-quick .tk-btn { flex: 1 1 calc(50% - 6px); }
+          .tk-quick .primary { margin-left: 0; flex-basis: 100%; }
+          .tk-segment { grid-template-columns: repeat(2, 1fr); }
+        }
+        .light .tk-detail, .light .tk-item, .light .tk-stat { background: rgba(255,255,255,0.9); }
+        .light .tk-item.selected { background: rgba(124,58,237,0.05); }
+        .light .tk-problem, .light .tk-segment { background: #f3f2fa; }
+        .light .tk-scope button.active { background: #fff; }
+
 
         .light .card { background: rgba(255,255,255,0.9); border-color: var(--border); }
         .light .card-title { color: var(--t1); }
