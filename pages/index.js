@@ -182,6 +182,9 @@ export default function Home() {
   const [ticketFilter, setTicketFilter] = useState('open'); // open | Νέο | Ελλιπές | Σε εξέλιξη | Κλειστό | all
   const [openTicketId, setOpenTicketId] = useState(null);
   const [ticketNoteDraft, setTicketNoteDraft] = useState('');
+  const [editingTicketId, setEditingTicketId] = useState(null);
+  const [ticketDraft, setTicketDraft] = useState({});
+  const [ticketDeleteConfirm, setTicketDeleteConfirm] = useState(null);
   const [savingTicketId, setSavingTicketId] = useState(null);
   const [loadingTrash, setLoadingTrash] = useState(false);
   const [trashBusy, setTrashBusy] = useState(null); // batchId που γίνεται restore/purge
@@ -1154,9 +1157,63 @@ ${table}
   };
 
   const openTicket = (t) => {
+    setEditingTicketId(null);
     if (openTicketId === t.ticketId) { setOpenTicketId(null); return; }
     setOpenTicketId(t.ticketId);
     setTicketNoteDraft(t.notes || '');
+  };
+
+  // Πεδία της φόρμας Cashdro που επεξεργάζονται
+  const TICKET_EDIT_FIELDS = [
+    { key: 'store',        label: 'Υποκατάστημα' },
+    { key: 'address',      label: 'Διεύθυνση καταστήματος' },
+    { key: 'postalCode',   label: 'Ταχυδρομικός κώδικας' },
+    { key: 'contactName',  label: 'Ονοματεπώνυμο υπευθύνου' },
+    { key: 'contactPhone', label: 'Τηλέφωνο επικοινωνίας' },
+    { key: 'serialNumber', label: 'Σειριακός Cashdro' },
+    { key: 'ip',           label: 'IP Cashdro' },
+    { key: 'courier',      label: 'Μεταφορική' },
+    { key: 'problem',      label: 'Περιγραφή προβλήματος', multiline: true },
+    { key: 'storeRemarks', label: 'Παρατηρήσεις καταστήματος', multiline: true },
+  ];
+
+  const startEditTicket = (t) => {
+    setTicketDraft(Object.fromEntries(TICKET_EDIT_FIELDS.map(f => [f.key, t[f.key] || ''])));
+    setEditingTicketId(t.ticketId);
+  };
+
+  const saveTicketEdit = async (t) => {
+    const changed = Object.fromEntries(
+      TICKET_EDIT_FIELDS
+        .filter(f => (ticketDraft[f.key] || '') !== (t[f.key] || ''))
+        .map(f => [f.key, ticketDraft[f.key] || ''])
+    );
+    if (!Object.keys(changed).length) { setEditingTicketId(null); return; }
+    const ok = await updateTicket(t.ticketId, changed);
+    if (ok) setEditingTicketId(null);
+  };
+
+  const confirmDeleteTicket = async () => {
+    const t = ticketDeleteConfirm;
+    if (!t) return;
+    setSavingTicketId(t.ticketId);
+    try {
+      const res = await fetch('/api/tickets', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticketId: t.ticketId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error);
+      setTickets(prev => prev.filter(x => x.ticketId !== t.ticketId));
+      setOpenTicketId(null);
+      setEditingTicketId(null);
+      setTicketDeleteConfirm(null);
+    } catch (e) {
+      alert(e.message || 'Σφάλμα διαγραφής ticket.');
+    } finally {
+      setSavingTicketId(null);
+    }
   };
 
   // Ticket → φόρμα κίνησης (Εισαγωγή για επισκευή) με προσυμπληρωμένα στοιχεία
@@ -3011,7 +3068,29 @@ ${table}
                     </div>
                   </button>
 
-                  {isOpen && (
+                  {isOpen && editingTicketId === t.ticketId && (
+                    <div className="ticket-body">
+                      <div className="section-label" style={{marginTop:'12px'}}>Επεξεργασία στοιχείων</div>
+                      <div className="ticket-edit-grid">
+                        {TICKET_EDIT_FIELDS.map(f => (
+                          <label key={f.key} className={`ticket-edit-field ${f.multiline ? 'wide' : ''}`}>
+                            <span>{f.label}</span>
+                            {f.multiline
+                              ? <textarea className="text-input" rows={3} value={ticketDraft[f.key] || ''} onChange={e=>setTicketDraft(d=>({...d,[f.key]:e.target.value}))} />
+                              : <input className="text-input" value={ticketDraft[f.key] || ''} onChange={e=>setTicketDraft(d=>({...d,[f.key]:e.target.value}))} />}
+                          </label>
+                        ))}
+                      </div>
+                      <div className="ticket-actions">
+                        <button className="btn-note-cancel" onClick={()=>setEditingTicketId(null)} disabled={savingTicketId===t.ticketId}>Άκυρο</button>
+                        <button className="btn-primary ticket-move-btn" onClick={()=>saveTicketEdit(t)} disabled={savingTicketId===t.ticketId}>
+                          {savingTicketId===t.ticketId ? 'Αποθήκευση...' : 'Αποθήκευση αλλαγών'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {isOpen && editingTicketId !== t.ticketId && (
                     <div className="ticket-body">
                       <div className="ticket-grid">
                         <div><span>Υπεύθυνος</span>{t.contactName || '—'}</div>
@@ -3051,6 +3130,10 @@ ${table}
                           <div className="ticket-actions">
                             <button className="btn-note-cancel" disabled={savingTicketId===t.ticketId || ticketNoteDraft===(t.notes||'')}
                               onClick={()=>updateTicket(t.ticketId, { notes: ticketNoteDraft })}>Αποθήκευση σημείωσης</button>
+                          </div>
+                          <div className="ticket-actions ticket-actions-main">
+                            <button className="ticket-delete-btn" onClick={()=>setTicketDeleteConfirm(t)} disabled={savingTicketId===t.ticketId}>🗑 Διαγραφή</button>
+                            <button className="btn-note-cancel" onClick={()=>startEditTicket(t)} disabled={savingTicketId===t.ticketId}>✏️ Επεξεργασία</button>
                             <button className="btn-primary ticket-move-btn" disabled={!t.serialNumber} onClick={()=>ticketToMovement(t)}
                               title={t.serialNumber ? '' : 'Χρειάζεται serial number'}>
                               🔧 Καταχώρηση για επισκευή
@@ -3425,6 +3508,28 @@ ${table}
               </button>
             </div>
             <button className="delete-opt-cancel" onClick={() => setDeleteConfirmItem(null)}>Ακύρωση</button>
+          </div>
+        </div>
+      )}
+
+      {ticketDeleteConfirm && (
+        <div className="modal-backdrop" onClick={() => setTicketDeleteConfirm(null)}>
+          <div className="delete-modal" onClick={e => e.stopPropagation()}>
+            <div className="delete-modal-title">Διαγραφή ticket</div>
+            <div className="delete-modal-sub">
+              <strong>{ticketDeleteConfirm.ticketId}</strong>
+              {ticketDeleteConfirm.store && <span> · {ticketDeleteConfirm.store}</span>}
+            </div>
+            <div className="delete-modal-sub">Το ticket θα διαγραφεί οριστικά από το TrackMate και το Sheet. Δεν γίνεται επαναφορά.</div>
+            <div className="delete-modal-options">
+              <button className="delete-opt-btn danger" onClick={confirmDeleteTicket} disabled={savingTicketId===ticketDeleteConfirm.ticketId}>
+                <div className="delete-opt-icon">🗑️</div>
+                <div>
+                  <div className="delete-opt-label">{savingTicketId===ticketDeleteConfirm.ticketId ? 'Διαγραφή...' : 'Οριστική διαγραφή'}</div>
+                </div>
+              </button>
+            </div>
+            <button className="delete-opt-cancel" onClick={() => setTicketDeleteConfirm(null)}>Ακύρωση</button>
           </div>
         </div>
       )}
@@ -4894,6 +4999,15 @@ ${table}
         .ticket-message { white-space: pre-wrap; font-size: 12px; color: var(--t2); background: var(--glass2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; max-height: 220px; overflow-y: auto; }
         .ticket-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 10px; }
         .ticket-move-btn { width: auto; }
+        .ticket-actions-main { justify-content: space-between; border-top: 1px solid var(--border); padding-top: 12px; margin-top: 14px; }
+        .ticket-actions-main .ticket-delete-btn { margin-right: auto; }
+        .ticket-delete-btn { padding: 8px 14px; border-radius: var(--r); border: 1px solid rgba(239,68,68,0.3); background: transparent; color: #f87171; font-size: 12px; font-weight: 600; font-family: var(--font); cursor: pointer; }
+        .ticket-delete-btn:hover { border-color: #ef4444; background: rgba(239,68,68,0.08); }
+        .ticket-edit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; }
+        .ticket-edit-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+        .ticket-edit-field.wide { grid-column: 1 / -1; }
+        .ticket-edit-field span { font-size: 9px; font-weight: 700; color: var(--t4); text-transform: uppercase; letter-spacing: 0.12em; }
+        @media (max-width: 600px) { .ticket-edit-grid { grid-template-columns: 1fr; } }
         @media (max-width: 600px) { .ticket-grid { grid-template-columns: 1fr; } }
         .light .ticket-message { background: rgba(255,255,255,0.7); }
 

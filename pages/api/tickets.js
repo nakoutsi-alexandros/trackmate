@@ -1,10 +1,11 @@
 // pages/api/tickets.js
 // GET   → λίστα tickets (νεότερα πρώτα)
-// PATCH → αλλαγή status / σημειώσεων { ticketId, status?, notes? }
+// PATCH  → αλλαγή κατάστασης / σημειώσεων / στοιχείων { ticketId, ...πεδία }
+// DELETE → οριστική διαγραφή { ticketId }
 
-import { getTickets, updateTicketFields } from '../../lib/sheets';
+import { getTickets, updateTicketFields, deleteTicket } from '../../lib/sheets';
 import { getUserFromRequest } from '../../lib/auth';
-import { TICKET_STATUSES } from '../../lib/emailTickets';
+import { TICKET_STATUSES, REQUIRED_KEYS } from '../../lib/emailTickets';
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
@@ -18,18 +19,34 @@ export default async function handler(req, res) {
     }
   }
 
-  if (req.method === 'PATCH') {
+  if (req.method === 'PATCH' || req.method === 'DELETE') {
     const user = getUserFromRequest(req);
     if (!user || user.role === 'viewer') return res.status(403).json({ error: 'Δεν έχεις δικαίωμα αλλαγών' });
+  }
 
-    const { ticketId, status, notes } = req.body || {};
+  if (req.method === 'DELETE') {
+    const { ticketId } = req.body || {};
     if (!ticketId) return res.status(400).json({ error: 'Λείπει το ticketId' });
-    if (status !== undefined && !TICKET_STATUSES.includes(status)) {
+    try {
+      const ok = await deleteTicket(String(ticketId));
+      if (!ok) return res.status(404).json({ error: 'Το ticket δεν βρέθηκε' });
+      return res.status(200).json({ success: true });
+    } catch (err) {
+      console.error('deleteTicket error:', err);
+      return res.status(500).json({ error: 'Σφάλμα διαγραφής ticket' });
+    }
+  }
+
+  if (req.method === 'PATCH') {
+    const user = getUserFromRequest(req);
+    const { ticketId, ...fields } = req.body || {};
+    if (!ticketId) return res.status(400).json({ error: 'Λείπει το ticketId' });
+    if (fields.status !== undefined && !TICKET_STATUSES.includes(fields.status)) {
       return res.status(400).json({ error: 'Μη έγκυρη κατάσταση' });
     }
 
     try {
-      const updated = await updateTicketFields(ticketId, { status, notes }, user.fullName || user.username || '');
+      const updated = await updateTicketFields(ticketId, fields, user.fullName || user.username || '', REQUIRED_KEYS);
       if (!updated) return res.status(404).json({ error: 'Το ticket δεν βρέθηκε' });
       return res.status(200).json({ ticket: updated });
     } catch (err) {
