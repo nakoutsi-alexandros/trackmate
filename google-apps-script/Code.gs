@@ -46,6 +46,7 @@ const DOMAINS = {
 // Λατινικά ονόματα: το Gmail κάποιες φορές δεν βρίσκει υπο-ετικέτες με ελληνικά
 const LABEL_DONE    = 'TrackMate-Tickets';
 const LABEL_IGNORED = 'TrackMate-Ignored';
+const LABEL_NOFORM  = 'TrackMate-NoForm';   // από επιτρεπόμενο αποστολέα, αλλά χωρίς φόρμα Cashdro
 const MAX_IMAGE_BYTES = 1.5 * 1024 * 1024; // ανά εικόνα
 const MAX_IMAGES = 2;
 // ──────────────────────────────────────────────────────────
@@ -67,6 +68,7 @@ function setup() {
 
   getOrCreateLabel_(LABEL_DONE);
   getOrCreateLabel_(LABEL_IGNORED);
+  getOrCreateLabel_(LABEL_NOFORM);
 
   Logger.log('✅ Έτοιμο. Βάλε στο Vercel το env TICKETS_INBOUND_SECRET με τιμή:');
   Logger.log(secret);
@@ -125,7 +127,7 @@ function processInbox() {
           step = 'αποστολή στο TrackMate';
           const ok = sendToTrackMate_(msg, thread, fromEmail, store, chain, secret);
           if (!ok) break; // αφήνουμε αδιάβαστο για να ξαναδοκιμάσει σε 5 λεπτά
-          addLabelSafe_(thread, LABEL_DONE);
+          if (ok !== 'skipped') addLabelSafe_(thread, LABEL_DONE);
         } catch (e) {
           Logger.log('Σφάλμα (' + step + ') στο "' + msg.getSubject() + '": ' + e);
           break; // μένει αδιάβαστο, νέα προσπάθεια στην επόμενη εκτέλεση
@@ -166,6 +168,13 @@ function sendToTrackMate_(msg, thread, fromEmail, store, chain, secret) {
   }
 
   const data = JSON.parse(res.getContentText());
+  if (data.skipped) {
+    // Δεν περιέχει φόρμα Cashdro (π.χ. πινακάκι εξαρτημάτων) → κανένα ticket
+    msg.markRead();
+    addLabelSafe_(thread, LABEL_NOFORM);
+    Logger.log('Χωρίς φόρμα, δεν έγινε ticket: "' + msg.getSubject() + '" από ' + fromEmail);
+    return 'skipped';
+  }
   if (!data.notify) {
     Logger.log('Ticket ' + data.ticketId + ': όλα τα στοιχεία υπάρχουν — δεν χρειάζεται ειδοποίηση');
   } else if (!notifyConfigured_()) {

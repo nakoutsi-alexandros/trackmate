@@ -47,6 +47,10 @@ export default async function handler(req, res) {
       images: Array.isArray(images) ? images : [],
     });
 
+    if (result.skipped) {
+      return res.status(200).json({ skipped: true, reason: result.reason });
+    }
+
     return res.status(200).json({
       ticketId: result.ticket.ticketId,
       status: result.ticket.status,
