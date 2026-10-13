@@ -18,7 +18,7 @@ const TRACKMATE_URL = 'https://trackmate-lake.vercel.app/api/tickets/inbound';
 // Ένα email:   'alex@etairia.gr'
 // Πολλά email: 'alex@etairia.gr,maria@etairia.gr'   (κόμμα, χωρίς κενά)
 // Για έλεγχο: τρέξε τη συνάρτηση testNotify — στέλνει δοκιμαστικό email εδώ.
-const NOTIFY_EMAIL = 'to-email-sas@example.gr';
+const NOTIFY_EMAIL = 'cashdro@triasretail.gr';
 
 // Μορφή ειδοποίησης:
 //   'text'  = απλό κείμενο
@@ -26,13 +26,13 @@ const NOTIFY_EMAIL = 'to-email-sas@example.gr';
 //   'design'= η μορφοποιημένη εμφάνιση, χωρίς το κουμπί
 //   'full'  = μορφοποιημένο email με κουμπί (όπως ήταν αρχικά)
 // Για να δεις ποια περνάει τα φίλτρα του Outlook: τρέξε testNotifyFormats.
-const NOTIFY_FORMAT = 'text';
+const NOTIFY_FORMAT = 'full';
 
 // Whitelist 1 — συγκεκριμένα emails που επιτρέπεται να στέλνουν φόρμα.
 // Αρκεί το email· το όνομα δίπλα είναι προαιρετικό (μπορεί να μείνει '').
 // Το υποκατάστημα διαβάζεται πάντα από τη φόρμα.
 const STORES = {
-  'katastima@example.gr': 'ΟΝΟΜΑ ΚΑΤΑΣΤΗΜΑΤΟΣ',
+  'cashdro@triasretail.gr': 'trias',
 };
 
 // Whitelist 2 — ολόκληρα domains αλυσίδων: domain → όνομα αλυσίδας (όπως είναι στο TrackMate)
