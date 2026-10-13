@@ -151,7 +151,10 @@ function sendToTrackMate_(msg, thread, fromEmail, store, chain, secret) {
   const data = JSON.parse(res.getContentText());
   if (data.notify && NOTIFY_EMAIL && NOTIFY_EMAIL.indexOf('example') === -1) {
     try {
-      GmailApp.sendEmail(NOTIFY_EMAIL, data.notify.subject, data.notify.body);
+      GmailApp.sendEmail(NOTIFY_EMAIL, data.notify.subject, data.notify.body, {
+        htmlBody: data.notify.html || undefined,
+        name: 'TrackMate',
+      });
     } catch (e) {
       Logger.log('Αποτυχία ειδοποίησης για ' + data.ticketId + ': ' + e + ' — νέα προσπάθεια σε 5 λεπτά');
       return false; // μένει αδιάβαστο → το TrackMate θα ξαναδώσει την ίδια ειδοποίηση

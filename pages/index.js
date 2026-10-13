@@ -1763,8 +1763,13 @@ ${table}
       loadHistory(querySerial);
     }
     if (nextTab === 'settings') { loadStores(); loadTrash(); }
-    if (nextTab === 'tickets') loadTickets();
-  }, [router.isReady, router.query.tab, router.query.serial]);
+    if (nextTab === 'tickets') {
+      loadTickets();
+      // Link από την ειδοποίηση email: ανοίγει κατευθείαν το συγκεκριμένο ticket
+      const queryTicket = Array.isArray(router.query.ticket) ? router.query.ticket[0] : router.query.ticket;
+      if (queryTicket) { setTicketFilter('all'); setOpenTicketId(queryTicket); }
+    }
+  }, [router.isReady, router.query.tab, router.query.serial, router.query.ticket]);
 
   const renderWarehouseActions = (item) => {
     if (isViewer) return null;
