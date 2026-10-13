@@ -14,7 +14,10 @@
 // ── ΡΥΘΜΙΣΕΙΣ ─────────────────────────────────────────────
 const TRACKMATE_URL = 'https://trackmate-lake.vercel.app/api/tickets/inbound';
 
-// Πού έρχεται η ειδοποίηση όταν λείπουν στοιχεία (μπορούν να είναι πολλά, χωρισμένα με κόμμα)
+// Πού έρχεται η ειδοποίηση όταν λείπουν στοιχεία.
+// Ένα email:   'alex@etairia.gr'
+// Πολλά email: 'alex@etairia.gr,maria@etairia.gr'   (κόμμα, χωρίς κενά)
+// Για έλεγχο: τρέξε τη συνάρτηση testNotify — στέλνει δοκιμαστικό email εδώ.
 const NOTIFY_EMAIL = 'to-email-sas@example.gr';
 
 // Whitelist 1 — συγκεκριμένα emails που επιτρέπεται να στέλνουν φόρμα.
@@ -155,12 +158,17 @@ function sendToTrackMate_(msg, thread, fromEmail, store, chain, secret) {
   }
 
   const data = JSON.parse(res.getContentText());
-  if (data.notify && NOTIFY_EMAIL && NOTIFY_EMAIL.indexOf('example') === -1) {
+  if (!data.notify) {
+    Logger.log('Ticket ' + data.ticketId + ': όλα τα στοιχεία υπάρχουν — δεν χρειάζεται ειδοποίηση');
+  } else if (!notifyConfigured_()) {
+    Logger.log('⚠️ Ticket ' + data.ticketId + ' ελλιπές, αλλά ΔΕΝ στάλθηκε ειδοποίηση: συμπλήρωσε σωστά το NOTIFY_EMAIL στην κορυφή του script');
+  } else {
     try {
-      GmailApp.sendEmail(NOTIFY_EMAIL, data.notify.subject, data.notify.body, {
+      GmailApp.sendEmail(notifyList_(), data.notify.subject, data.notify.body, {
         htmlBody: data.notify.html || undefined,
         name: 'TrackMate',
       });
+      Logger.log('✉️ Ειδοποίηση για ' + data.ticketId + ' στάλθηκε σε: ' + notifyList_());
     } catch (e) {
       Logger.log('Αποτυχία ειδοποίησης για ' + data.ticketId + ': ' + e + ' — νέα προσπάθεια σε 5 λεπτά');
       return false; // μένει αδιάβαστο → το TrackMate θα ξαναδώσει την ίδια ειδοποίηση
@@ -196,6 +204,28 @@ function isAutomated_(msg, fromEmail) {
   if (['bulk', 'list', 'junk', 'auto_reply'].indexOf(header('Precedence')) !== -1) return true;
   if (header('X-Autoreply') || header('X-Autorespond')) return true;
   return false;
+}
+
+
+/** Τρέξε το για να δοκιμάσεις ότι οι ειδοποιήσεις φτάνουν. */
+function testNotify() {
+  if (!notifyConfigured_()) {
+    Logger.log('⚠️ Το NOTIFY_EMAIL δεν είναι σωστό: "' + NOTIFY_EMAIL + '". Βάλε το email σας στην κορυφή του script.');
+    return;
+  }
+  GmailApp.sendEmail(notifyList_(), 'TrackMate: δοκιμαστική ειδοποίηση',
+    'Αν βλέπεις αυτό το email, οι ειδοποιήσεις για ελλιπή tickets λειτουργούν.', { name: 'TrackMate' });
+  Logger.log('✉️ Στάλθηκε δοκιμαστικό email σε: ' + notifyList_() + ' (κοίτα και στα Ανεπιθύμητα)');
+}
+
+function notifyList_() {
+  return String(NOTIFY_EMAIL || '').split(/[,;\s]+/).map(x => x.trim()).filter(Boolean).join(',');
+}
+
+function notifyConfigured_() {
+  const list = notifyList_();
+  if (!list || /example\./i.test(list)) return false;
+  return list.split(',').every(e => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e));
 }
 
 
