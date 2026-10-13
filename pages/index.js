@@ -85,6 +85,153 @@ const readInventoryCache = () => {
   }
 };
 
+// ══════════════════════════════════════════════
+// ΓΡΑΦΗΜΑΤΑ ΑΡΧΙΚΗΣ (χωρίς βιβλιοθήκη — HTML/CSS)
+// Χρώματα: --c-avail / --c-repair / --c-store / --c-central (ελεγμένα για αχρωματοψία)
+// ══════════════════════════════════════════════
+const FLEET_SERIES = [
+  { key: 'avail',   label: 'Διαθέσιμα',      color: 'var(--c-avail)' },
+  { key: 'repair',  label: 'Σε επισκευή',    color: 'var(--c-repair)' },
+  { key: 'store',   label: 'Σε καταστήματα', color: 'var(--c-store)' },
+  { key: 'central', label: 'Στα κεντρικά',   color: 'var(--c-central)' },
+];
+
+// Μία οριζόντια μπάρα: πού βρίσκεται όλος ο στόλος
+function FleetBar({ counts, onSelect, ready }) {
+  const [hover, setHover] = useState(null);
+  const total = FLEET_SERIES.reduce((s, x) => s + (counts[x.key] || 0), 0);
+  const pct = n => (total ? Math.round((n / total) * 100) : 0);
+  return (
+    <div className="fleet">
+      <div className="fleet-bar" role="img" aria-label={FLEET_SERIES.map(s => `${s.label}: ${counts[s.key] || 0}`).join(', ')}>
+        {total === 0 && <div className="fleet-empty" />}
+        {FLEET_SERIES.filter(s => counts[s.key] > 0).map(s => (
+          <button key={s.key} className={`fleet-seg ${hover && hover !== s.key ? 'dim' : ''}`}
+            style={{ flexGrow: counts[s.key], background: s.color }}
+            onMouseEnter={() => setHover(s.key)} onMouseLeave={() => setHover(null)}
+            onFocus={() => setHover(s.key)} onBlur={() => setHover(null)}
+            onClick={() => onSelect?.(s.key)}
+            aria-label={`${s.label}: ${counts[s.key]}`}>
+            {hover === s.key && <span className="chart-tip">{s.label}: <strong>{counts[s.key]}</strong> ({pct(counts[s.key])}%)</span>}
+          </button>
+        ))}
+      </div>
+      <div className="fleet-legend">
+        {FLEET_SERIES.map(s => (
+          <button key={s.key} className={`fleet-key ${hover === s.key ? 'on' : ''}`} onClick={() => onSelect?.(s.key)}
+            onMouseEnter={() => setHover(s.key)} onMouseLeave={() => setHover(null)}>
+            <span className="fleet-swatch" style={{ background: s.color }} />
+            <span className="fleet-key-label">{s.label}</span>
+            <span className="fleet-key-num">{ready ? (counts[s.key] || 0) : '—'}</span>
+            <span className="fleet-key-pct">{ready && total ? `${pct(counts[s.key] || 0)}%` : ''}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const WEEK_SERIES = [
+  { key: 'Καινούριο Μηχάνημα',     label: 'Νέα στην αποθήκη', color: 'var(--c-avail)' },
+  { key: 'Εισαγωγή για επισκευή',  label: 'Επισκευές',        color: 'var(--c-repair)' },
+  { key: 'Αποστολή σε κατάστημα',  label: 'Σε καταστήματα',   color: 'var(--c-store)' },
+  { key: 'Αποστολή στα κεντρικά',  label: 'Στα κεντρικά',     color: 'var(--c-central)' },
+];
+
+// Στρογγυλό μέγιστο άξονα, ώστε και το μισό του να είναι ακέραιο (π.χ. 25 → 30, 9 → 10)
+const niceMax = (v) => {
+  if (v <= 4) return 4;
+  const half = v / 2;
+  const pow = Math.pow(10, Math.floor(Math.log10(half)));
+  const step = [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].map(n => n * pow).find(x => x >= half && Number.isInteger(x));
+  return (step || Math.ceil(half)) * 2;
+};
+
+// Στοιβαγμένες στήλες: κινήσεις ανά εβδομάδα
+function WeeklyChart({ weeks }) {
+  const [hover, setHover] = useState(null);
+  const totals = weeks.map(w => WEEK_SERIES.reduce((s, x) => s + (w.counts[x.key] || 0), 0));
+  const max = niceMax(Math.max(1, ...totals));
+  const ticks = [0, max / 2, max];
+  return (
+    <div className="wchart">
+      <div className="chart-legend">
+        {WEEK_SERIES.map(s => <span key={s.key}><i style={{ background: s.color }} />{s.label}</span>)}
+      </div>
+      <div className="wchart-plot">
+        <div className="wchart-grid">
+          {ticks.slice().reverse().map(t => <div key={t} className="wchart-gridline"><span>{t}</span></div>)}
+        </div>
+        <div className="wchart-cols">
+          {weeks.map((w, i) => (
+            <div key={w.label} className={`wchart-col ${hover === i ? 'on' : ''}`}
+              onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} tabIndex={0}
+              onFocus={() => setHover(i)} onBlur={() => setHover(null)}
+              aria-label={`Εβδομάδα ${w.label}: ${totals[i]} κινήσεις`}>
+              <div className="wchart-stack" style={{ height: `${(totals[i] / max) * 100}%` }}>
+                {WEEK_SERIES.filter(s => w.counts[s.key]).map(s => (
+                  <div key={s.key} className="wchart-seg" style={{ flexGrow: w.counts[s.key], background: s.color }} />
+                ))}
+              </div>
+              <span className="wchart-x">{w.label}</span>
+              {hover === i && (
+                <div className={`chart-tip wide ${i > weeks.length - 3 ? 'left' : ''}`}>
+                  <div className="tip-title">Εβδομάδα {w.range}</div>
+                  {WEEK_SERIES.map(s => (
+                    <div key={s.key} className="tip-row"><i style={{ background: s.color }} />{s.label}<strong>{w.counts[s.key] || 0}</strong></div>
+                  ))}
+                  <div className="tip-row total">Σύνολο<strong>{totals[i]}</strong></div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Οριζόντιες μπάρες, μία σειρά (π.χ. μηχανήματα ανά αλυσίδα)
+function HBarChart({ rows, color, onSelect, unit = '' }) {
+  const max = Math.max(1, ...rows.map(r => r.value));
+  return (
+    <div className="hbars">
+      {rows.map(r => (
+        <button key={r.label} className="hbar-row" onClick={() => onSelect?.(r)} title={`${r.label}: ${r.value}${unit}`}>
+          <span className="hbar-label">{r.label}</span>
+          <span className="hbar-track">
+            <span className="hbar-fill" style={{ width: `${Math.max(2, (r.value / max) * 100)}%`, background: color }} />
+          </span>
+          <span className="hbar-value">{r.value}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Πόσες μέρες είναι τα μηχανήματα σε επισκευή
+function AgingChart({ buckets, onSelect }) {
+  const [hover, setHover] = useState(null);
+  const max = niceMax(Math.max(1, ...buckets.map(b => b.value)));
+  return (
+    <div className="aging">
+      <div className="aging-cols">
+        {buckets.map((b, i) => (
+          <button key={b.label} className={`aging-col ${b.late ? 'late' : ''}`} onClick={onSelect}
+            onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}
+            aria-label={`${b.label} ημέρες: ${b.value} μηχανήματα`}>
+            <span className="aging-val">{b.value}</span>
+            <span className="aging-bar" style={{ height: `${(b.value / max) * 100}%` }} />
+            <span className="aging-x">{b.label}</span>
+            {hover === i && <span className="chart-tip">{b.value} μηχ. · {b.label} ημέρες</span>}
+          </button>
+        ))}
+      </div>
+      <div className="aging-note"><i className="late" /> πάνω από 7 ημέρες σε επισκευή</div>
+    </div>
+  );
+}
+
 export default function Home() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState(null);
@@ -184,6 +331,7 @@ export default function Home() {
   const [ticketsError, setTicketsError] = useState('');
   const [ticketFilter, setTicketFilter] = useState('open'); // open | Νέο | Ελλιπές | Σε εξέλιξη | Κλειστό | all
   const [ticketSearch, setTicketSearch] = useState('');
+  const [allMovements, setAllMovements] = useState(null); // όλες οι κινήσεις, για τα γραφήματα
   const [openTicketId, setOpenTicketId] = useState(null);
   const [ticketNoteDraft, setTicketNoteDraft] = useState('');
   const [editingTicketId, setEditingTicketId] = useState(null);
@@ -444,6 +592,7 @@ export default function Home() {
     // Φόρτωση dark mode preference
     const saved = localStorage.getItem('trackmate_dark');
     if (saved === '1') setDarkMode(true);
+    if (saved === '0') setDarkMode(false); // κρατάει και την επιλογή φωτεινού θέματος
 
     fetch('/api/auth/me')
       .then(res => res.ok ? res.json() : null)
@@ -1140,6 +1289,14 @@ ${table}
     }
   };
 
+  const loadAllMovements = async () => {
+    try {
+      const res = await fetch('/api/inventory?all=1', { cache: 'no-store' });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && Array.isArray(data.movements)) setAllMovements(data.movements);
+    } catch (e) {}
+  };
+
   const updateTicket = async (ticketId, fields) => {
     setSavingTicketId(ticketId);
     try {
@@ -1482,6 +1639,72 @@ ${table}
   const recentMovements = sortItems(inventory).slice(0, 5);
   const homeRecentMovements = sortItems(homeInventory).slice(0, 5);
   const countOrDash = (value) => inventorySnapshotReady ? value : '—';
+
+  // ── Δεδομένα γραφημάτων Αρχικής ──
+  const fleetCounts = homeInventory.reduce((acc, item) => {
+    const a = normalizeAction(item.action);
+    const key = a === 'Καινούριο Μηχάνημα' ? 'avail'
+      : a === 'Εισαγωγή για επισκευή' ? 'repair'
+      : a === 'Αποστολή σε κατάστημα' ? 'store'
+      : a === 'Αποστολή στα κεντρικά' ? 'central' : null;
+    if (key) acc[key] += 1;
+    return acc;
+  }, { avail: 0, repair: 0, store: 0, central: 0 });
+
+  const movementTime = (item) => parseItemDate(item.date)?.getTime() || parseGreekTimestamp(item.timestamp) || 0;
+  const chartWeeks = (() => {
+    const monday = new Date(); monday.setHours(0, 0, 0, 0);
+    monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+    const source = (allMovements || inventory).filter(i => matchesMachineCategory(i, homeCategoryFilter));
+    const fmtD = d => d.toLocaleDateString('el-GR', { day: 'numeric', month: 'numeric' });
+    return Array.from({ length: 8 }, (_, idx) => {
+      const start = new Date(monday); start.setDate(monday.getDate() - (7 - idx) * 7);
+      const end = new Date(start); end.setDate(start.getDate() + 7);
+      const last = new Date(end); last.setDate(end.getDate() - 1);
+      const counts = {};
+      source.forEach(item => {
+        const t = movementTime(item);
+        if (t >= start.getTime() && t < end.getTime()) {
+          const a = normalizeAction(item.action);
+          counts[a] = (counts[a] || 0) + 1;
+        }
+      });
+      return { label: idx === 7 ? 'Τώρα' : fmtD(start), range: `${fmtD(start)} – ${fmtD(last)}`, counts };
+    });
+  })();
+  const chartWeeksTotal = chartWeeks.reduce((s, w) => s + Object.values(w.counts).reduce((a, b) => a + b, 0), 0);
+
+  const chainOf = (storeName) => {
+    const n = String(storeName || '').toUpperCase();
+    if (looksLikeMcdStore(storeName)) return "McDonald's";
+    const chain = STORE_CHAINS.find(c => c.id !== 'all' && c.id !== 'other' && n.includes(c.id));
+    return chain ? chain.label : 'Άλλα';
+  };
+  const chainRows = Object.entries(
+    homeInventory
+      .filter(i => normalizeAction(i.action) === 'Αποστολή σε κατάστημα')
+      .reduce((acc, i) => { const c = chainOf(i.store); acc[c] = (acc[c] || 0) + 1; return acc; }, {})
+  ).map(([label, value]) => ({ label, value }))
+   .sort((a, b) => (a.label === 'Άλλα') - (b.label === 'Άλλα') || b.value - a.value);
+
+  const agingBuckets = (() => {
+    const b = [
+      { label: '0–3', min: 0, max: 3, value: 0 },
+      { label: '4–7', min: 4, max: 7, value: 0 },
+      { label: '8–14', min: 8, max: 14, value: 0, late: true },
+      { label: '15+', min: 15, max: Infinity, value: 0, late: true },
+    ];
+    homeRepairItems.forEach(item => {
+      const d = parseItemDate(item.date); if (!d) return;
+      d.setHours(0, 0, 0, 0);
+      const days = Math.max(0, Math.round((todayStart - d) / 86400000));
+      const bucket = b.find(x => days >= x.min && days <= x.max);
+      if (bucket) bucket.value += 1;
+    });
+    return b;
+  })();
+  const openTicketsCount = tickets.filter(t => t.status !== 'Κλειστό').length;
+  const missingTicketsCount = tickets.filter(t => t.status === 'Ελλιπές').length;
   const filteredStoreRows = storeRows.filter(store => {
     const q = settingsStoreSearch.trim().toLowerCase();
     if (!q) return true;
@@ -1606,6 +1829,7 @@ ${table}
     }
     if (t === 'settings') { loadStores(); loadTrash(); }
     if (t === 'tickets') loadTickets();
+    if (t === 'home') { loadAllMovements(); loadTickets(); }
     router.push(
       { pathname: router.pathname, query: t === 'home' ? {} : { tab: t } },
       undefined,
@@ -1763,6 +1987,7 @@ ${table}
       loadHistory(querySerial);
     }
     if (nextTab === 'settings') { loadStores(); loadTrash(); }
+    if (nextTab === 'home') { loadAllMovements(); loadTickets(); }
     if (nextTab === 'tickets') {
       loadTickets();
       // Link από την ειδοποίηση email: ανοίγει κατευθείαν το συγκεκριμένο ticket
@@ -2062,35 +2287,40 @@ ${table}
             </button>
           </div>
 
+          <section className="dashboard-panel fleet-panel">
+            <div className="dashboard-panel-head">
+              <div>
+                <div className="panel-title">Πού βρίσκονται τα μηχανήματα</div>
+                <div className="panel-sub">{countOrDash(homeInventory.length)} μηχανήματα συνολικά, με βάση την τελευταία τους κίνηση</div>
+              </div>
+            </div>
+            <FleetBar counts={fleetCounts} ready={inventorySnapshotReady}
+              onSelect={key => key === 'avail' ? openWarehouseFilter('new') : key === 'repair' ? openWarehouseFilter('repair') : handleTabClick('inventory')} />
+          </section>
+
           <div className="dashboard-grid">
             <section className="dashboard-panel">
               <div className="dashboard-panel-head">
                 <div>
-                  <div className="panel-title">Κινήσεις εβδομάδας</div>
-                  <div className="panel-sub">{countOrDash(homeWeekMovements.length)} καταχωρήσεις τις τελευταίες 7 ημέρες</div>
+                  <div className="panel-title">Κινήσεις ανά εβδομάδα</div>
+                  <div className="panel-sub">{allMovements ? `${chartWeeksTotal} κινήσεις τις τελευταίες 8 εβδομάδες` : 'Φόρτωση ιστορικού κινήσεων…'}</div>
                 </div>
-                <button className="note-add-btn" onClick={()=>handleTabClick('inventory')}>Όλες</button>
+                <button className="note-add-btn" onClick={()=>handleTabClick('inventory')}>Όλες οι κινήσεις</button>
               </div>
-              <div className="movement-breakdown">
-                {ACTION_CATEGORIES.map(cat => {
-                  const count = homeWeekMovements.filter(item => normalizeAction(item.action) === cat.value).length;
-                  return (
-                    <div key={cat.id} className="movement-breakdown-item">
-                      <span>{cat.label}</span>
-                      <strong>{countOrDash(count)}</strong>
-                    </div>
-                  );
-                })}
-              </div>
+              <WeeklyChart weeks={chartWeeks} />
             </section>
 
-            <section className={`dashboard-panel attention-panel${homeAttentionCount > 0 ? ' attention-panel--active' : ''}`}>
+            <section className={`dashboard-panel attention-panel${(homeAttentionCount + missingTicketsCount) > 0 ? ' attention-panel--active' : ''}`}>
               <div className="dashboard-panel-head">
                 <div>
-                  <div className="panel-title">Θέλουν προσοχή {inventorySnapshotReady && homeAttentionCount > 0 && <span className="attention-badge">{homeAttentionCount}</span>}</div>
+                  <div className="panel-title">Θέλουν προσοχή {inventorySnapshotReady && (homeAttentionCount + missingTicketsCount) > 0 && <span className="attention-badge">{homeAttentionCount + missingTicketsCount}</span>}</div>
                   <div className="panel-sub">Σημεία που αξίζει να δεις πρώτα</div>
                 </div>
               </div>
+              <button className="attention-row" onClick={()=>handleTabClick('tickets')}>
+                <span>Ελλιπή tickets από καταστήματα</span>
+                <strong style={missingTicketsCount > 0 ? {color:'var(--orange)'} : {}}>{missingTicketsCount}</strong>
+              </button>
               <button className="attention-row" onClick={()=>openWarehouseFilter('repair')}>
                 <span>Σε επισκευή πάνω από 7 ημέρες</span>
                 <strong style={inventorySnapshotReady && homeAttentionRepairItems.length > 0 ? {color:'var(--orange)'} : {}}>{countOrDash(homeAttentionRepairItems.length)}</strong>
@@ -2107,6 +2337,30 @@ ${table}
                 <span>Συμβόλαια που λήγουν (≤60 ημέρες)</span>
                 <strong style={inventorySnapshotReady && homeExpiringContracts.length > 0 ? {color:'var(--orange)'} : {}}>{countOrDash(homeExpiringContracts.length)}</strong>
               </button>
+            </section>
+          </div>
+
+          <div className="dashboard-grid even">
+            <section className="dashboard-panel">
+              <div className="dashboard-panel-head">
+                <div>
+                  <div className="panel-title">Μηχανήματα σε καταστήματα</div>
+                  <div className="panel-sub">Ανά αλυσίδα</div>
+                </div>
+              </div>
+              {chainRows.length
+                ? <HBarChart rows={chainRows} color="var(--c-store)" onSelect={()=>handleTabClick('history')} />
+                : <div className="empty">{inventorySnapshotReady ? 'Κανένα μηχάνημα σε κατάστημα.' : '—'}</div>}
+            </section>
+            <section className="dashboard-panel">
+              <div className="dashboard-panel-head">
+                <div>
+                  <div className="panel-title">Χρόνος σε επισκευή</div>
+                  <div className="panel-sub">{countOrDash(homeRepairItems.length)} μηχανήματα, ανά ημέρες στην επισκευή</div>
+                </div>
+                <button className="note-add-btn" onClick={()=>openWarehouseFilter('repair')}>Προβολή</button>
+              </div>
+              <AgingChart buckets={agingBuckets} onSelect={()=>openWarehouseFilter('repair')} />
             </section>
           </div>
 
@@ -3808,6 +4062,11 @@ ${table}
           --r:        10px;
           --r-sm:     6px;
           --r-lg:     14px;
+          /* Χρώματα γραφημάτων (ελεγμένα: φωτεινότητα, αχρωματοψία, αντίθεση) */
+          --c-avail:   #3b82f6;
+          --c-repair:  #ea580c;
+          --c-store:   #059669;
+          --c-central: #8b5cf6;
         }
 
         html { font-size: 14px; }
@@ -5030,6 +5289,10 @@ ${table}
            LIGHT MODE
         ══════════════════════════ */
         .light {
+          --c-avail:   #2563eb;
+          --c-repair:  #c2410c;
+          --c-store:   #047857;
+          --c-central: #7c3aed;
           --bg:      #f4f4f8;
           --bg2:     #ffffff;
           --bg3:     #f0f0f5;
@@ -5099,6 +5362,85 @@ ${table}
         .light .stat-label { color: var(--t3); }
         .light .stat-val { color: var(--t1); }
         .light .stat-sub { color: var(--t3); }
+        /* ══════════════════════════
+           ΓΡΑΦΗΜΑΤΑ ΑΡΧΙΚΗΣ
+        ══════════════════════════ */
+        .dashboard-grid.even { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        @media (max-width: 900px) { .dashboard-grid.even { grid-template-columns: 1fr; } }
+
+        .chart-tip {
+          position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+          z-index: 20; pointer-events: none; white-space: nowrap;
+          background: var(--bg2); color: var(--t1); border: 1px solid var(--border2);
+          border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 500;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+        }
+        .chart-tip strong { font-weight: 700; }
+        .chart-tip.wide { min-width: 180px; padding: 8px 10px; bottom: auto; top: 0; left: calc(100% + 6px); transform: none; }
+        .chart-tip.wide.left { left: auto; right: calc(100% + 6px); }
+        .tip-title { font-size: 11px; font-weight: 700; color: var(--t1); margin-bottom: 6px; }
+        .tip-row { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--t2); padding: 2px 0; }
+        .tip-row i { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+        .tip-row strong { margin-left: auto; color: var(--t1); font-variant-numeric: tabular-nums; }
+        .tip-row.total { border-top: 1px solid var(--border); margin-top: 4px; padding-top: 5px; color: var(--t1); font-weight: 600; }
+
+        .chart-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 12px; }
+        .chart-legend span { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--t2); }
+        .chart-legend i { width: 10px; height: 10px; border-radius: 3px; }
+
+        /* Κατανομή στόλου */
+        .fleet-bar { display: flex; gap: 2px; height: 28px; border-radius: 8px; margin-top: 4px; }
+        .fleet-empty { flex: 1; border-radius: 8px; background: var(--glass2); }
+        .fleet-seg { position: relative; flex-basis: 0; min-width: 6px; border: none; padding: 0; cursor: pointer; transition: opacity .15s, filter .15s; }
+        .fleet-seg:first-child { border-radius: 8px 0 0 8px; }
+        .fleet-seg:last-child { border-radius: 0 8px 8px 0; }
+        .fleet-seg:only-child { border-radius: 8px; }
+        .fleet-seg.dim { opacity: .35; }
+        .fleet-seg:focus-visible { outline: 2px solid var(--t1); outline-offset: 2px; }
+        .fleet-legend { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+        .fleet-key { display: grid; grid-template-columns: auto 1fr auto; align-items: baseline; gap: 2px 8px; padding: 10px 12px; border-radius: var(--r); border: 1px solid var(--border); background: transparent; cursor: pointer; text-align: left; font-family: var(--font); transition: border-color .15s, background .15s; }
+        .fleet-key:hover, .fleet-key.on { border-color: var(--border2); background: var(--glass2); }
+        .fleet-swatch { width: 10px; height: 10px; border-radius: 3px; align-self: center; }
+        .fleet-key-label { font-size: 12px; color: var(--t2); font-weight: 600; }
+        .fleet-key-pct { font-size: 11px; color: var(--t4); font-variant-numeric: tabular-nums; }
+        .fleet-key-num { grid-column: 1 / 3; font-size: 22px; font-weight: 800; color: var(--t1); font-variant-numeric: tabular-nums; line-height: 1.2; }
+        @media (max-width: 700px) { .fleet-legend { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+        /* Κινήσεις ανά εβδομάδα */
+        .wchart-plot { position: relative; height: 230px; margin-left: 26px; }
+        .wchart-grid { position: absolute; inset: 0 0 22px 0; display: flex; flex-direction: column; justify-content: space-between; }
+        .wchart-gridline { position: relative; border-top: 1px solid var(--border); height: 0; }
+        .wchart-gridline span { position: absolute; left: -26px; top: -7px; width: 20px; text-align: right; font-size: 10px; color: var(--t4); font-variant-numeric: tabular-nums; }
+        .wchart-cols { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; }
+        .wchart-col { position: relative; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 22px; outline: none; border-radius: 6px; }
+        .wchart-col::before { content: ''; position: absolute; inset: 0 -4px 22px; border-radius: 6px; background: transparent; transition: background .15s; }
+        .wchart-col.on::before { background: var(--glass2); }
+        .wchart-stack { position: relative; display: flex; flex-direction: column-reverse; gap: 2px; width: 62%; max-width: 30px; margin: 0 auto; min-height: 0; }
+        .wchart-seg { flex-basis: 0; min-height: 2px; }
+        .wchart-stack .wchart-seg:last-child { border-radius: 4px 4px 0 0; }
+        .wchart-x { position: absolute; bottom: 0; left: 0; right: 0; text-align: center; font-size: 10px; color: var(--t4); font-variant-numeric: tabular-nums; }
+        .wchart-col.on .wchart-x { color: var(--t1); font-weight: 600; }
+
+        /* Οριζόντιες μπάρες */
+        .hbars { display: flex; flex-direction: column; gap: 4px; }
+        .hbar-row { display: grid; grid-template-columns: minmax(90px, 34%) 1fr 32px; align-items: center; gap: 10px; padding: 6px 4px; border: none; background: transparent; border-radius: 6px; cursor: pointer; font-family: var(--font); text-align: left; }
+        .hbar-row:hover { background: var(--glass2); }
+        .hbar-label { font-size: 12px; color: var(--t2); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .hbar-track { height: 12px; border-radius: 0 4px 4px 0; position: relative; }
+        .hbar-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 0 4px 4px 0; }
+        .hbar-value { font-size: 13px; font-weight: 700; color: var(--t1); text-align: right; font-variant-numeric: tabular-nums; }
+
+        /* Χρόνος σε επισκευή */
+        .aging-cols { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; height: 170px; border-bottom: 1px solid var(--border); }
+        .aging-col { position: relative; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; border: none; background: transparent; cursor: pointer; padding: 0 0 0; font-family: var(--font); }
+        .aging-bar { width: 58%; max-width: 48px; min-height: 2px; border-radius: 4px 4px 0 0; background: color-mix(in srgb, var(--t3) 45%, transparent); transition: filter .15s; }
+        .aging-col.late .aging-bar { background: var(--c-repair); }
+        .aging-col:hover .aging-bar { filter: brightness(1.15); }
+        .aging-val { font-size: 14px; font-weight: 800; color: var(--t1); font-variant-numeric: tabular-nums; }
+        .aging-x { position: absolute; bottom: -20px; font-size: 11px; color: var(--t3); }
+        .aging-note { margin-top: 28px; font-size: 11px; color: var(--t3); display: flex; align-items: center; gap: 6px; }
+        .aging-note i { width: 10px; height: 10px; border-radius: 3px; background: var(--c-repair); }
+
         /* ══════════════════════════
            TICKETS
         ══════════════════════════ */
