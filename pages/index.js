@@ -274,6 +274,7 @@ export default function Home() {
   const [selectedPart, setSelectedPart] = useState(null);
   const [manualPartEntry, setManualPartEntry] = useState(false);
   const [manualPartCode, setManualPartCode] = useState('');
+  const [partSerialInput, setPartSerialInput] = useState('');
   const [manualPartDescription, setManualPartDescription] = useState('');
   const [savingPart, setSavingPart] = useState(false);
   const [machineLogLinks, setMachineLogLinks] = useState({});
@@ -1022,7 +1023,7 @@ ${table}
         if (!supportsSpareParts(item)) return '';
         const parts = machineParts[item.serialNumber] || [];
         return parts
-          .map(part => [part.code, part.description].filter(Boolean).join(' - '))
+          .map(part => [part.code, part.description, part.partSerial ? `SN ${part.partSerial}` : ''].filter(Boolean).join(' - '))
           .join(' | ');
       };
 
@@ -1128,6 +1129,7 @@ ${table}
     setManualPartEntry(false);
     setManualPartCode('');
     setManualPartDescription('');
+    setPartSerialInput('');
   };
 
   const closePartModal = () => {
@@ -1137,6 +1139,7 @@ ${table}
     setManualPartEntry(false);
     setManualPartCode('');
     setManualPartDescription('');
+    setPartSerialInput('');
   };
 
   const openLogLinkModal = (item) => {
@@ -1202,13 +1205,15 @@ ${table}
           machineModel: partModalItem.model || '',
           code: partToSave.code,
           description: partToSave.description || '',
+          partSerial: partSerialInput.trim(),
         }),
       });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Σφάλμα αποθήκευσης ανταλλακτικού.');
       const savedPart = data.part || {
         code: partToSave.code,
         description: partToSave.description || '',
+        partSerial: partSerialInput.trim(),
         createdAt: new Date().toLocaleString('el-GR', { timeZone: 'Europe/Athens' }),
         createdBy: currentUser?.fullName || '',
         machineModel: partModalItem.model || '',
@@ -1219,7 +1224,7 @@ ${table}
       }));
       closePartModal();
     } catch (e) {
-      alert('Σφάλμα αποθήκευσης ανταλλακτικού.');
+      alert(e.message || 'Σφάλμα αποθήκευσης ανταλλακτικού.');
     } finally {
       setSavingPart(false);
     }
@@ -2104,7 +2109,7 @@ ${table}
             <span className="machine-card-label">Ανταλλακτικά</span>
             <div className="machine-card-chips">
               {itemParts.slice(0, 4).map((part, idx) => (
-                <span key={`${part.code}-${idx}`} className="part-chip">{part.code}{part.description ? ` · ${part.description}` : ''}</span>
+                <span key={`${part.code}-${idx}`} className="part-chip">{part.code}{part.description ? ` · ${part.description}` : ''}{part.partSerial ? ` · SN ${part.partSerial}` : ''}</span>
               ))}
               {itemParts.length > 4 && <span className="part-more">+{itemParts.length - 4}</span>}
             </div>
@@ -2884,7 +2889,7 @@ ${table}
                         <span className="part-label">Ανταλλακτικά</span>
                         {itemParts.slice(0, 3).map((part, idx) => (
                           <span key={`${part.code}-${idx}`} className="part-chip">
-                            {part.code}{part.description ? ` · ${part.description}` : ''}
+                            {part.code}{part.description ? ` · ${part.description}` : ''}{part.partSerial ? ` · SN ${part.partSerial}` : ''}
                             <button className="part-remove" onClick={e=>{e.stopPropagation();handleDeletePart(item.serialNumber, part);}} title="Αφαίρεση ανταλλακτικού">×</button>
                           </span>
                         ))}
@@ -3045,7 +3050,7 @@ ${table}
                         <span className="part-label">Ανταλλακτικά</span>
                         {itemParts.map((part, idx) => (
                           <span key={`${part.code}-${idx}`} className="part-chip">
-                            {part.code}{part.description ? ` · ${part.description}` : ''}
+                            {part.code}{part.description ? ` · ${part.description}` : ''}{part.partSerial ? ` · SN ${part.partSerial}` : ''}
                             <button className="part-remove" onClick={e=>{e.stopPropagation();handleDeletePart(item.serialNumber, part);}} title="Αφαίρεση ανταλλακτικού">×</button>
                           </span>
                         ))}
@@ -3212,7 +3217,7 @@ ${table}
                       <span className="status-pill pill-blue">Προστέθηκε</span>
                     </div>
                     <div className="h-notes part-history-text">
-                      <span>{part.code}{part.description ? ` · ${part.description}` : ''}</span>
+                      <span>{part.code}{part.description ? ` · ${part.description}` : ''}{part.partSerial ? ` · SN ${part.partSerial}` : ''}</span>
                       {!isViewer && <button className="part-remove" onClick={()=>handleDeletePart(history[0]?.serialNumber, part)} title="Αφαίρεση ανταλλακτικού">×</button>}
                     </div>
                     <div className="h-meta">🧩 {part.createdAt}{part.createdBy ? ` · 👤 ${part.createdBy}` : ''}</div>
@@ -3996,6 +4001,17 @@ ${table}
                 <div className="part-empty">Δεν βρέθηκε ανταλλακτικό για {getMachineCategory(partModalItem)}. Βάλε τους κωδικούς στο tab Parts με στήλες code, description και category.</div>
               )}
             </div>
+            {(manualPartEntry || selectedPart) && (
+              <div className="part-serial-field">
+                <label className="field-label">Serial ανταλλακτικού <span>(αν υπάρχει)</span></label>
+                <input
+                  className="text-input"
+                  value={partSerialInput}
+                  onChange={e=>setPartSerialInput(e.target.value)}
+                  placeholder="π.χ. 000057504700100572"
+                />
+              </div>
+            )}
             <div className="part-modal-actions">
               <button className="btn-note-cancel" onClick={closePartModal}>Άκυρο</button>
               <button className="btn-search" onClick={handleSavePart} disabled={savingPart || (manualPartEntry ? !manualPartCode.trim() : !selectedPart)}>
@@ -5488,6 +5504,8 @@ ${table}
         .aging-note { margin-top: 28px; font-size: 11px; color: var(--t3); display: flex; align-items: center; gap: 6px; }
         .aging-note i { width: 10px; height: 10px; border-radius: 3px; background: var(--c-repair); }
 
+        .part-serial-field { padding: 10px 16px 0; display: flex; flex-direction: column; gap: 6px; }
+        .part-serial-field .field-label span { font-weight: 500; color: var(--t4); text-transform: none; letter-spacing: 0; }
         /* ══════════════════════════
            TICKETS
         ══════════════════════════ */

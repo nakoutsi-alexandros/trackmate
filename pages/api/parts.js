@@ -25,7 +25,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'POST') {
     try {
-      const { serialNumber, code, description, machineModel } = req.body;
+      const { serialNumber, code, description, machineModel, partSerial } = req.body;
       if (!serialNumber) return res.status(400).json({ error: 'Serial number υποχρεωτικό' });
       if (!code || !code.trim()) return res.status(400).json({ error: 'Κωδικός ανταλλακτικού υποχρεωτικός' });
 
@@ -36,13 +36,19 @@ export default async function handler(req, res) {
         code: code.trim(),
         description: (description || '').trim(),
         machineModel: machineModel || '',
+        partSerial: String(partSerial || '').trim().slice(0, 80),
         createdBy: currentUser ? currentUser.fullName : '',
       });
 
       return res.status(200).json({ success: true, part: savedPart });
     } catch (err) {
       console.error('saveMachinePart error:', err);
-      return res.status(500).json({ error: 'Σφάλμα αποθήκευσης ανταλλακτικού' });
+      const verify = String(err?.message || '').startsWith('MachineParts verify failed');
+      return res.status(500).json({
+        error: verify
+          ? 'Το ανταλλακτικό δεν γράφτηκε σωστά στο Sheet (MachineParts). Στείλε στιγμιότυπο του φύλλου για έλεγχο.'
+          : 'Σφάλμα αποθήκευσης ανταλλακτικού',
+      });
     }
   }
 
