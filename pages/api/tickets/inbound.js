@@ -4,7 +4,8 @@
 // (header x-trackmate-secret === env TICKETS_INBOUND_SECRET).
 
 import { timingSafeEqual } from 'crypto';
-import { processInboundEmail, sampleNotification, probeEmailForm } from '../../../lib/emailTickets';
+import { processInboundEmail, sampleNotification, probeEmailForm, buildWebTicketNotification } from '../../../lib/emailTickets';
+import { getTickets } from '../../../lib/sheets';
 import { requestFormUrl } from '../../../lib/requestForm';
 
 // Το Vercel δέχεται έως ~4.5MB ανά request· το script στέλνει μικρές εικόνες μόνο
@@ -28,6 +29,24 @@ export default async function handler(req, res) {
   // Δοκιμή μορφής ειδοποίησης από το script (δεν δημιουργεί ticket)
   if (req.body && req.body.sample) {
     return res.status(200).json({ notify: sampleNotification() });
+  }
+
+  // Νέα tickets από τη φόρμα web μετά από μια χρονική στιγμή → ειδοποιήσεις για το script
+  if (req.body && req.body.webSince !== undefined) {
+    try {
+      const since = Date.parse(req.body.webSince) || 0;
+      const list = (await getTickets())
+        .filter(t => String(t.threadId).startsWith('web-') && (Date.parse(t.createdAt) || 0) > since)
+        .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))
+        .slice(0, 20);
+      return res.status(200).json({
+        now: new Date().toISOString(),
+        tickets: list.map(t => ({ ticketId: t.ticketId, createdAt: t.createdAt, notify: buildWebTicketNotification(t) })),
+      });
+    } catch (err) {
+      console.error('tickets/inbound webSince error:', err?.message || err);
+      return res.status(503).json({ error: 'Προσωρινό σφάλμα' });
+    }
   }
 
   // Αποστολέας εκτός λίστας: μόνο έλεγχος αν έστειλε φόρμα (δεν δημιουργείται ticket)

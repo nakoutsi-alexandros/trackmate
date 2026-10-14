@@ -33,12 +33,19 @@ export default async function handler(req, res) {
   const input = {};
   for (const k of FIELD_KEYS) input[k] = typeof body[k] === 'string' ? body[k] : '';
 
-  try {
-    const result = await createWebTicket(input);
-    if (result.errors) return res.status(400).json({ errors: result.errors });
-    return res.status(200).json({ ok: true, ticketId: result.ticket.ticketId });
-  } catch (e) {
-    console.error('tickets/request POST', e?.status || '', e?.message || e);
-    return res.status(503).json({ error: 'Προσωρινό πρόβλημα αποθήκευσης. Δοκιμάστε ξανά σε λίγο.' });
+  // Έως 3 προσπάθειες: αν το Google Sheets είναι στιγμιαία φορτωμένο (όριο αναγνώσεων),
+  // ο πελάτης δεν βλέπει σφάλμα. Η εγγραφή γίνεται μία φορά (append) — αν αποτύχει, δεν γράφτηκε.
+  let lastErr;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt) await new Promise(r => setTimeout(r, attempt * 1500));
+    try {
+      const result = await createWebTicket(input);
+      if (result.errors) return res.status(400).json({ errors: result.errors });
+      return res.status(200).json({ ok: true, ticketId: result.ticket.ticketId });
+    } catch (e) {
+      lastErr = e;
+      console.error(`tickets/request POST (προσπάθεια ${attempt + 1})`, e?.code || e?.status || '', e?.message || e);
+    }
   }
+  return res.status(503).json({ error: 'Προσωρινό πρόβλημα αποθήκευσης. Δοκιμάστε ξανά σε λίγο.' });
 }

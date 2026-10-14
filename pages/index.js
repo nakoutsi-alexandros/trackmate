@@ -343,6 +343,7 @@ export default function Home() {
   const [allMovements, setAllMovements] = useState(null); // όλες οι κινήσεις, για τα γραφήματα
   const [openTicketId, setOpenTicketId] = useState(null);
   const [ticketNoteDraft, setTicketNoteDraft] = useState('');
+  const [ticketLogDraft, setTicketLogDraft] = useState(''); // νέο link logs στο ticket
   const [editingTicketId, setEditingTicketId] = useState(null);
   const [ticketDraft, setTicketDraft] = useState({});
   const [ticketDeleteConfirm, setTicketDeleteConfirm] = useState(null);
@@ -1409,6 +1410,7 @@ ${table}
     if (openTicketId === t.ticketId) { setOpenTicketId(null); return; }
     setOpenTicketId(t.ticketId);
     setTicketNoteDraft(t.notes || '');
+    setTicketLogDraft('');
   };
 
   // Πεδία της φόρμας Cashdro που επεξεργάζονται
@@ -1418,6 +1420,7 @@ ${table}
     { key: 'postalCode',   label: 'Ταχυδρομικός κώδικας' },
     { key: 'contactName',  label: 'Ονοματεπώνυμο υπευθύνου' },
     { key: 'contactPhone', label: 'Τηλέφωνο επικοινωνίας' },
+    { key: 'from',         label: 'Email πελάτη' },
     { key: 'serialNumber', label: 'Σειριακός Cashdro' },
     { key: 'ip',           label: 'IP Cashdro' },
     { key: 'courier',      label: 'Μεταφορική' },
@@ -3633,6 +3636,51 @@ ${table}
                     </section>
                   </div>
 
+                  {(() => {
+                    // Logs: του ticket (προσθήκη/αφαίρεση) + του μηχανήματος με τον ίδιο σειριακό (μόνο προβολή)
+                    const own = t.logLinks || [];
+                    const sn = String(t.serialNumber || '').trim().toUpperCase();
+                    const machKey = sn && Object.keys(machineLogLinks || {}).find(k => k.trim().toUpperCase() === sn);
+                    const mach = machKey ? (machineLogLinks[machKey] || []) : [];
+                    const shortUrl = u => String(u || '').replace(/^https?:\/\//i, '').replace(/\/$/, '');
+                    const addLog = async () => {
+                      if (!ticketLogDraft.trim()) return;
+                      const ok = await updateTicket(t.ticketId, { addLogLink: { url: ticketLogDraft.trim() } });
+                      if (ok) setTicketLogDraft('');
+                    };
+                    return (
+                      <div className="tk-block">
+                        <span className="tk-field-label">Logs {own.length + mach.length > 0 && <em>({own.length + mach.length})</em>}</span>
+                        {own.length + mach.length === 0 && <div className="tk-field-empty tk-logs-empty">Δεν υπάρχουν logs ακόμα.</div>}
+                        {(own.length > 0 || mach.length > 0) && (
+                          <ul className="tk-logs">
+                            {own.map((l, i) => (
+                              <li key={`o-${l.url}-${l.createdAt}-${i}`}>
+                                <a className="tk-link" href={l.url} target="_blank" rel="noopener noreferrer" title={l.url}>🔗 {shortUrl(l.url)}</a>
+                                <span className="tk-log-meta">{l.createdAt ? fmtFull(l.createdAt) : ''}{l.createdBy ? ` · ${l.createdBy}` : ''}</span>
+                                {!isViewer && <button className="tk-log-del" disabled={busy} aria-label="Αφαίρεση link"
+                                  onClick={()=>updateTicket(t.ticketId, { removeLogLink: { url: l.url, createdAt: l.createdAt || '' } })}>×</button>}
+                              </li>
+                            ))}
+                            {mach.map((l, i) => (
+                              <li key={`m-${l.url}-${i}`} className="from-machine">
+                                <a className="tk-link" href={l.url} target="_blank" rel="noopener noreferrer" title={l.url}>🔗 {shortUrl(l.url)}</a>
+                                <span className="tk-log-meta">μηχάνημα {machKey}{l.createdAt ? ` · ${l.createdAt}` : ''}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        {!isViewer && (
+                          <div className="tk-log-add">
+                            <input className="text-input" value={ticketLogDraft} onChange={e=>setTicketLogDraft(e.target.value)}
+                              onKeyDown={e=>{ if (e.key === 'Enter') addLog(); }} placeholder="Επικόλλησε link logs…" />
+                            <button className="tk-btn small primary" disabled={!ticketLogDraft.trim() || busy} onClick={addLog}>+ Προσθήκη</button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   {t.storeRemarks && (
                     <div className="tk-block">
                       <span className="tk-field-label">Παρατηρήσεις καταστήματος</span>
@@ -5777,6 +5825,17 @@ ${table}
         .tk-item:hover { border-color: var(--border2); }
         .tk-item.selected { border-color: var(--acc); background: var(--glow2); }
         .tk-item-top { display: flex; align-items: center; gap: 8px; }
+        .tk-logs { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+        .tk-logs li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; min-width: 0; }
+        .tk-logs li .tk-link { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+        .tk-logs li.from-machine { border-style: dashed; }
+        .tk-log-meta { font-size: 11px; color: var(--t4); white-space: nowrap; }
+        .tk-log-del { background: none; border: none; color: var(--t4); font-size: 18px; line-height: 1; cursor: pointer; padding: 0 2px; }
+        .tk-log-del:hover { color: #ef4444; }
+        .tk-logs-empty { font-size: 13px; margin-top: 4px; }
+        .tk-log-add { display: flex; gap: 8px; margin-top: 8px; }
+        .tk-log-add .text-input { flex: 1; min-width: 0; margin: 0; }
+        @media (max-width: 640px) { .tk-logs li { flex-wrap: wrap; } .tk-log-meta { width: 100%; } }
         .tk-header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
         .tk-ago { margin-left: auto; font-size: 11px; color: var(--t4); white-space: nowrap; }
         .tk-item-store { font-size: 14px; font-weight: 700; color: var(--t1); }

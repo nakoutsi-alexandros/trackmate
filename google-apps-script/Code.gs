@@ -7,6 +7,7 @@
  *  3. τα στέλνει στο TrackMate (/api/tickets/inbound)
  *  4. αν λείπουν στοιχεία από τη φόρμα, στέλνει ειδοποίηση σε ΕΜΑΣ (NOTIFY_EMAIL)
  *     — στο κατάστημα δεν στέλνεται ποτέ τίποτα
+ *  5. στέλνει email σε ΕΜΑΣ για κάθε νέο αίτημα από τη φόρμα web (/support)
  *
  * Εγκατάσταση: δες τα βήματα στο README ή στη συνομιλία.
  */
@@ -145,9 +146,47 @@ function processInbox() {
         }
       }
     });
+
+    // Νέα αιτήματα από τη φόρμα web → ένα email για το καθένα
+    try {
+      checkWebTickets_(secret);
+    } catch (e) {
+      Logger.log('Έλεγχος tickets φόρμας web: ' + e + ' — νέα προσπάθεια σε 5 λεπτά');
+    }
   } finally {
     lock.releaseLock();
   }
+}
+
+
+// Ρωτάει το TrackMate για tickets της φόρμας web που ήρθαν μετά τον τελευταίο έλεγχο.
+// Την πρώτη φορά μόνο κρατάει την ώρα (δεν στέλνει email για τα παλιά).
+function checkWebTickets_(secret) {
+  if (!notifyConfigured_()) return;
+  const props = PropertiesService.getScriptProperties();
+  const since = props.getProperty('WEB_TICKETS_SINCE');
+  if (!since) {
+    props.setProperty('WEB_TICKETS_SINCE', new Date().toISOString());
+    Logger.log('Ειδοποιήσεις φόρμας web: ενεργοποιήθηκαν (από τώρα και στο εξής)');
+    return;
+  }
+  const res = UrlFetchApp.fetch(TRACKMATE_URL, {
+    method: 'post',
+    contentType: 'application/json',
+    headers: { 'x-trackmate-secret': secret },
+    payload: JSON.stringify({ webSince: since }),
+    muteHttpExceptions: true,
+  });
+  if (res.getResponseCode() !== 200) {
+    Logger.log('TrackMate (tickets φόρμας) απάντησε ' + res.getResponseCode());
+    return;
+  }
+  const data = JSON.parse(res.getContentText());
+  (data.tickets || []).forEach(t => {
+    GmailApp.sendEmail(notifyList_(), t.notify.subject, t.notify.body, { name: 'TrackMate' });
+    props.setProperty('WEB_TICKETS_SINCE', t.createdAt); // μετά από κάθε επιτυχημένη αποστολή
+    Logger.log('✉️ Νέο ticket φόρμας ' + t.ticketId + ' → ειδοποίηση σε ' + notifyList_());
+  });
 }
 
 

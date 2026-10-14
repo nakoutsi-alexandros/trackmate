@@ -45,6 +45,21 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Μη έγκυρη κατάσταση' });
     }
 
+    // Email πελάτη: κενό ή έγκυρη διεύθυνση
+    if (typeof fields.from === 'string') {
+      fields.from = fields.from.trim().toLowerCase();
+      if (fields.from && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.from)) {
+        return res.status(400).json({ error: 'Μη έγκυρο email' });
+      }
+    }
+    // Νέο log link: κανονικοποίηση σε https://
+    if (fields.addLogLink) {
+      let url = String(fields.addLogLink.url || fields.addLogLink || '').trim();
+      if (!url) return res.status(400).json({ error: 'Λείπει το link' });
+      if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
+      fields.addLogLink = { url };
+    }
+
     try {
       const updated = await updateTicketFields(ticketId, fields, user.fullName || user.username || '', REQUIRED_KEYS);
       if (!updated) return res.status(404).json({ error: 'Το ticket δεν βρέθηκε' });
