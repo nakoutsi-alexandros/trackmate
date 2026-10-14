@@ -3,7 +3,7 @@
 // Ανοίγει χωρίς login, μόνο με το link που έχει το σωστό κλειδί (?k=...).
 // Προαιρετικά ?s=ΟΝΟΜΑ ΚΑΤΑΣΤΗΜΑΤΟΣ για προσυμπλήρωση.
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 
@@ -17,7 +17,6 @@ export default function RequestPage() {
   const router = useRouter();
   const [key, setKey] = useState('');
   const [linkState, setLinkState] = useState('checking'); // checking | ok | invalid
-  const [stores, setStores] = useState([]);
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState('');
@@ -44,26 +43,13 @@ export default function RequestPage() {
     if (!k) { setLinkState('invalid'); return; }
     fetch(`/api/tickets/request?k=${encodeURIComponent(k)}`, { cache: 'no-store' })
       .then(async r => {
-        if (r.status === 403) { setLinkState('invalid'); return; }
-        const d = await r.json().catch(() => ({}));
-        setStores(Array.isArray(d.stores) ? d.stores : []);
-        setLinkState('ok');
+        setLinkState(r.status === 403 ? 'invalid' : 'ok');
       })
       .catch(() => setLinkState('ok'));
   }, [router.isReady]);
 
-  const storeMatch = useMemo(() => stores.find(s => norm(s.name) === norm(form.store)), [stores, form.store]);
-
   const set = (k, v) => {
-    setForm(f => {
-      const next = { ...f, [k]: v };
-      // Επιλογή καταστήματος από τη λίστα → συμπλήρωση διεύθυνσης αν είναι κενή
-      if (k === 'store') {
-        const m = stores.find(s => norm(s.name) === norm(v));
-        if (m && m.address && !f.address) next.address = m.address;
-      }
-      return next;
-    });
+    setForm(f => ({ ...f, [k]: v }));
     if (errors[k]) setErrors(e => { const n = { ...e }; delete n[k]; return n; });
   };
 
@@ -183,10 +169,7 @@ export default function RequestPage() {
 
               <section>
                 <h2>Κατάστημα</h2>
-                {field('store', 'Υποκατάστημα', { placeholder: stores.length ? 'Αρχίστε να γράφετε για αναζήτηση…' : 'π.χ. ΚΩΤΣΟΒΟΛΟΣ ΓΛΥΦΑΔΑ', list: 'store-list', hint: storeMatch ? '✓ Βρέθηκε στη λίστα καταστημάτων' : undefined })}
-                <datalist id="store-list">
-                  {stores.map(s => <option key={s.name} value={s.name} />)}
-                </datalist>
+                {field('store', 'Υποκατάστημα', { placeholder: 'π.χ. ΚΩΤΣΟΒΟΛΟΣ ΓΛΥΦΑΔΑ' })}
                 <div className="row">
                   <div className="grow">{field('address', 'Διεύθυνση καταστήματος', { placeholder: 'Οδός, αριθμός, περιοχή', autoComplete: 'street-address' })}</div>
                   <div className="narrow">{field('postalCode', 'Τ.Κ.', { placeholder: '16674', inputMode: 'numeric', autoComplete: 'postal-code' })}</div>

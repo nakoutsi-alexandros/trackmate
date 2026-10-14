@@ -1,10 +1,9 @@
 // pages/api/tickets/request.js
 // Δημόσιο API της φόρμας αιτήματος (/request) — χωρίς login,
 // αλλά μόνο με το σωστό κλειδί του link (k).
-//   GET  ?k=...  → λίστα καταστημάτων (όνομα + διεύθυνση) για αυτόματη συμπλήρωση
+//   GET  ?k=...  → έλεγχος ότι το link είναι έγκυρο
 //   POST { k, fields..., website, t } → δημιουργία ticket
 
-import { getStoreDetails } from '../../../lib/sheets';
 import { createWebTicket } from '../../../lib/emailTickets';
 import { isValidFormKey, rateLimited } from '../../../lib/requestForm';
 
@@ -20,14 +19,9 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
 
   if (req.method === 'GET') {
+    // Μόνο έλεγχος του link — καμία λίστα καταστημάτων δεν στέλνεται στον πελάτη
     if (!isValidFormKey(req.query.k)) return res.status(403).json({ error: 'invalid_link' });
-    try {
-      const stores = (await getStoreDetails()).map(s => ({ name: s.name, address: s.address || '' }));
-      return res.status(200).json({ stores });
-    } catch (e) {
-      console.error('tickets/request GET', e?.message || e);
-      return res.status(200).json({ stores: [] }); // η φόρμα δουλεύει και χωρίς λίστα
-    }
+    return res.status(200).json({ ok: true });
   }
 
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
