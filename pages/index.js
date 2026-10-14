@@ -1776,6 +1776,31 @@ ${table}
   })();
   const openTicketsCount = tickets.filter(t => t.status !== 'Κλειστό').length;
   const missingTicketsCount = tickets.filter(t => t.status === 'Ελλιπές').length;
+  // Νέα tickets (status «Νέο»), το πιο πρόσφατο πρώτο — για το «Θέλουν προσοχή» της αρχικής
+  const byNewest = (a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0);
+  const newTickets = tickets.filter(t => t.status === 'Νέο').sort(byNewest);
+  const newTicketsCount = newTickets.length;
+  const FRESH_TICKET_MS = 60 * 60 * 1000; // «ΝΕΟ» για όσα ήρθαν την τελευταία ώρα
+  const isFreshTicket = t => { const ts = Date.parse(t.createdAt); return !!ts && Date.now() - ts < FRESH_TICKET_MS; };
+  const freshTickets = newTickets.filter(isFreshTicket);
+  const missingTickets = tickets.filter(t => t.status === 'Ελλιπές').sort(byNewest);
+  const freshMissingTickets = missingTickets.filter(isFreshTicket);
+  const ticketAgo = iso => {
+    const ts = Date.parse(iso);
+    if (!ts) return '';
+    const min = Math.max(0, Math.round((Date.now() - ts) / 60000));
+    if (min < 1) return 'μόλις τώρα';
+    if (min < 60) return `πριν ${min}′`;
+    const h = Math.round(min / 60);
+    if (h < 24) return `πριν ${h} ${h === 1 ? 'ώρα' : 'ώρες'}`;
+    const d = Math.round(h / 24);
+    return `πριν ${d} ${d === 1 ? 'μέρα' : 'μέρες'}`;
+  };
+  const openTicketsFiltered = (filter, ticketId) => {
+    setTicketFilter(filter);
+    handleTabClick('tickets');
+    if (ticketId) setOpenTicketId(ticketId);
+  };
   const filteredStoreRows = storeRows.filter(store => {
     const q = settingsStoreSearch.trim().toLowerCase();
     if (!q) return true;
@@ -2469,15 +2494,31 @@ ${table}
               <WeeklyChart weeks={chartWeeks} />
             </section>
 
-            <section className={`dashboard-panel attention-panel${(homeAttentionCount + missingTicketsCount) > 0 ? ' attention-panel--active' : ''}`}>
+            <section className={`dashboard-panel attention-panel${(homeAttentionCount + missingTicketsCount + newTicketsCount) > 0 ? ' attention-panel--active' : ''}`}>
               <div className="dashboard-panel-head">
                 <div>
-                  <div className="panel-title">Θέλουν προσοχή {inventorySnapshotReady && (homeAttentionCount + missingTicketsCount) > 0 && <span className="attention-badge">{homeAttentionCount + missingTicketsCount}</span>}</div>
+                  <div className="panel-title">Θέλουν προσοχή {inventorySnapshotReady && (homeAttentionCount + missingTicketsCount + newTicketsCount) > 0 && <span className="attention-badge">{homeAttentionCount + missingTicketsCount + newTicketsCount}</span>}</div>
                   <div className="panel-sub">Σημεία που αξίζει να δεις πρώτα</div>
                 </div>
               </div>
-              <button className="attention-row" onClick={()=>handleTabClick('tickets')}>
-                <span>Ελλιπή tickets από καταστήματα</span>
+              <button className={`attention-row attention-row--tickets${freshTickets.length ? ' is-fresh' : ''}`}
+                onClick={()=>openTicketsFiltered('Νέο', newTickets[0]?.ticketId)}>
+                <span className="attention-row-main">
+                  <span>Νέα tickets {freshTickets.length > 0 && <em className="fresh-chip">ΝΕΟ</em>}</span>
+                  {newTickets[0] && (
+                    <small className="attention-row-sub">{newTickets[0].store || newTickets[0].from || newTickets[0].ticketId} · {ticketAgo(newTickets[0].createdAt)}{newTickets.length > 1 ? ` · +${newTickets.length - 1} ακόμα` : ''}</small>
+                  )}
+                </span>
+                <strong style={newTicketsCount > 0 ? {color:'var(--orange)'} : {}}>{newTicketsCount}</strong>
+              </button>
+              <button className={`attention-row attention-row--tickets${freshMissingTickets.length ? ' is-fresh' : ''}`}
+                onClick={()=>openTicketsFiltered('Ελλιπές', missingTickets[0]?.ticketId)}>
+                <span className="attention-row-main">
+                  <span>Ελλιπή tickets από καταστήματα {freshMissingTickets.length > 0 && <em className="fresh-chip">ΝΕΟ</em>}</span>
+                  {missingTickets[0] && (
+                    <small className="attention-row-sub">{missingTickets[0].store || missingTickets[0].from || missingTickets[0].ticketId} · {ticketAgo(missingTickets[0].createdAt)}{missingTickets.length > 1 ? ` · +${missingTickets.length - 1} ακόμα` : ''}</small>
+                  )}
+                </span>
                 <strong style={missingTicketsCount > 0 ? {color:'var(--orange)'} : {}}>{missingTicketsCount}</strong>
               </button>
               <button className="attention-row" onClick={()=>openWarehouseFilter('repair')}>
@@ -4694,6 +4735,18 @@ ${table}
           background: var(--orange); color: #fff;
           border-radius: 20px; font-size: 10px; font-weight: 800;
         }
+        .attention-row-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+        .attention-row-main > span { display: inline-flex; align-items: center; gap: 8px; }
+        .attention-row .attention-row-sub { color: var(--t4); font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .fresh-chip {
+          font-style: normal; font-size: 10px; font-weight: 800; letter-spacing: .6px;
+          color: #fff; background: #059669; padding: 2px 7px; border-radius: 999px;
+          animation: freshPulse 1.6s ease-in-out infinite;
+        }
+        @keyframes freshPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(5,150,105,.55); } 50% { box-shadow: 0 0 0 6px rgba(5,150,105,0); } }
+        .attention-row.is-fresh { border-color: #059669; background: rgba(5,150,105,0.10); }
+        .attention-row.is-fresh .attention-row-sub { color: var(--t2); }
+        @media (prefers-reduced-motion: reduce) { .fresh-chip { animation: none; } }
         .attention-row { width: 100%; color: inherit; font-family: var(--font); cursor: pointer; text-align: left; }
         .attention-row:hover { border-color: var(--orange); background: var(--obg); }
         .recent-list { display: flex; flex-direction: column; gap: 7px; }
@@ -5866,6 +5919,7 @@ ${table}
         .light .loading { color: var(--t3); }
         .light .empty { color: var(--t3); }
         .light .dashboard-greeting, .light .dashboard-panel, .light .dash-stat, .light .recent-row, .light .movement-breakdown-item, .light .attention-row { background: rgba(255,255,255,0.9); border-color: var(--border); }
+        .light .attention-row.is-fresh { background: rgba(5,150,105,0.08); border-color: #047857; }
         .light .quick-action-btn { background: rgba(255,255,255,0.7); border-color: var(--border); }
         .light .success-title { color: var(--t1); }
         .light .mob-header { background: rgba(255,255,255,0.97); border-bottom-color: var(--border); }
