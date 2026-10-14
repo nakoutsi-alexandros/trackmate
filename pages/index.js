@@ -379,8 +379,9 @@ export default function Home() {
   // Φόρτωση καταστημάτων από Sheet
   const loadStores = async () => {
     try {
-      const res = await fetch('/api/stores');
+      const res = await fetch('/api/stores', { cache: 'no-store' });
       const data = await res.json();
+      if (!res.ok) return;
       setStoresList(data.stores || []);
       setStoreDetailsList(data.storeDetails || []);
     } catch (e) {}
@@ -388,8 +389,9 @@ export default function Home() {
 
   const loadNotes = async () => {
     try {
-      const res = await fetch('/api/notes');
+      const res = await fetch('/api/notes', { cache: 'no-store' });
       const data = await res.json();
+      if (!res.ok) return;
       setWarehouseNotes(data.notes || {});
     } catch (e) {}
   };
@@ -457,6 +459,7 @@ export default function Home() {
     try {
       const res = await fetch('/api/parts', { cache: 'no-store' });
       const data = await res.json();
+      if (!res.ok) return;
       setPartsList(data.parts || []);
       setMachineParts(data.machineParts || {});
     } catch (e) {}
@@ -466,6 +469,7 @@ export default function Home() {
     try {
       const res = await fetch('/api/log-links', { cache: 'no-store' });
       const data = await res.json();
+      if (!res.ok) return;
       setMachineLogLinks(data.links || {});
     } catch (e) {}
   };
@@ -1288,27 +1292,46 @@ ${table}
   };
 
   // ── Tickets ──
-  const loadTickets = async () => {
-    setLoadingTickets(true);
-    setTicketsError('');
+  // silent: ανανέωση στο παρασκήνιο (χωρίς "Φόρτωση..." και χωρίς μήνυμα λάθους)
+  const loadTickets = async (opts) => {
+    const silent = !!(opts && opts.silent === true);
+    if (!silent) { setLoadingTickets(true); setTicketsError(''); }
     try {
-      const res = await fetch('/api/tickets');
+      const res = await fetch('/api/tickets', { cache: 'no-store' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Σφάλμα');
       setTickets(data.tickets || []);
+      if (silent) setTicketsError('');
+      return true;
     } catch (e) {
-      setTicketsError('Δεν φορτώθηκαν τα tickets. Δοκίμασε ξανά.');
+      if (!silent) setTicketsError('Δεν φορτώθηκαν τα tickets. Δοκίμασε ξανά.');
+      return false;
     } finally {
-      setLoadingTickets(false);
+      if (!silent) setLoadingTickets(false);
     }
   };
 
+  // Μία ανάγνωση του Sheet → και απόθεμα και κινήσεις (για το dashboard / auto-refresh)
   const loadAllMovements = async () => {
     try {
       const res = await fetch('/api/inventory?all=1', { cache: 'no-store' });
       const data = await res.json().catch(() => ({}));
-      if (res.ok && Array.isArray(data.movements)) setAllMovements(data.movements);
-    } catch (e) {}
+      if (res.status === 401) { router.replace('/login'); return false; }
+      if (!res.ok) return false;
+      if (Array.isArray(data.movements)) setAllMovements(data.movements);
+      if (Array.isArray(data.inventory)) {
+        // ακυρώνει τυχόν παλιότερο αίτημα loadInventory ώστε να μη γράψει πάνω από τα νέα
+        inventoryRequestRef.current += 1;
+        setInventory(data.inventory);
+        setInventorySnapshotReady(true);
+        setInventoryError('');
+        setLoadingInv(false);
+        try { localStorage.setItem(INVENTORY_CACHE_KEY, JSON.stringify(data.inventory)); } catch (e) {}
+      }
+      return true;
+    } catch (e) {
+      return false;
+    }
   };
 
   const updateTicket = async (ticketId, fields) => {
@@ -1832,6 +1855,117 @@ ${table}
     { id: 'history',   label: 'Ιστορικό',   icon: '◷' },
     { id: 'settings',  label: 'Ρυθμίσεις',  icon: '◎' },
   ];
+
+  // ── Αυτόματη ανανέωση (για την οθόνη/τηλεόραση) ──
+  // Κάθε 30″ φέρνει τα νέα δεδομένα στο παρασκήνιο, χωρίς "Φόρτωση..." και χωρίς
+  // να πειράζει ό,τι γράφει κάποιος εκείνη τη στιγμή. Τρέχει μόνο όταν η σελίδα φαίνεται.
+  const AUTO_REFRESH_MS = 30 * 1000;
+  const [lastRefreshAt, setLastRefreshAt] = useState(null);
+  const [refreshFailed, setRefreshFailed] = useState(false);
+  const [nowTick, setNowTick] = useState(0);
+  const autoRefreshRef = useRef(null);
+  const autoState = useRef({ running: false, last: {}, version: null });
+
+  autoRefreshRef.current = async (force) => {
+    const st = autoState.current;
+    if (st.running) return;
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+    const busy = !!(partModalItem || logLinkModalItem || deleteConfirmItem || submitting ||
+      editingTicketId || ticketDeleteConfirm || editingNote || editingStore || editingDate ||
+      openActionMenu || swipedItem || pullRefreshing || tab === 'scan' || tab === 'settings');
+    const now = Date.now();
+    const due = (key, ms) => force || !st.last[key] || now - st.last[key] >= ms;
+    const mark = (key) => { st.last[key] = now; };
+
+    st.running = true;
+    try {
+      // Νέα έκδοση της εφαρμογής (μετά από push) → φόρτωσε τη σελίδα από την αρχή
+      if (due('version', 5 * 60 * 1000)) {
+        mark('version');
+        try {
+          const r = await fetch('/api/version', { cache: 'no-store' });
+          const d = await r.json();
+          if (st.version && d.version && d.version !== st.version && !busy) {
+            window.location.reload();
+            return;
+          }
+          if (d.version && !st.version) st.version = d.version;
+        } catch (e) {}
+      }
+      // Κρατάει τη σύνδεση ενεργή (για να μη ζητάει login η τηλεόραση)
+      if (due('session', 30 * 60 * 1000)) {
+        mark('session');
+        try {
+          const r = await fetch('/api/auth/me', { cache: 'no-store' });
+          if (r.status === 401) { router.replace('/login'); return; }
+        } catch (e) {}
+      }
+
+      if (busy) return;
+
+      const jobs = [];
+      if (tab === 'home' || tab === 'inventory' || tab === 'warehouse') {
+        jobs.push(loadAllMovements());
+        if (tab !== 'home' && due('parts', 2 * 60 * 1000)) { mark('parts'); loadParts(); loadLogLinks(); }
+        if (tab === 'warehouse' && due('notes', 5 * 60 * 1000)) { mark('notes'); loadNotes(); }
+      }
+      if (tab === 'tickets' || (tab === 'home' && due('tickets', AUTO_REFRESH_MS)) || due('tickets', 2 * 60 * 1000)) {
+        mark('tickets');
+        jobs.push(loadTickets({ silent: true }));
+      }
+      if (tab === 'history' && (historySerial || historyStore)) {
+        loadHistory(historySerial, historyStore);
+      }
+      if (due('stores', 5 * 60 * 1000)) { mark('stores'); loadStores(); }
+
+      if (jobs.length) {
+        const results = await Promise.all(jobs);
+        const ok = results.every(Boolean);
+        setRefreshFailed(!ok);
+        if (ok) setLastRefreshAt(Date.now());
+      } else {
+        setLastRefreshAt(Date.now());
+      }
+    } finally {
+      st.running = false;
+    }
+  };
+
+  useEffect(() => {
+    // πρώτη φορά: μόνο κρατάμε την έκδοση και την ώρα — τα δεδομένα τα φέρνει ήδη η αρχική φόρτωση
+    autoState.current.last = { version: 0, session: Date.now(), tickets: Date.now(), parts: Date.now(), notes: Date.now(), stores: Date.now() };
+    setLastRefreshAt(Date.now());
+    const run = (force) => { if (autoRefreshRef.current) autoRefreshRef.current(force); };
+    const interval = setInterval(() => run(false), AUTO_REFRESH_MS);
+    const ticker = setInterval(() => setNowTick(t => t + 1), 5000);
+    let lastWake = Date.now();
+    const onWake = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - lastWake < 5000) return; // focus + visibilitychange μαζί → μία φορά
+      lastWake = Date.now();
+      run(false);
+    };
+    document.addEventListener('visibilitychange', onWake);
+    window.addEventListener('focus', onWake);
+    window.addEventListener('online', onWake);
+    return () => {
+      clearInterval(interval);
+      clearInterval(ticker);
+      document.removeEventListener('visibilitychange', onWake);
+      window.removeEventListener('focus', onWake);
+      window.removeEventListener('online', onWake);
+    };
+  }, []);
+
+  const refreshAgo = (() => {
+    void nowTick;
+    if (!lastRefreshAt) return '';
+    const sec = Math.max(0, Math.round((Date.now() - lastRefreshAt) / 1000));
+    if (sec < 10) return 'μόλις τώρα';
+    if (sec < 60) return `πριν ${sec}″`;
+    const min = Math.round(sec / 60);
+    return `πριν ${min}′`;
+  })();
 
   const handleTabClick = (t) => {
     setOpenActionMenu(null);
@@ -3740,6 +3874,13 @@ ${table}
             <div className="desktop-title">
               {tab==='home'?'Αρχική':tab==='scan'?'Scan':tab==='inventory'?'Κινήσεις':tab==='warehouse'?'Αποθήκη':tab==='history'?'Ιστορικό':tab==='tickets'?'Tickets':'Ρυθμίσεις'}
             </div>
+            {['home','inventory','warehouse','tickets','history'].includes(tab) && lastRefreshAt && (
+              <div className={`live-badge${refreshFailed ? ' warn' : ''}`}
+                title={refreshFailed ? 'Η τελευταία αυτόματη ανανέωση απέτυχε — θα ξαναδοκιμάσει σε λίγο' : 'Τα δεδομένα ανανεώνονται αυτόματα κάθε 30 δευτερόλεπτα'}>
+                <span className="live-dot" />
+                {refreshFailed ? 'Χωρίς σύνδεση · ' : 'Ζωντανά · '}{refreshAgo}
+              </div>
+            )}
             {(tab==='inventory' || tab==='warehouse') && (
               <div className="desktop-header-actions">
                 {tab==='inventory' && ['Όλα','Επισκευή'].map(f => (
@@ -4275,6 +4416,18 @@ ${table}
           display: flex; align-items: center; justify-content: space-between; gap: 12px;
         }
         .desktop-title { font-size: 16px; font-weight: 700; color: var(--t1); letter-spacing: -0.4px; }
+        .live-badge {
+          display: inline-flex; align-items: center; gap: 7px;
+          font-size: 12px; font-weight: 500; color: var(--t2);
+          padding: 4px 10px; border-radius: 999px; margin-right: auto; margin-left: 14px;
+          background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.25);
+          white-space: nowrap;
+        }
+        .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #10b981; animation: livePulse 2s ease-in-out infinite; }
+        .live-badge.warn { background: rgba(234,88,12,0.08); border-color: rgba(234,88,12,0.3); }
+        .live-badge.warn .live-dot { background: #ea580c; animation: none; }
+        @keyframes livePulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+        @media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
         .desktop-header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .desktop-content { flex: 1; overflow-y: auto; padding: 20px 24px; }
 

@@ -1,4 +1,4 @@
-import { getInventory, getHistory, getHistoryByStore, getAllMovements } from '../../lib/sheets';
+import { getInventory, getHistory, getHistoryByStore, getTrackingSnapshot } from '../../lib/sheets';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
@@ -7,8 +7,9 @@ export default async function handler(req, res) {
 
   try {
     if (all) {
-      const movements = await getAllMovements();
-      return res.status(200).json({ movements });
+      // Αποθήκη + όλες οι κινήσεις μαζί (μία ανάγνωση)
+      const { inventory, movements } = await getTrackingSnapshot();
+      return res.status(200).json({ inventory, movements });
     } else if (serial) {
       const history = await getHistory(serial);
       return res.status(200).json({ history });
