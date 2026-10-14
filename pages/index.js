@@ -767,9 +767,9 @@ export default function Home() {
 
   const buildShipmentEmail = () => {
     const destination = getSelectedStoreDetails();
-    const rows = getShipmentRows(destination);
-
-    const table = rows.map(([label, value]) => `${label}\t${value}`).join('\n');
+    const table = getShipmentBlocks(destination)
+      .map((rows, i) => [`A/A ${i + 1}`, ...rows.map(([label, value]) => `${label}\t${value}`)].join('\n'))
+      .join('\n\n');
     return `Θέμα: Αποστολή μηχανήματος ${model || serialNumber || ''} προς ${destination.name || store || 'προορισμό'}
 
 Καλησπέρα,
@@ -791,19 +791,16 @@ ${table}
 
   const buildShipmentEmailHtml = () => {
     const destination = getSelectedStoreDetails();
-    const rows = getShipmentRows(destination);
+    const tables = getShipmentBlocks(destination).map((rows, blockIndex) => {
     const bodyRows = rows.map(([label, value], index) => `
       <tr>
-        ${index === 0 ? `<td rowspan="${rows.length}" style="border:1px solid #7f7f7f;padding:8px;text-align:center;vertical-align:top;width:42px;">1</td>` : ''}
+        ${index === 0 ? `<td rowspan="${rows.length}" style="border:1px solid #7f7f7f;padding:8px;text-align:center;vertical-align:top;width:42px;">${blockIndex + 1}</td>` : ''}
         <td style="border:1px solid #7f7f7f;background:#d8d1ff;padding:6px 8px;width:150px;vertical-align:top;">${escapeHtml(label)}:</td>
         <td style="border:1px solid #7f7f7f;padding:6px 8px;vertical-align:top;min-width:220px;">${escapeHtml(value)}</td>
       </tr>
     `).join('');
 
     return `
-      <div style="font-family:Arial, sans-serif;font-size:14px;color:#000;">
-        <p>Καλησπέρα,</p>
-        <p>Παρακαλώ δείτε τα στοιχεία αποστολής:</p>
         <table cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:1px solid #7f7f7f;font-family:Arial, sans-serif;font-size:14px;color:#000;">
           <tr>
             <th style="border:1px solid #7f7f7f;background:#c9c1ff;padding:7px 8px;width:42px;text-align:left;">A/A</th>
@@ -811,7 +808,14 @@ ${table}
             <th style="border:1px solid #7f7f7f;background:#c9c1ff;padding:7px 8px;text-align:center;">Εξαγωγή ειδών</th>
           </tr>
           ${bodyRows}
-        </table>
+        </table>`;
+    }).join('\n        <br>\n');
+
+    return `
+      <div style="font-family:Arial, sans-serif;font-size:14px;color:#000;">
+        <p>Καλησπέρα,</p>
+        <p>Παρακαλώ δείτε τα στοιχεία αποστολής:</p>
+        ${tables}
         <p>Ευχαριστώ.</p>
       </div>
     `;
@@ -839,6 +843,36 @@ ${table}
       ['Τρόπος Αποστολής', methodLabel],
       ['Παρατηρήσεις', shipmentNotes.trim() || '—'],
     ];
+  };
+
+  // Ανταλλακτικά που είναι τοποθετημένα πάνω στο μηχάνημα που στέλνουμε
+  const getShipmentParts = () => {
+    if (!supportsSparePartsCategory(machineCategory)) return [];
+    const sn = String(serialNumber || '').trim();
+    if (!sn) return [];
+    const key = Object.keys(machineParts || {}).find(k => k.trim().toUpperCase() === sn.toUpperCase());
+    return key ? (machineParts[key] || []) : [];
+  };
+
+  // Ένας πίνακας για το μηχάνημα + ένας για κάθε ανταλλακτικό του
+  const getShipmentBlocks = (destination = getSelectedStoreDetails()) => {
+    const machineRows = getShipmentRows(destination);
+    const keep = new Set(['Επωνυμία Πελάτη', 'ΑΦΜ', 'Υποκατάστημα', 'Σκοπός Διακίνησης', 'Τρόπος Αποστολής']);
+    const common = Object.fromEntries(machineRows.filter(([l]) => keep.has(l)));
+    const partBlocks = getShipmentParts().map(part => [
+      ['Επωνυμία Πελάτη', common['Επωνυμία Πελάτη']],
+      ['ΑΦΜ', common['ΑΦΜ']],
+      ['Υποκατάστημα', common['Υποκατάστημα']],
+      ['Κωδικός Είδους', part.code || '—'],
+      ['Περιγραφή Είδους', part.description || '—'],
+      ['Σειριακός', part.partSerial || '—'],
+      ['Ποσότητα', '1'],
+      ['Τιμή', '—'],
+      ['Σκοπός Διακίνησης', common['Σκοπός Διακίνησης']],
+      ['Τρόπος Αποστολής', common['Τρόπος Αποστολής']],
+      ['Παρατηρήσεις', `Ανταλλακτικό τοποθετημένο στο μηχάνημα ${[model, serialNumber && `SN ${serialNumber}`].filter(Boolean).join(' ')}`],
+    ]);
+    return [machineRows, ...partBlocks];
   };
 
   const copyShipmentEmail = async () => {
@@ -2744,22 +2778,24 @@ ${table}
                     </div>
                     <button className="btn-quick-action" onClick={copyShipmentEmail}>{copiedShipmentEmail ? '✓ Αντιγράφηκε' : 'Αντιγραφή email'}</button>
                   </div>
-                  <div className="shipment-table-preview">
+                  {getShipmentBlocks().map((rows, bi) => (
+                  <div className="shipment-table-preview" key={bi}>
                     <div className="shipment-table-top">
                       <div>A/A</div>
                       <div>CashDro &amp; McDonald's</div>
-                      <div>Εξαγωγή ειδών</div>
+                      <div>Εξαγωγή ειδών{bi > 0 ? ' · Ανταλλακτικό' : ''}</div>
                     </div>
                     <div className="shipment-table-body">
-                      <div className="shipment-table-index">1</div>
+                      <div className="shipment-table-index">{bi + 1}</div>
                       <div className="shipment-table-labels">
-                        {getShipmentRows().map(([label]) => <div key={label}>{label}:</div>)}
+                        {rows.map(([label]) => <div key={label}>{label}:</div>)}
                       </div>
                       <div className="shipment-table-values">
-                        {getShipmentRows().map(([label, value]) => <div key={label}>{value}</div>)}
+                        {rows.map(([label, value]) => <div key={label}>{value}</div>)}
                       </div>
                     </div>
                   </div>
+                  ))}
                 </div>
               )}
               <button className="btn-primary" onClick={handleReset}>📷 Νέο scan</button>
@@ -5085,6 +5121,7 @@ ${table}
         .shipment-email-title { font-size: 13px; font-weight: 800; color: var(--t1); }
         .shipment-email-sub { font-size: 11px; color: var(--t3); margin-top: 2px; }
         .shipment-email-preview { white-space: pre-wrap; color: var(--t2); background: rgba(0,0,0,0.16); border: 1px solid var(--border); border-radius: var(--r); padding: 12px; font-family: var(--font); font-size: 12px; line-height: 1.6; max-height: 360px; overflow: auto; }
+        .shipment-table-preview + .shipment-table-preview { margin-top: 12px; }
         .shipment-table-preview { border: 1px solid var(--border2); border-radius: var(--r); overflow: hidden; background: rgba(255,255,255,0.95); color: #0f1020; max-width: 680px; }
         .shipment-table-top { display: grid; grid-template-columns: 44px 1fr 1.6fr; background: #c9c1ff; border-bottom: 1px solid #b4a9ef; font-size: 12px; font-weight: 800; }
         .shipment-table-top > div { padding: 7px 8px; border-right: 1px solid #b4a9ef; }
