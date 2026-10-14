@@ -47,8 +47,9 @@ export async function middleware(request) {
     '/api/auth/logout',
     '/api/auth/me',
     '/api/tickets/inbound', // καλείται από Gmail Apps Script, έχει δικό του μυστικό κλειδί
-    '/api/tickets/request', // φόρμα αιτήματος καταστημάτων — προστατεύεται με το κλειδί του link
-    '/request',             // η σελίδα της φόρμας (για τα καταστήματα, χωρίς login)
+    '/api/tickets/request', // φόρμα αιτήματος πελατών — δημόσια, με προστασία από spam
+    '/support',             // η σελίδα της φόρμας (για τους πελάτες, χωρίς login)
+    '/request',             // παλιό link της ίδιας φόρμας
     '/icon-192-v2.png',
     '/favicon-v2.png',
   ];

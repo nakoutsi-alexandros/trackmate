@@ -1,11 +1,10 @@
 // pages/api/tickets/request.js
-// Δημόσιο API της φόρμας αιτήματος (/request) — χωρίς login,
-// αλλά μόνο με το σωστό κλειδί του link (k).
-//   GET  ?k=...  → έλεγχος ότι το link είναι έγκυρο
-//   POST { k, fields..., website, t } → δημιουργία ticket
+// Δημόσιο API της φόρμας αιτήματος (/support) — χωρίς login.
+//   POST { fields..., website, t } → δημιουργία ticket
+// Προστασία από spam: honeypot (website), ελάχιστος χρόνος συμπλήρωσης, όριο ανά IP.
 
 import { createWebTicket } from '../../../lib/emailTickets';
-import { isValidFormKey, rateLimited } from '../../../lib/requestForm';
+import { rateLimited } from '../../../lib/requestForm';
 
 export const config = { api: { bodyParser: { sizeLimit: '64kb' } } };
 
@@ -18,16 +17,9 @@ function clientIp(req) {
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
 
-  if (req.method === 'GET') {
-    // Μόνο έλεγχος του link — καμία λίστα καταστημάτων δεν στέλνεται στον πελάτη
-    if (!isValidFormKey(req.query.k)) return res.status(403).json({ error: 'invalid_link' });
-    return res.status(200).json({ ok: true });
-  }
-
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const body = req.body || {};
-  if (!isValidFormKey(body.k)) return res.status(403).json({ error: 'invalid_link' });
 
   // Honeypot: κρυφό πεδίο που συμπληρώνουν μόνο τα bots
   if (body.website) return res.status(200).json({ ok: true, ticketId: '' });

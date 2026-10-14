@@ -1,7 +1,8 @@
 // pages/request.js
 // Δημόσια φόρμα αιτήματος τεχνικής υποστήριξης Cashdro για τα καταστήματα.
-// Ανοίγει χωρίς login, μόνο με το link που έχει το σωστό κλειδί (?k=...).
+// Ανοίγει χωρίς login στο /support (και στο παλιό /request).
 // Προαιρετικά ?s=ΟΝΟΜΑ ΚΑΤΑΣΤΗΜΑΤΟΣ για προσυμπλήρωση.
+// Προστασία από spam: κρυφό πεδίο για bots, έλεγχος χρόνου και όριο αιτημάτων ανά IP (στο API).
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
@@ -15,8 +16,7 @@ const norm = v => String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpp
 
 export default function RequestPage() {
   const router = useRouter();
-  const [key, setKey] = useState('');
-  const [linkState, setLinkState] = useState('checking'); // checking | ok | invalid
+  const [linkState, setLinkState] = useState('checking'); // checking | ok
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState('');
@@ -28,9 +28,7 @@ export default function RequestPage() {
 
   useEffect(() => {
     if (!router.isReady) return;
-    const k = String(router.query.k || '');
     const s = String(router.query.s || '');
-    setKey(k);
     let saved = {};
     try { saved = JSON.parse(localStorage.getItem(SAVED_KEY) || '{}') || {}; } catch (e) {}
     setForm(f => {
@@ -40,12 +38,7 @@ export default function RequestPage() {
       if (s && norm(s) !== norm(saved.store)) { next.store = s; next.address = ''; next.postalCode = ''; }
       return next;
     });
-    if (!k) { setLinkState('invalid'); return; }
-    fetch(`/api/tickets/request?k=${encodeURIComponent(k)}`, { cache: 'no-store' })
-      .then(async r => {
-        setLinkState(r.status === 403 ? 'invalid' : 'ok');
-      })
-      .catch(() => setLinkState('ok'));
+    setLinkState('ok');
   }, [router.isReady]);
 
   const set = (k, v) => {
@@ -84,11 +77,10 @@ export default function RequestPage() {
       const res = await fetch('/api/tickets/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, k: key, t: openedAt.current }),
+        body: JSON.stringify({ ...form, t: openedAt.current }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 400 && data.errors) { setErrors(data.errors); focusFirstError(data.errors); return; }
-      if (res.status === 403) { setLinkState('invalid'); return; }
       if (!res.ok) { setFormError(data.error || 'Κάτι πήγε στραβά. Δοκιμάστε ξανά.'); return; }
       try {
         const saved = Object.fromEntries(CONTACT_FIELDS.map(c => [c, form[c]]));
@@ -127,6 +119,11 @@ export default function RequestPage() {
     <>
       <Head>
         <title>Αίτημα υποστήριξης Cashdro</title>
+        <meta name="description" content="Φόρμα αιτήματος τεχνικής υποστήριξης για μηχανήματα Cashdro." />
+        <meta property="og:title" content="Αίτημα υποστήριξης Cashdro" />
+        <meta property="og:description" content="Συμπληρώστε τα στοιχεία του καταστήματος και το πρόβλημα — θα επικοινωνήσουμε μαζί σας." />
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content="/icon-512-v2.png" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="robots" content="noindex, nofollow" />
         <link rel="icon" type="image/png" href="/favicon-v2.png" />
@@ -144,13 +141,6 @@ export default function RequestPage() {
         <main className="card">
           {linkState === 'checking' && <div className="state">Φόρτωση…</div>}
 
-          {linkState === 'invalid' && (
-            <div className="state">
-              <div className="state-icon warn">!</div>
-              <h1>Το link δεν είναι έγκυρο</h1>
-              <p>Ζητήστε το σωστό link της φόρμας από την τεχνική υποστήριξη.</p>
-            </div>
-          )}
 
           {linkState === 'ok' && done && (
             <div className="state">

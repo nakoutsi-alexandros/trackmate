@@ -32,7 +32,7 @@ export default async function handler(req, res) {
 
   // Αποστολέας εκτός λίστας: μόνο έλεγχος αν έστειλε φόρμα (δεν δημιουργείται ticket)
   if (req.body && req.body.probe) {
-    return res.status(200).json({ isForm: probeEmailForm(String(req.body.body || '')), formUrl: requestFormUrl() });
+    return res.status(200).json({ isForm: probeEmailForm(String(req.body.body || '')), formUrl: requestFormUrl('', req) });
   }
 
   const { threadId, messageId, from, fromName, store, chain, subject, body, images } = req.body || {};
