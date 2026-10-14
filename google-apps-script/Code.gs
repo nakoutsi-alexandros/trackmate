@@ -117,7 +117,18 @@ function processInbox() {
           const store = byEmail ? (whitelist[fromEmail] || '') : '';
           const chain = !byEmail && domainKey ? (domainList[domainKey] || '') : '';
           if (!byEmail && !domainKey) {
-            // Όχι από κατάστημα της λίστας → καμία απάντηση, μόνο ετικέτα
+            // Όχι από κατάστημα της λίστας → ΔΕΝ γίνεται ticket.
+            // Αν όμως έστειλε συμπληρωμένη φόρμα, μας ειδοποιεί για να μη χαθεί.
+            step = 'έλεγχος φόρμας από άγνωστο αποστολέα';
+            const probe = probeForm_(msg, secret);
+            if (probe === null) break; // TrackMate μη διαθέσιμο → ξανά σε 5 λεπτά
+            if (probe.isForm) {
+              if (notifyConfigured_()) {
+                notifyUnknownSender_(msg, fromEmail, probe.formUrl);
+              } else {
+                Logger.log('⚠️ Φόρμα από ' + fromEmail + ' (εκτός λίστας) — δεν στάλθηκε ειδοποίηση, έλεγξε το NOTIFY_EMAIL');
+              }
+            }
             step = 'σήμανση αγνοημένου';
             msg.markRead();
             addLabelSafe_(thread, LABEL_IGNORED);
@@ -191,6 +202,40 @@ function sendToTrackMate_(msg, thread, fromEmail, store, chain, secret) {
   msg.markRead();
   Logger.log('Ticket ' + data.ticketId + ' → ' + data.status + (data.missing ? ' (λείπουν: ' + data.missing + ')' : ''));
   return true;
+}
+
+
+// Ρωτάει το TrackMate αν το email περιέχει συμπληρωμένη φόρμα (χωρίς να φτιάξει ticket).
+// Επιστρέφει { isForm, formUrl } ή null αν το TrackMate δεν απάντησε.
+function probeForm_(msg, secret) {
+  const res = UrlFetchApp.fetch(TRACKMATE_URL, {
+    method: 'post',
+    contentType: 'application/json',
+    headers: { 'x-trackmate-secret': secret },
+    payload: JSON.stringify({ probe: true, body: msg.getPlainBody() }),
+    muteHttpExceptions: true,
+  });
+  if (res.getResponseCode() !== 200) {
+    Logger.log('TrackMate (έλεγχος φόρμας) απάντησε ' + res.getResponseCode());
+    return null;
+  }
+  return JSON.parse(res.getContentText());
+}
+
+function notifyUnknownSender_(msg, fromEmail, formUrl) {
+  const subject = 'TrackMate: φόρμα από email εκτός λίστας (' + fromEmail + ')';
+  const body =
+    'Ήρθε email με συμπληρωμένη φόρμα Cashdro, αλλά ο αποστολέας δεν είναι στη λίστα STORES / DOMAINS του script, οπότε ΔΕΝ έγινε ticket.\n\n' +
+    'Από: ' + msg.getFrom() + '\n' +
+    'Θέμα: ' + msg.getSubject() + '\n' +
+    'Ημερομηνία: ' + msg.getDate() + '\n\n' +
+    'Τι μπορείτε να κάνετε:\n' +
+    '  1. Να ανοίξετε το ticket με το χέρι, ή\n' +
+    '  2. Να προσθέσετε το email (ή το domain του) στα STORES / DOMAINS του script και να σημειώσετε το email ως «αδιάβαστο» στο Gmail — θα γίνει ticket σε 5 λεπτά, ή\n' +
+    '  3. Να στείλετε στο κατάστημα το link της φόρμας, που δουλεύει πάντα:\n' +
+    '     ' + formUrl + '\n';
+  GmailApp.sendEmail(notifyList_(), subject, body, { name: 'TrackMate' });
+  Logger.log('✉️ Φόρμα από ' + fromEmail + ' (εκτός λίστας) — στάλθηκε ειδοποίηση σε ' + notifyList_());
 }
 
 

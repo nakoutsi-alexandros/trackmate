@@ -47,6 +47,10 @@ export async function middleware(request) {
     '/api/auth/logout',
     '/api/auth/me',
     '/api/tickets/inbound', // καλείται από Gmail Apps Script, έχει δικό του μυστικό κλειδί
+    '/api/tickets/request', // φόρμα αιτήματος καταστημάτων — προστατεύεται με το κλειδί του link
+    '/request',             // η σελίδα της φόρμας (για τα καταστήματα, χωρίς login)
+    '/icon-192-v2.png',
+    '/favicon-v2.png',
   ];
 
   // Static files και Next.js internals - τα αφήνουμε να περάσουν
@@ -59,7 +63,7 @@ export async function middleware(request) {
   }
 
   // Επιτρεπόμενα public paths
-  if (publicPaths.some((p) => pathname === p || pathname.startsWith(p))) {
+  if (publicPaths.some((p) => pathname === p || pathname.startsWith(p + '/') || (p.startsWith('/api/') && pathname.startsWith(p)))) {
     return NextResponse.next();
   }
 

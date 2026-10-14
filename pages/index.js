@@ -1388,6 +1388,22 @@ ${table}
     }
   };
 
+  // Link της φόρμας αιτήματος (/request) για τα καταστήματα → αντιγραφή στο πρόχειρο
+  const [formLinkState, setFormLinkState] = useState('');
+  const copyFormLink = async () => {
+    try {
+      const res = await fetch('/api/tickets/form-link', { cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error();
+      try { await navigator.clipboard.writeText(data.url); }
+      catch (e) { window.prompt('Αντιγράψτε το link της φόρμας:', data.url); }
+      setFormLinkState('copied');
+    } catch (e) {
+      setFormLinkState('error');
+    }
+    setTimeout(() => setFormLinkState(''), 2000);
+  };
+
   const openTicket = (t) => {
     setEditingTicketId(null);
     if (openTicketId === t.ticketId) { setOpenTicketId(null); return; }
@@ -3536,7 +3552,7 @@ ${table}
                     <span className={`tk-status ${meta.cls}`}>{meta.label}</span>
                   </div>
                   <div className="tk-detail-store">{t.store || 'Χωρίς υποκατάστημα'}</div>
-                  <div className="tk-detail-sub">Παραλήφθηκε {ago(t.createdAt)} · {t.from || '—'}</div>
+                  <div className="tk-detail-sub">Παραλήφθηκε {ago(t.createdAt)} · {String(t.threadId || '').startsWith('web-') ? `φόρμα web${t.from ? ` · ${t.from}` : ''}` : (t.from || '—')}</div>
                 </div>
                 <button className="tk-close desktop-split-hide" onClick={()=>openTicket(t)} aria-label="Κλείσιμο">×</button>
               </div>
@@ -3664,7 +3680,10 @@ ${table}
                 <div className="tk-title">Tickets</div>
                 <div className="tk-subtitle">Αιτήματα από τις φόρμες των καταστημάτων</div>
               </div>
-              <button className="tk-btn" onClick={loadTickets} disabled={loadingTickets}>{loadingTickets ? 'Φόρτωση…' : '↻ Ανανέωση'}</button>
+              <div className="tk-header-actions">
+                <button className="tk-btn" onClick={copyFormLink} title="Το link της φόρμας αιτήματος για τα καταστήματα">{formLinkState === 'copied' ? '✓ Αντιγράφηκε' : formLinkState === 'error' ? '⚠️ Σφάλμα' : '🔗 Link φόρμας'}</button>
+                <button className="tk-btn" onClick={loadTickets} disabled={loadingTickets}>{loadingTickets ? 'Φόρτωση…' : '↻ Ανανέωση'}</button>
+              </div>
             </div>
 
             <div className="tk-stats">
@@ -5758,6 +5777,7 @@ ${table}
         .tk-item:hover { border-color: var(--border2); }
         .tk-item.selected { border-color: var(--acc); background: var(--glow2); }
         .tk-item-top { display: flex; align-items: center; gap: 8px; }
+        .tk-header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
         .tk-ago { margin-left: auto; font-size: 11px; color: var(--t4); white-space: nowrap; }
         .tk-item-store { font-size: 14px; font-weight: 700; color: var(--t1); }
         .tk-item-problem { font-size: 12px; color: var(--t2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
