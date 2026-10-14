@@ -1860,9 +1860,6 @@ ${table}
   // Κάθε 30″ φέρνει τα νέα δεδομένα στο παρασκήνιο, χωρίς "Φόρτωση..." και χωρίς
   // να πειράζει ό,τι γράφει κάποιος εκείνη τη στιγμή. Τρέχει μόνο όταν η σελίδα φαίνεται.
   const AUTO_REFRESH_MS = 30 * 1000;
-  const [lastRefreshAt, setLastRefreshAt] = useState(null);
-  const [refreshFailed, setRefreshFailed] = useState(false);
-  const [nowTick, setNowTick] = useState(0);
   const autoRefreshRef = useRef(null);
   const autoState = useRef({ running: false, last: {}, version: null });
 
@@ -1918,14 +1915,7 @@ ${table}
       }
       if (due('stores', 5 * 60 * 1000)) { mark('stores'); loadStores(); }
 
-      if (jobs.length) {
-        const results = await Promise.all(jobs);
-        const ok = results.every(Boolean);
-        setRefreshFailed(!ok);
-        if (ok) setLastRefreshAt(Date.now());
-      } else {
-        setLastRefreshAt(Date.now());
-      }
+      if (jobs.length) await Promise.all(jobs);
     } finally {
       st.running = false;
     }
@@ -1934,10 +1924,8 @@ ${table}
   useEffect(() => {
     // πρώτη φορά: μόνο κρατάμε την έκδοση και την ώρα — τα δεδομένα τα φέρνει ήδη η αρχική φόρτωση
     autoState.current.last = { version: 0, session: Date.now(), tickets: Date.now(), parts: Date.now(), notes: Date.now(), stores: Date.now() };
-    setLastRefreshAt(Date.now());
     const run = (force) => { if (autoRefreshRef.current) autoRefreshRef.current(force); };
     const interval = setInterval(() => run(false), AUTO_REFRESH_MS);
-    const ticker = setInterval(() => setNowTick(t => t + 1), 5000);
     let lastWake = Date.now();
     const onWake = () => {
       if (document.visibilityState !== 'visible') return;
@@ -1950,22 +1938,11 @@ ${table}
     window.addEventListener('online', onWake);
     return () => {
       clearInterval(interval);
-      clearInterval(ticker);
       document.removeEventListener('visibilitychange', onWake);
       window.removeEventListener('focus', onWake);
       window.removeEventListener('online', onWake);
     };
   }, []);
-
-  const refreshAgo = (() => {
-    void nowTick;
-    if (!lastRefreshAt) return '';
-    const sec = Math.max(0, Math.round((Date.now() - lastRefreshAt) / 1000));
-    if (sec < 10) return 'μόλις τώρα';
-    if (sec < 60) return `πριν ${sec}″`;
-    const min = Math.round(sec / 60);
-    return `πριν ${min}′`;
-  })();
 
   const handleTabClick = (t) => {
     setOpenActionMenu(null);
@@ -3874,13 +3851,6 @@ ${table}
             <div className="desktop-title">
               {tab==='home'?'Αρχική':tab==='scan'?'Scan':tab==='inventory'?'Κινήσεις':tab==='warehouse'?'Αποθήκη':tab==='history'?'Ιστορικό':tab==='tickets'?'Tickets':'Ρυθμίσεις'}
             </div>
-            {['home','inventory','warehouse','tickets','history'].includes(tab) && lastRefreshAt && (
-              <div className={`live-badge${refreshFailed ? ' warn' : ''}`}
-                title={refreshFailed ? 'Η τελευταία αυτόματη ανανέωση απέτυχε — θα ξαναδοκιμάσει σε λίγο' : 'Τα δεδομένα ανανεώνονται αυτόματα κάθε 30 δευτερόλεπτα'}>
-                <span className="live-dot" />
-                {refreshFailed ? 'Χωρίς σύνδεση · ' : 'Ζωντανά · '}{refreshAgo}
-              </div>
-            )}
             {(tab==='inventory' || tab==='warehouse') && (
               <div className="desktop-header-actions">
                 {tab==='inventory' && ['Όλα','Επισκευή'].map(f => (
@@ -4416,18 +4386,6 @@ ${table}
           display: flex; align-items: center; justify-content: space-between; gap: 12px;
         }
         .desktop-title { font-size: 16px; font-weight: 700; color: var(--t1); letter-spacing: -0.4px; }
-        .live-badge {
-          display: inline-flex; align-items: center; gap: 7px;
-          font-size: 12px; font-weight: 500; color: var(--t2);
-          padding: 4px 10px; border-radius: 999px; margin-right: auto; margin-left: 14px;
-          background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.25);
-          white-space: nowrap;
-        }
-        .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #10b981; animation: livePulse 2s ease-in-out infinite; }
-        .live-badge.warn { background: rgba(234,88,12,0.08); border-color: rgba(234,88,12,0.3); }
-        .live-badge.warn .live-dot { background: #ea580c; animation: none; }
-        @keyframes livePulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
-        @media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
         .desktop-header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .desktop-content { flex: 1; overflow-y: auto; padding: 20px 24px; }
 
