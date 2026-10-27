@@ -46,6 +46,18 @@ const STATUS_COLOR = {
   'Αποστολή στα κεντρικά': '#9B59B6',
 };
 
+// Πρόσβαση IP ανά CashDro — τιμές ίδιες με IP_ACCESS_VALUES στο lib/sheets.js
+const IP_BADGE = {
+  'έχει':            { label: 'Έχουμε πρόσβαση IP', cls: 'yes' },
+  'δεν έχει':        { label: 'Χωρίς πρόσβαση IP',  cls: 'no' },
+  'χρειάζεται αίτημα': { label: 'Αίτημα πρόσβασης',  cls: 'req' },
+};
+const IP_ACCESS_OPTIONS = [
+  { value: 'έχει',             short: 'Έχει',   cls: 'yes' },
+  { value: 'δεν έχει',         short: 'Όχι',    cls: 'no' },
+  { value: 'χρειάζεται αίτημα', short: 'Αίτημα', cls: 'req' },
+];
+
 const LEGACY_ACTION_LABELS = {
   'Νέα εισαγωγή': 'Καινούριο Μηχάνημα',
   'Εισαγωγή στην αποθήκη': 'Καινούριο Μηχάνημα',
@@ -348,6 +360,8 @@ export default function Home() {
   const [ticketDraft, setTicketDraft] = useState({});
   const [ticketDeleteConfirm, setTicketDeleteConfirm] = useState(null);
   const [savingTicketId, setSavingTicketId] = useState(null);
+  const [accessMap, setAccessMap] = useState({}); // { serial: { ipAccess, ipNote, updatedAt, updatedBy } }
+  const [savingAccess, setSavingAccess] = useState(null); // serial που αποθηκεύεται
   const [loadingTrash, setLoadingTrash] = useState(false);
   const [trashBusy, setTrashBusy] = useState(null); // batchId που γίνεται restore/purge
   const [warehouseNotes, setWarehouseNotes] = useState({});
@@ -623,6 +637,7 @@ export default function Home() {
     loadItems();
     loadParts();
     loadLogLinks();
+    loadAccess();
 
     // Καταχώρηση Service Worker για αυτόματο update
     if ('serviceWorker' in navigator) {
@@ -1377,6 +1392,34 @@ ${table}
       return false;
     } finally {
       if (!silent) setLoadingTickets(false);
+    }
+  };
+
+  const loadAccess = async () => {
+    try {
+      const res = await fetch('/api/access', { cache: 'no-store' });
+      const data = await res.json();
+      setAccessMap(data.access || {});
+    } catch (e) {}
+  };
+
+  const setAccessFor = async (serialNumber, ipAccess) => {
+    const serial = String(serialNumber || '').trim();
+    if (!serial) return;
+    setSavingAccess(serial);
+    try {
+      const res = await fetch('/api/access', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serialNumber: serial, ipAccess }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error();
+      setAccessMap(prev => ({ ...prev, [serial]: data.access }));
+    } catch (e) {
+      alert('Σφάλμα αποθήκευσης πρόσβασης.');
+    } finally {
+      setSavingAccess(null);
     }
   };
 
@@ -2342,6 +2385,12 @@ ${table}
           <div><span>Τελευταία κίνηση</span><strong>{item.date || '—'}</strong></div>
           <div><span>Χρήστης</span><strong>{item.user || '—'}</strong></div>
           <div><span>Εγγραφές</span><strong>{historySerial && history?.[0]?.serialNumber === serial ? `${history.length} κινήσεις` : '—'}</strong></div>
+          {(() => {
+            const key = Object.keys(accessMap).find(k => k.toUpperCase() === String(serial || '').trim().toUpperCase());
+            const cur = key ? (accessMap[key].ipAccess || '') : '';
+            if (!cur) return null;
+            return <div><span>Πρόσβαση IP</span><strong className={`ip-badge-inline ${IP_BADGE[cur]?.cls || 'unknown'}`}>{IP_BADGE[cur]?.label || 'Άγνωστο'}</strong></div>;
+          })()}
         </div>
         {itemParts.length > 0 && (
           <div className="machine-card-section">
@@ -3683,6 +3732,29 @@ ${table}
                       <Field label="Σειριακός Cashdro" value={t.serialNumber} mono />
                       <Field label="IP" value={t.ip} mono />
                       <Field label="Μεταφορική" value={t.courier} />
+                      {(() => {
+                        const sn = String(t.serialNumber || '').trim();
+                        if (!sn) return <Field label="Πρόσβαση IP"><span className="tk-field-missing">Χρειάζεται σειριακός</span></Field>;
+                        const key = Object.keys(accessMap).find(k => k.toUpperCase() === sn.toUpperCase());
+                        const acc = (key && accessMap[key]) || {};
+                        const cur = acc.ipAccess || '';
+                        return (
+                          <Field label="Πρόσβαση IP">
+                            <div className="ip-access">
+                              <span className={`ip-badge ${IP_BADGE[cur]?.cls || 'unknown'}`}>{IP_BADGE[cur]?.label || 'Άγνωστο'}</span>
+                              {acc.updatedBy && <span className="ip-access-meta">{acc.updatedAt ? `${acc.updatedAt} · ` : ''}{acc.updatedBy}</span>}
+                              {!isViewer && (
+                                <div className="ip-access-btns">
+                                  {IP_ACCESS_OPTIONS.map(o => (
+                                    <button key={o.value} className={`ip-opt ${o.cls} ${cur===o.value?'active':''}`} disabled={savingAccess===sn}
+                                      onClick={()=>setAccessFor(sn, cur===o.value ? '' : o.value)}>{o.short}</button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </Field>
+                        );
+                      })()}
                     </section>
                   </div>
 
@@ -5935,6 +6007,23 @@ ${table}
         .tk-field-value.mono, .tk-link.mono { font-family: var(--mono); }
         .tk-field-missing { font-size: 12px; font-weight: 700; color: var(--orange); }
         .tk-field-empty { font-size: 13px; color: var(--t4); }
+
+        .ip-access { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+        .ip-badge { font-size: 11px; font-weight: 800; padding: 3px 9px; border-radius: 999px; letter-spacing: 0.02em; white-space: nowrap; }
+        .ip-badge.yes { color: #10b981; background: rgba(16,185,129,0.14); border: 1px solid rgba(16,185,129,0.4); }
+        .ip-badge.no { color: #f87171; background: rgba(239,68,68,0.14); border: 1px solid rgba(239,68,68,0.4); }
+        .ip-badge.req { color: #f59e0b; background: rgba(245,158,11,0.14); border: 1px solid rgba(245,158,11,0.4); }
+        .ip-badge.unknown { color: var(--t3); background: var(--glass2); border: 1px solid var(--border2); }
+        .ip-access-meta { font-size: 10px; color: var(--t3); }
+        .ip-access-btns { display: flex; gap: 4px; flex-basis: 100%; }
+        .ip-opt { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 7px; cursor: pointer; background: var(--glass); border: 1px solid var(--border2); color: var(--t2); transition: all 0.15s; }
+        .ip-opt:disabled { opacity: 0.5; cursor: default; }
+        .ip-opt.yes.active { color: #fff; background: #10b981; border-color: #10b981; }
+        .ip-opt.no.active { color: #fff; background: #ef4444; border-color: #ef4444; }
+        .ip-opt.req.active { color: #fff; background: #f59e0b; border-color: #f59e0b; }
+        .ip-badge-inline.yes { color: #10b981 !important; }
+        .ip-badge-inline.no { color: #f87171 !important; }
+        .ip-badge-inline.req { color: #f59e0b !important; }
         .tk-link { font-size: 13px; color: var(--acc); text-decoration: none; font-weight: 600; word-break: break-all; }
         .tk-link:hover { text-decoration: underline; }
 
