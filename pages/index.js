@@ -355,6 +355,9 @@ export default function Home() {
   const [noteInput, setNoteInput] = useState('');
   const [savingNote, setSavingNote] = useState(false);
   const [expandedNotes, setExpandedNotes] = useState({}); // serials με ανοιχτό ιστορικό
+  const [editingSerial, setEditingSerial] = useState(null); // serial που επεξεργάζεται S/N
+  const [editSerialValue, setEditSerialValue] = useState('');
+  const [savingSerial, setSavingSerial] = useState(false);
   const [editingStore, setEditingStore] = useState(null); // serial που επεξεργάζεται κατάστημα
   const [editStoreSearch, setEditStoreSearch] = useState('');
   const [editStoreChain, setEditStoreChain] = useState('all');
@@ -1027,6 +1030,37 @@ ${table}
       loadInventory();
     } catch (e) {
       alert('Σφάλμα διαγραφής.');
+    }
+  };
+
+  const startEditingSerial = (serial) => {
+    setEditingSerial(serial);
+    setEditSerialValue(serial);
+  };
+
+  const handleUpdateSerial = async (oldSerial) => {
+    const next = editSerialValue.trim();
+    if (!next || next === oldSerial) { setEditingSerial(null); return; }
+    setSavingSerial(true);
+    try {
+      const res = await fetch('/api/warehouse', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serialNumber: oldSerial, newSerial: next }),
+      });
+      if (res.status === 409) { alert('Το serial υπάρχει ήδη σε άλλο μηχάνημα.'); setSavingSerial(false); return; }
+      if (!res.ok) throw new Error();
+      setEditingSerial(null);
+      loadInventory();
+      loadNotes();
+      loadParts();
+      loadLogLinks();
+      // Αν βλέπαμε το ιστορικό του παλιού serial, δείξε το νέο
+      if (historySerial === oldSerial) loadHistory(next, '');
+    } catch (e) {
+      alert('Σφάλμα αλλαγής serial.');
+    } finally {
+      setSavingSerial(false);
     }
   };
 
@@ -2282,7 +2316,23 @@ ${table}
         <div className="machine-card-head">
           <div>
             <div className="machine-card-title">{item.model || 'Άγνωστος κωδικός είδους'}</div>
-            <div className="machine-card-serial">{serial}</div>
+            {editingSerial === serial ? (
+              <div className="serial-edit">
+                <span className="sn-label">S/N:</span>
+                <input className="text-input serial-edit-input" value={editSerialValue} autoFocus
+                  onChange={e=>setEditSerialValue(e.target.value)}
+                  onKeyDown={e=>{if(e.key==='Enter')handleUpdateSerial(serial);if(e.key==='Escape')setEditingSerial(null);}} />
+                <button className="date-save-btn" onClick={()=>handleUpdateSerial(serial)} disabled={savingSerial}>✓</button>
+                <button className="date-cancel-btn" onClick={()=>setEditingSerial(null)} disabled={savingSerial}>×</button>
+              </div>
+            ) : (
+              <div className="machine-card-serial"
+                onClick={!isViewer ? ()=>startEditingSerial(serial) : undefined}
+                style={{cursor: isViewer ? 'default' : 'pointer'}}
+                title={isViewer ? undefined : 'Κλικ για αλλαγή serial'}>
+                <span className="sn-label">S/N:</span> {serial}{!isViewer && ' ✏️'}
+              </div>
+            )}
           </div>
           <span className={`status-pill ${STATUS_PILL[status]?.cls||'pill-gray'}`}>{STATUS_PILL[status]?.label||status}</span>
         </div>
@@ -5025,6 +5075,8 @@ ${table}
         .machine-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
         .machine-card-title { font-size: 16px; font-weight: 800; color: var(--t1); }
         .machine-card-serial { font-family: var(--mono); font-size: 11px; color: var(--t2); margin-top: 3px; font-weight: 700; }
+        .serial-edit { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+        .serial-edit-input { font-family: var(--mono); font-size: 12px; padding: 4px 8px; width: 140px; }
         .machine-card-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; margin-bottom: 10px; }
         .machine-card-grid div { border: 1px solid var(--border); border-radius: var(--r); background: var(--glass2); padding: 9px 10px; min-width: 0; }
         .machine-card-grid span, .machine-card-label { display: block; font-size: 9px; color: var(--t3); font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }

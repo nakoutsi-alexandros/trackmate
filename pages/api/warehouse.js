@@ -1,4 +1,4 @@
-import { updateStore, updateItemDate, deleteItem, deleteItemCompletely } from '../../lib/sheets';
+import { updateStore, updateItemDate, deleteItem, deleteItemCompletely, updateSerialNumber } from '../../lib/sheets';
 import { getUserFromRequest } from '../../lib/auth';
 
 export default async function handler(req, res) {
@@ -8,12 +8,18 @@ export default async function handler(req, res) {
 
   if (req.method === 'PATCH') {
     try {
-      const { serialNumber, newStore, newDate } = req.body;
+      const { serialNumber, newStore, newDate, newSerial } = req.body;
       // Treat empty-string as absent — don't silently skip a provided-but-blank value
-      const hasStore = newStore != null && newStore !== '';
-      const hasDate  = newDate  != null && newDate  !== '';
-      if (!serialNumber || (!hasStore && !hasDate)) {
+      const hasStore  = newStore  != null && newStore  !== '';
+      const hasDate   = newDate   != null && newDate   !== '';
+      const hasSerial = newSerial != null && String(newSerial).trim() !== '';
+      if (!serialNumber || (!hasStore && !hasDate && !hasSerial)) {
         return res.status(400).json({ error: 'Serial number και πεδίο ενημέρωσης υποχρεωτικά' });
+      }
+      if (hasSerial) {
+        const result = await updateSerialNumber(serialNumber, newSerial);
+        if (result.duplicate) return res.status(409).json({ error: 'Το serial υπάρχει ήδη σε άλλο μηχάνημα' });
+        if (result.notFound) return res.status(404).json({ error: 'Το μηχάνημα δεν βρέθηκε' });
       }
       if (hasStore) await updateStore(serialNumber, newStore);
       if (hasDate)  await updateItemDate(serialNumber, newDate);
